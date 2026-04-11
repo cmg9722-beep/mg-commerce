@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MG Commerce - 자동화 플랫폼</title>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MG Commerce">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="logo">MG Commerce</div>
+    <div class="nav-item active" data-tab="dashboard"><span class="icon">📊</span>대시보드</div>
+    <div class="nav-item" data-tab="finder"><span class="icon">🔍</span>제품 발굴</div>
+    <div class="nav-item" data-tab="suppliers"><span class="icon">🏭</span>공급사 관리</div>
+    <div class="nav-item" data-tab="margin"><span class="icon">💰</span>마진 계산</div>
+    <div class="nav-item" data-tab="pipeline"><span class="icon">⚡</span>파이프라인</div>
+    <div class="nav-item" data-tab="messages"><span class="icon">💬</span>메시지 생성</div>
+    <div class="nav-item" data-tab="coupang"><span class="icon">🛒</span>쿠팡 보조</div>
+    <div class="nav-item" data-tab="inspection"><span class="icon">🔬</span>검수 체크</div>
+    <div class="nav-item" data-tab="inquiries"><span class="icon">📩</span>고객 문의</div>
+    <div style="border-top:1px solid #334155;margin:12px 20px;padding-top:12px">
+      <a href="/" target="_blank" class="nav-item" style="color:#fbbf24"><span class="icon">🌐</span>홈페이지 보기</a>
+    </div>
+  </nav>
+
+  <!-- Mobile Nav -->
+  <div class="mobile-nav">
+    <div class="tab active" data-tab="dashboard">📊</div>
+    <div class="tab" data-tab="finder">🔍</div>
+    <div class="tab" data-tab="suppliers">🏭</div>
+    <div class="tab" data-tab="margin">💰</div>
+    <div class="tab" data-tab="pipeline">⚡</div>
+    <div class="tab" data-tab="messages">💬</div>
+    <div class="tab" data-tab="coupang">🛒</div>
+    <div class="tab" data-tab="inspection">🔬</div>
+    <div class="tab" data-tab="inquiries">📩</div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="main">
+
+    <!-- ===== 대시보드 ===== -->
+    <div class="tab-content active" id="tab-dashboard">
+      <div id="dday-banner" class="dday-banner">
+        <div class="desc">쿠팡 로켓그로스 프로모션 데드라인</div>
+        <div class="big" id="dday-text">D-??</div>
+        <div class="desc">입고 완료 시 첫 90일 물류비 0원 + 이후 270일 추가 혜택</div>
+      </div>
+
+      <div class="kpi-row" id="kpi-row"></div>
+
+      <div class="card">
+        <h3>마일스톤 진행</h3>
+        <div id="milestones-list"></div>
+      </div>
+
+      <div class="card">
+        <h3>전체 마진 현황</h3>
+        <div id="margin-summary"></div>
+      </div>
+    </div>
+
+    <!-- ===== 제품 발굴 ===== -->
+    <div class="tab-content" id="tab-finder">
+      <h2 style="color:#60a5fa;margin-bottom:16px">🔍 신규 제품 발굴</h2>
+
+      <div class="card">
+        <h3>추천 검색 카테고리</h3>
+        <div id="search-suggestions"></div>
+      </div>
+
+      <div class="card">
+        <h3>제품 후보 등록</h3>
+        <form id="candidate-form">
+          <div class="form-row">
+            <div class="form-group"><label>제품명 (한국어)</label><input name="name_ko" placeholder="예: USB 미니 가습기"></div>
+            <div class="form-group"><label>제품명 (중국어)</label><input name="name_cn" placeholder="예: USB迷你加湿器"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>카테고리</label><input name="category" placeholder="예: 생활 소품"></div>
+            <div class="form-group"><label>1688 가격 (CNY)</label><input name="price_cny" type="number" step="0.1" placeholder="예: 5.0"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>쿠팡 예상 판매가 (원)</label><input name="coupang_est_price" type="number" value="9900"></div>
+            <div class="form-group"><label>MOQ</label><input name="moq" type="number" value="1"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>공급사명</label><input name="supplier_name" placeholder="공급사 이름"></div>
+            <div class="form-group"><label>소재지</label><input name="supplier_location" placeholder="예: 이우"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>경쟁강도 (0~100, 낮을수록 좋음)</label><input name="competition_score" type="number" value="50"></div>
+            <div class="form-group"><label>예상 반품률 (%)</label><input name="return_rate_est" type="number" step="0.1" value="5"></div>
+          </div>
+          <div class="form-group">
+            <label>KC 인증 면제</label>
+            <select name="kc_exempt"><option value="1">면제</option><option value="0">필요</option></select>
+          </div>
+          <div class="form-group"><label>메모</label><textarea name="notes" rows="2" placeholder="특이사항"></textarea></div>
+          <button type="submit" class="btn btn-primary">평가 + 등록</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>후보 목록 (점수순)</h3>
+        <div id="candidates-list"></div>
+      </div>
+    </div>
+
+    <!-- ===== 공급사 관리 ===== -->
+    <div class="tab-content" id="tab-suppliers">
+      <h2 style="color:#60a5fa;margin-bottom:16px">🏭 공급사 관리</h2>
+      <div id="suppliers-list"></div>
+    </div>
+
+    <!-- ===== 마진 계산 ===== -->
+    <div class="tab-content" id="tab-margin">
+      <h2 style="color:#60a5fa;margin-bottom:16px">💰 마진 자동 계산기</h2>
+
+      <div class="card">
+        <h3>실시간 환율</h3>
+        <div id="rate-info" class="flex-between">
+          <span>CNY→KRW: <strong id="current-rate">로딩중...</strong></span>
+          <button class="btn btn-sm btn-secondary" onclick="refreshRate()">환율 새로고침</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>전체 제품 마진 (프로모션 적용)</h3>
+        <table>
+          <thead><tr><th>제품</th><th>1688단가</th><th>원가(원)</th><th>쿠팡가</th><th>수수료</th><th>개당마진</th><th>마진율</th><th>100개 총마진</th></tr></thead>
+          <tbody id="margin-table"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h3>개별 시뮬레이션</h3>
+        <div class="form-row">
+          <div class="form-group"><label>1688 단가 (CNY)</label><input id="sim-cost" type="number" step="0.1" value="4.0"></div>
+          <div class="form-group"><label>쿠팡 판매가 (원)</label><input id="sim-price" type="number" step="100" value="9900"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>수량</label><input id="sim-qty" type="number" value="100"></div>
+          <div class="form-group"><label>프로모션</label><select id="sim-promo"><option value="1">적용 (물류비 0원)</option><option value="0">미적용</option></select></div>
+        </div>
+        <button class="btn btn-primary" onclick="runSimulation()">계산하기</button>
+        <div id="sim-result" class="mt-16"></div>
+      </div>
+    </div>
+
+    <!-- ===== 파이프라인 ===== -->
+    <div class="tab-content" id="tab-pipeline">
+      <h2 style="color:#60a5fa;margin-bottom:16px">⚡ 파이프라인</h2>
+      <div id="pipeline-view"></div>
+    </div>
+
+    <!-- ===== 메시지 생성 ===== -->
+    <div class="tab-content" id="tab-messages">
+      <h2 style="color:#60a5fa;margin-bottom:16px">💬 중국어 메시지 자동 생성</h2>
+
+      <div class="card">
+        <h3>메시지 유형 선택</h3>
+        <div class="tabs" id="msg-tabs"></div>
+        <div class="form-row">
+          <div class="form-group"><label>제품명 (중국어)</label><input id="msg-product" placeholder="예: 聚酰亚胺胶带"></div>
+          <div class="form-group"><label>수량</label><input id="msg-qty" value="1"></div>
+        </div>
+        <div class="form-group"><label>추가 메시지</label><textarea id="msg-extra" rows="2" placeholder="추가할 내용"></textarea></div>
+        <button class="btn btn-primary" onclick="generateMsg()">메시지 생성</button>
+        <div class="mt-16">
+          <div class="msg-preview" id="msg-output">메시지를 생성하면 여기에 표시됩니다...</div>
+          <button class="btn btn-copy btn-sm mt-8" onclick="copyMsg()">📋 복사</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 쿠팡 보조 ===== -->
+    <div class="tab-content" id="tab-coupang">
+      <h2 style="color:#60a5fa;margin-bottom:16px">🛒 쿠팡 상품등록 보조</h2>
+
+      <div class="card">
+        <h3>상품명 생성 (SEO 최적화)</h3>
+        <div class="form-row">
+          <div class="form-group"><label>제품명</label><input id="cp-name" placeholder="제품명"></div>
+          <div class="form-group"><label>추가 키워드 (쉼표 구분)</label><input id="cp-keywords" placeholder="키워드1, 키워드2"></div>
+        </div>
+        <button class="btn btn-primary" onclick="genTitle()">상품명 생성</button>
+        <div id="cp-title-result" class="mt-16"></div>
+      </div>
+
+      <div class="card">
+        <h3>가격 전략 추천</h3>
+        <div class="form-row">
+          <div class="form-group"><label>1688 원가 (CNY)</label><input id="cp-cost" type="number" step="0.1" value="4.0"></div>
+        </div>
+        <button class="btn btn-primary" onclick="genPriceStrategy()">전략 생성</button>
+        <div id="cp-price-result" class="mt-16"></div>
+      </div>
+
+      <div class="card">
+        <h3>상품등록 체크리스트</h3>
+        <div id="cp-checklist"></div>
+      </div>
+
+      <div class="card">
+        <h3>상세페이지 생성</h3>
+        <div class="form-group">
+          <label>제품 선택</label>
+          <select id="cp-product-select"></select>
+        </div>
+        <button class="btn btn-primary" onclick="genProductPage()">상세페이지 HTML 생성</button>
+        <div id="cp-page-result" class="mt-16"></div>
+      </div>
+    </div>
+
+    <!-- ===== 검수 체크리스트 ===== -->
+    <div class="tab-content" id="tab-inspection">
+      <h2 style="color:#60a5fa;margin-bottom:16px">🔬 품질 검수 체크리스트</h2>
+      <div class="tabs" id="inspection-tabs"></div>
+      <div id="inspection-list"></div>
+    </div>
+
+    <!-- ===== 고객 문의 ===== -->
+    <div class="tab-content" id="tab-inquiries">
+      <h2 style="color:#60a5fa;margin-bottom:16px">📩 고객 문의 관리</h2>
+      <div class="kpi-row" id="inquiry-kpi"></div>
+      <div class="card">
+        <h3>문의 목록</h3>
+        <div id="inquiries-list"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="MG E-COMMERCE - 글로벌 소싱, 검증된 품질, 빠른 배송. 이커머스 전문 셀러.">
+<meta name="keywords" content="앰지이커머스, MG이커머스, 쿠팡, 이커머스, 글로벌소싱, 카프톤테이프, ESD팔찌">
+<meta property="og:title" content="MG E-COMMERCE | 글로벌 소싱, 검증된 품질">
+<meta property="og:description" content="전문가가 직접 소싱하고 검수한 프리미엄 제품. 쿠팡 빠른배송.">
+<meta property="og:type" content="website">
+<title>MG E-COMMERCE | 글로벌 소싱, 검증된 품질</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;color:#111;line-height:1.7;background:#fff}
+a{text-decoration:none;color:inherit}
+
+/* Header */
+.header{background:rgba(255,255,255,.95);backdrop-filter:blur(12px);border-bottom:1px solid rgba(0,0,0,.06);padding:0;position:sticky;top:0;z-index:100}
+.header .inner{max-width:1200px;margin:0 auto;padding:0 24px;display:flex;justify-content:space-between;align-items:center;height:64px}
+.logo-wrap{display:flex;align-items:center;gap:10px}
+.logo-icon{width:36px;height:36px}
+.logo-text{font-size:20px;font-weight:900;letter-spacing:-0.5px;color:#111}
+.logo-text .mg{background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.logo-text .ecom{color:#111;font-weight:700}
+.logo-text .dot{color:#f59e0b}
+.nav{display:flex;gap:6px;align-items:center}
+.nav a{font-size:13px;color:#555;font-weight:600;padding:8px 14px;border-radius:8px;transition:all .2s}
+.nav a:hover{background:#f5f5f5;color:#111}
+.nav .cta{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:8px 20px;border-radius:24px;font-weight:700}
+.nav .cta:hover{opacity:.9;transform:translateY(-1px)}
+
+/* Hero */
+.hero{background:#111;color:#fff;padding:100px 24px 80px;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(99,102,241,.15),transparent 60%),radial-gradient(ellipse at 70% 50%,rgba(139,92,246,.1),transparent 60%)}
+.hero .tag{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:24px;color:#a5b4fc;letter-spacing:.5px}
+.hero .tag::before{content:'';width:6px;height:6px;background:#34d399;border-radius:50%;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.hero h1{font-size:clamp(32px,6vw,56px);font-weight:900;margin-bottom:16px;line-height:1.2;letter-spacing:-1px}
+.hero h1 .gradient{background:linear-gradient(135deg,#a78bfa,#6366f1,#f59e0b);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{font-size:clamp(15px,2vw,18px);color:#9ca3af;max-width:550px;margin:0 auto 36px;line-height:1.6}
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn-hero{padding:14px 32px;border-radius:12px;font-size:15px;font-weight:700;transition:all .3s}
+.btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 4px 24px rgba(99,102,241,.4)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(99,102,241,.5)}
+.btn-outline{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.2)}
+.btn-outline:hover{background:rgba(255,255,255,.08)}
+
+/* Floating Contact Bar */
+.float-bar{background:#fff;border-top:1px solid #eee;padding:12px 24px;display:flex;justify-content:center;gap:32px;flex-wrap:wrap}
+.float-item{display:flex;align-items:center;gap:8px;font-size:14px;color:#555;font-weight:600}
+.float-item .ic{font-size:18px}
+.float-item a{color:#6366f1;font-weight:700}
+
+/* Stats */
+.stats-bar{background:#fafafa;border-bottom:1px solid #eee;padding:32px 24px}
+.stats-inner{max-width:1000px;margin:0 auto;display:flex;justify-content:center;gap:48px;flex-wrap:wrap}
+.stat-item{text-align:center}
+.stat-num{font-size:32px;font-weight:900;color:#6366f1}
+.stat-label{font-size:12px;color:#888;font-weight:600;margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+
+/* Section */
+.section{max-width:1200px;margin:0 auto;padding:72px 24px}
+.section-tag{display:inline-block;background:#ede9fe;color:#6366f1;font-size:12px;font-weight:700;padding:4px 12px;border-radius:6px;margin-bottom:12px;letter-spacing:.5px}
+.section-title{margin-bottom:48px}
+.section-title h2{font-size:clamp(26px,4vw,40px);font-weight:900;color:#111;letter-spacing:-0.5px;margin-bottom:8px}
+.section-title p{font-size:15px;color:#888}
+
+/* Products */
+.products{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+.p-card{background:#fff;border-radius:16px;overflow:hidden;border:1px solid #f0f0f0;transition:all .3s}
+.p-card:hover{transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,.1)}
+.p-img{height:180px;display:flex;align-items:center;justify-content:center;font-size:56px;position:relative}
+.p-img.img1{background:linear-gradient(135deg,#ede9fe,#e0e7ff)}
+.p-img.img2{background:linear-gradient(135deg,#fef3c7,#fde68a)}
+.p-img.img3{background:linear-gradient(135deg,#d1fae5,#a7f3d0)}
+.p-img.img4{background:linear-gradient(135deg,#e0e7ff,#c7d2fe)}
+.p-body{padding:20px}
+.p-tag{display:inline-block;font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+.p-tag.hot{background:#fef2f2;color:#ef4444}
+.p-tag.best{background:#fef3c7;color:#d97706}
+.p-tag.new{background:#ede9fe;color:#6366f1}
+.p-tag.trend{background:#d1fae5;color:#059669}
+.p-name{font-size:16px;font-weight:800;color:#111;margin-bottom:4px}
+.p-desc{font-size:13px;color:#888;margin-bottom:12px;line-height:1.5}
+.p-bottom{display:flex;justify-content:space-between;align-items:center}
+.p-price{font-size:22px;font-weight:900;color:#111}
+.p-price small{font-size:13px;color:#888;font-weight:400}
+.p-buy{background:#111;color:#fff;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;transition:all .2s}
+.p-buy:hover{background:#6366f1}
+
+/* Why Grid */
+.why-section{background:#fafafa}
+.why-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
+.w-card{background:#fff;padding:28px;border-radius:14px;border:1px solid #f0f0f0;transition:all .3s}
+.w-card:hover{border-color:#c7d2fe;box-shadow:0 8px 24px rgba(99,102,241,.08)}
+.w-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:14px}
+.w-icon.purple{background:#ede9fe}
+.w-icon.green{background:#d1fae5}
+.w-icon.yellow{background:#fef3c7}
+.w-icon.blue{background:#e0e7ff}
+.w-card h3{font-size:16px;font-weight:800;color:#111;margin-bottom:6px}
+.w-card p{font-size:13px;color:#888;line-height:1.6}
+
+/* Quote Section */
+.quote-section{background:linear-gradient(135deg,#111,#1e1b4b)}
+.quote-inner{max-width:800px;margin:0 auto}
+.quote-form{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:32px;backdrop-filter:blur(8px)}
+.quote-form label{display:block;font-size:12px;color:#a5b4fc;font-weight:600;margin-bottom:4px}
+.quote-form input,.quote-form select,.quote-form textarea{width:100%;padding:12px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#fff;font-size:14px;margin-bottom:14px;font-family:inherit}
+.quote-form input::placeholder,.quote-form textarea::placeholder{color:rgba(255,255,255,.3)}
+.quote-form input:focus,.quote-form select:focus,.quote-form textarea:focus{outline:none;border-color:#6366f1}
+.quote-form select{appearance:none;cursor:pointer}
+.quote-form select option{background:#1e1b4b;color:#fff}
+.quote-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.quote-btn{width:100%;padding:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .3s}
+.quote-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(99,102,241,.4)}
+
+/* Profile */
+.profile-section{background:#111;color:#fff}
+.profile-inner{display:flex;align-items:center;gap:48px;flex-wrap:wrap;justify-content:center}
+.profile-text h3{font-size:28px;font-weight:900;margin-bottom:4px}
+.profile-text .role{font-size:14px;color:#6366f1;font-weight:600;margin-bottom:16px}
+.profile-text p{font-size:14px;color:#9ca3af;line-height:1.8;max-width:480px}
+.profile-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.p-stat{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);padding:20px;border-radius:12px;text-align:center}
+.p-stat .num{font-size:28px;font-weight:900;background:linear-gradient(135deg,#a78bfa,#f59e0b);-webkit-background-clip:text;background-clip:text;color:transparent}
+.p-stat .label{font-size:11px;color:#9ca3af;margin-top:2px}
+
+/* Contact Info */
+.contact-bar{background:#fafafa;border-top:1px solid #eee;border-bottom:1px solid #eee}
+.contact-inner{max-width:1200px;margin:0 auto;padding:40px 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:24px}
+.c-card{display:flex;align-items:flex-start;gap:14px}
+.c-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.c-icon.phone{background:#d1fae5}
+.c-icon.email{background:#e0e7ff}
+.c-icon.addr{background:#fef3c7}
+.c-card h4{font-size:13px;font-weight:700;color:#111;margin-bottom:2px}
+.c-card p{font-size:14px;color:#555}
+.c-card a{color:#6366f1;font-weight:600}
+
+/* CTA */
+.cta-section{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-align:center;padding:64px 24px}
+.cta-section h2{font-size:clamp(24px,3vw,36px);font-weight:900;margin-bottom:8px}
+.cta-section p{font-size:15px;opacity:.85;margin-bottom:28px}
+.cta-btn{display:inline-block;background:#fff;color:#6366f1;padding:14px 40px;border-radius:12px;font-size:16px;font-weight:800;transition:all .3s}
+.cta-btn:hover{transform:scale(1.05);box-shadow:0 8px 32px rgba(0,0,0,.2)}
+
+/* Footer */
+.footer{background:#0a0a0a;color:#6b7280;padding:40px 24px;text-align:center;font-size:13px;line-height:2}
+.footer .f-logo{font-size:18px;font-weight:900;color:#fff;margin-bottom:8px}
+.footer .f-logo .mg{background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.footer a{color:#6366f1}
+
+/* Contact Form (문의) */
+.inquiry-form{max-width:500px;margin:0 auto;background:#fff;padding:32px;border-radius:16px;border:1px solid #eee}
+.inquiry-form input,.inquiry-form textarea{width:100%;padding:12px 16px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;margin-bottom:12px;font-family:inherit}
+.inquiry-form input:focus,.inquiry-form textarea:focus{outline:none;border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+.inquiry-form button{width:100%;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:14px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s}
+.inquiry-form button:hover{opacity:.9}
+
+/* Responsive */
+@media(max-width:768px){
+  .nav a:not(.cta){display:none}
+  .hero{padding:60px 20px 50px}
+  .stats-inner{gap:24px}
+  .quote-row{grid-template-columns:1fr}
+  .profile-inner{flex-direction:column;text-align:center}
+  .float-bar{gap:16px}
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="inner">
+    <div class="logo-wrap">
+      <svg class="logo-icon" viewBox="0 0 36 36" fill="none">
+        <rect width="36" height="36" rx="8" fill="url(#lg)"/>
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="36" y2="36"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs>
+        <path d="M8 18L13 10h4l-5 8 5 8h-4L8 18z" fill="#fff"/>
+        <path d="M16 18L21 10h4l-5 8 5 8h-4L16 18z" fill="rgba(255,255,255,.6)"/>
+        <circle cx="28" cy="18" r="3" fill="#f59e0b"/>
+      </svg>
+      <div class="logo-text"><span class="mg">MG</span> <span class="ecom">E-COMMERCE</span></div>
+    </div>
+    <nav class="nav">
+      <a href="#products">Products</a>
+      <a href="#why">Why Us</a>
+      <a href="#quote">견적요청</a>
+      <a href="#contact">Contact</a>
+      <a href="#coupang" class="cta">쿠팡 구매</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="tag">GLOBAL SOURCING E-COMMERCE</div>
+  <h1>글로벌 소싱<span class="gradient">,</span><br><span class="gradient">검증된 품질</span><span class="gradient">,</span><br>빠른 배송<span class="gradient">.</span></h1>
+  <p class="sub">전 세계에서 엄선한 제품을 20년 제조업 전문가가 직접 검수.<br>앰지이커머스가 새로운 온라인 쇼핑 기준을 만듭니다.</p>
+  <div class="hero-btns">
+    <a href="#products" class="btn-hero btn-primary">제품 둘러보기</a>
+    <a href="#quote" class="btn-hero btn-outline">견적 요청하기</a>
+  </div>
+</section>
+
+<!-- Contact Float Bar -->
+<div class="float-bar">
+  <div class="float-item"><span class="ic">📞</span><a href="tel:010-9218-1331">010-9218-1331</a></div>
+  <div class="float-item"><span class="ic">📧</span><a href="mailto:cmg9722@gmail.com">cmg9722@gmail.com</a></div>
+  <div class="float-item"><span class="ic">🚀</span>쿠팡 로켓배송</div>
+  <div class="float-item"><span class="ic">🔄</span>무조건 교환/환불</div>
+</div>
+
+<!-- Stats -->
+<div class="stats-bar">
+  <div class="stats-inner">
+    <div class="stat-item"><div class="stat-num">20+</div><div class="stat-label">Years Experience</div></div>
+    <div class="stat-item"><div class="stat-num">100%</div><div class="stat-label">Quality Checked</div></div>
+    <div class="stat-item"><div class="stat-num">4+</div><div class="stat-label">Product Lines</div></div>
+    <div class="stat-item"><div class="stat-num">24h</div><div class="stat-label">CS Response</div></div>
+  </div>
+</div>
+
+<!-- Products -->
+<section class="section" id="products">
+  <div class="section-title">
+    <span class="section-tag">PRODUCTS</span>
+    <h2>큐레이션 제품 라인업</h2>
+    <p>글로벌 소싱 + 전문가 검수 = 믿을 수 있는 품질</p>
+  </div>
+  <div class="products">
+    <div class="p-card">
+      <div class="p-img img1">⚡</div>
+      <div class="p-body">
+        <span class="p-tag new">TECH</span>
+        <div class="p-name">ESD 무선 정전기방지 팔찌</div>
+        <div class="p-desc">전자기기 작업 시 정전기 보호. 무선 설계로 자유로운 작업.</div>
+        <div class="p-bottom">
+          <div class="p-price">9,900<small>원</small></div>
+          <a href="#coupang" class="p-buy" onclick="openCoupang('esd')">구매하기</a>
+        </div>
+      </div>
+    </div>
+    <div class="p-card">
+      <div class="p-img img2">🔥</div>
+      <div class="p-body">
+        <span class="p-tag best">BEST</span>
+        <div class="p-name">카프톤 테이프 (PI)</div>
+        <div class="p-desc">내열 260°C 고온 테이프. 납땜, 절연, 3D프린터에 최적.</div>
+        <div class="p-bottom">
+          <div class="p-price">9,900<small>원</small></div>
+          <a href="#coupang" class="p-buy" onclick="openCoupang('kapton')">구매하기</a>
+        </div>
+      </div>
+    </div>
+    <div class="p-card">
+      <div class="p-img img3">💪</div>
+      <div class="p-body">
+        <span class="p-tag hot">SPORTS</span>
+        <div class="p-name">프리미엄 운동 손목밴드</div>
+        <div class="p-desc">건초염 예방 압박밴드. 벨크로 방식, 4가지 컬러.</div>
+        <div class="p-bottom">
+          <div class="p-price">12,900<small>원</small></div>
+          <a href="#coupang" class="p-buy" onclick="openCoupang('wristband')">구매하기</a>
+        </div>
+      </div>
+    </div>
+    <div class="p-card">
+      <div class="p-img img4">🌀</div>
+      <div class="p-body">
+        <span class="p-tag trend">TREND</span>
+        <div class="p-name">USB 미니 선풍기</div>
+        <div class="p-desc">3단 풍속, USB 전원, 사무실/차량 겸용. 저소음 설계.</div>
+        <div class="p-bottom">
+          <div class="p-price">9,900<small>원</small></div>
+          <a href="#coupang" class="p-buy" onclick="openCoupang('fan')">구매하기</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Why Us -->
+<section class="section why-section" id="why">
+  <div class="section-title">
+    <span class="section-tag">WHY MG E-COMMERCE</span>
+    <h2>다른 셀러와는 다릅니다</h2>
+    <p>이커머스의 새로운 기준, 앰지이커머스</p>
+  </div>
+  <div class="why-grid">
+    <div class="w-card"><div class="w-icon purple">🌍</div><h3>글로벌 다이렉트 소싱</h3><p>중간 유통 없이 해외 공장에서 직접 소싱. 가격 경쟁력과 품질을 동시에 확보합니다.</p></div>
+    <div class="w-card"><div class="w-icon green">🔬</div><h3>전수검사 시스템</h3><p>20년 제조업 경력의 QC 전문가가 전수 검사. 불량률 0%를 목표로 합니다.</p></div>
+    <div class="w-card"><div class="w-icon yellow">📋</div><h3>검수기준 100% 공개</h3><p>제품별 검수 체크리스트를 투명하게 공개. 어떤 기준으로 품질 관리하는지 직접 확인하세요.</p></div>
+    <div class="w-card"><div class="w-icon blue">🚀</div><h3>쿠팡 로켓배송</h3><p>쿠팡 로켓그로스 물류 인프라를 활용한 익일배송. 빠르고 안전하게 받아보세요.</p></div>
+    <div class="w-card"><div class="w-icon purple">📐</div><h3>실측치 스펙 표기</h3><p>카탈로그 스펙이 아닌 실제 측정 수치. 과대광고 없는 정직한 스펙.</p></div>
+    <div class="w-card"><div class="w-icon green">💬</div><h3>전문가 1:1 상담</h3><p>제품을 직접 아는 전문가가 상담. 매뉴얼 답변이 아닌 실질적 도움을 드립니다.</p></div>
+  </div>
+</section>
+
+<!-- 견적 요청 -->
+<section class="section quote-section" id="quote" style="color:#fff">
+  <div class="quote-inner">
+    <div class="section-title" style="text-align:center">
+      <span class="section-tag" style="background:rgba(165,180,252,.15);color:#a5b4fc">QUOTATION</span>
+      <h2 style="color:#fff">견적 요청</h2>
+      <p style="color:#9ca3af">대량 구매, B2B 납품, 맞춤 제작 등 견적을 요청하세요</p>
+    </div>
+    <div class="quote-form" id="quote-form">
+      <div class="quote-row">
+        <div><label>회사명 / 이름 *</label><input id="q-name" placeholder="홍길동 / (주)ABC"></div>
+        <div><label>연락처 *</label><input id="q-phone" placeholder="010-0000-0000"></div>
+      </div>
+      <div class="quote-row">
+        <div><label>이메일</label><input id="q-email" placeholder="email@company.com"></div>
+        <div><label>관심 제품</label>
+          <select id="q-product">
+            <option value="">선택해주세요</option>
+            <option value="ESD 팔찌">ESD 정전기방지 팔찌</option>
+            <option value="카프톤 테이프">카프톤(PI) 테이프</option>
+            <option value="운동 손목밴드">운동 손목밴드</option>
+            <option value="USB 선풍기">USB 미니 선풍기</option>
+            <option value="기타">기타 제품</option>
+          </select>
+        </div>
+      </div>
+      <div class="quote-row">
+        <div><label>수량</label><input id="q-qty" placeholder="예: 100개, 500개"></div>
+        <div><label>희망 납기</label><input id="q-deadline" placeholder="예: 2주 이내, 4월 말"></div>
+      </div>
+      <label>상세 요청사항</label>
+      <textarea id="q-detail" rows="4" placeholder="제품 사양, 패키징 요청, OEM/ODM 등 자유롭게 작성해주세요"></textarea>
+      <button class="quote-btn" onclick="submitQuote()">견적 요청 보내기</button>
+      <div id="q-result" style="text-align:center;margin-top:12px;font-size:14px;color:#34d399;display:none"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 대표 소개 -->
+<section class="section profile-section" id="about">
+  <div class="profile-inner">
+    <div class="profile-text">
+      <h3>조명근</h3>
+      <div class="role">MG E-COMMERCE 대표 / 20년 제조업 QC 전문가</div>
+      <p>
+        20년간 제조업 현장에서 생산관리, 품질관리, 공정개선을 해왔습니다.
+        수천 개의 제품을 검수하고, 수백 개의 공정을 개선한 경험을 바탕으로
+        이커머스 시장에 진짜 좋은 제품만 소개합니다.
+        <br><br>
+        "싼 게 비지떡"이 아닌, "이 가격에 이 품질?"을 경험하세요.
+      </p>
+    </div>
+    <div class="profile-grid">
+      <div class="p-stat"><div class="num">20년</div><div class="label">제조업 경력</div></div>
+      <div class="p-stat"><div class="num">100%</div><div class="label">전수검사</div></div>
+      <div class="p-stat"><div class="num">24h</div><div class="label">CS 응대</div></div>
+      <div class="p-stat"><div class="num">0%</div><div class="label">목표 불량률</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Contact Info -->
+<div class="contact-bar" id="contact">
+  <div class="contact-inner">
+    <div class="c-card">
+      <div class="c-icon phone">📞</div>
+      <div><h4>전화 문의</h4><p><a href="tel:010-9218-1331">010-9218-1331</a></p></div>
+    </div>
+    <div class="c-card">
+      <div class="c-icon email">📧</div>
+      <div><h4>이메일</h4><p><a href="mailto:cmg9722@gmail.com">cmg9722@gmail.com</a></p></div>
+    </div>
+    <div class="c-card">
+      <div class="c-icon addr">🏢</div>
+      <div><h4>상호</h4><p>앰지이커머스 (MG E-COMMERCE)<br>대표: 조명근</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- 일반 문의 -->
+<section class="section" id="inquiry">
+  <div class="section-title" style="text-align:center">
+    <span class="section-tag">CONTACT US</span>
+    <h2>일반 문의</h2>
+    <p>제품, 배송, 교환/반품 등 무엇이든 편하게 문의하세요</p>
+  </div>
+  <div class="inquiry-form">
+    <input type="text" id="cf-name" placeholder="이름 / 회사명 *">
+    <input type="email" id="cf-email" placeholder="이메일">
+    <input type="tel" id="cf-phone" placeholder="연락처">
+    <textarea id="cf-msg" rows="4" placeholder="문의 내용을 입력해주세요 *"></textarea>
+    <button onclick="submitContact()">문의 보내기</button>
+    <div id="cf-result" style="text-align:center;margin-top:12px;font-size:14px;color:#10b981;display:none"></div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="coupang">
+  <h2>쿠팡에서 바로 구매하세요</h2>
+  <p>로켓그로스 빠른배송으로 내일 받아보세요</p>
+  <a href="https://www.coupang.com" target="_blank" class="cta-btn">쿠팡 스토어 바로가기</a>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="f-logo"><span class="mg">MG</span> E-COMMERCE</div>
+  <div>글로벌 소싱, 검증된 품질, 빠른 배송</div>
+  <div style="margin-top:8px">
+    상호: 앰지이커머스 | 대표: 조명근 | 사업자등록번호: [사업자번호]<br>
+    통신판매업신고: [신고번호] | 이메일: <a href="mailto:cmg9722@gmail.com">cmg9722@gmail.com</a> | 전화: <a href="tel:010-9218-1331">010-9218-1331</a>
+  </div>
+  <div style="margin-top:12px;opacity:.5">&copy; 2026 MG E-COMMERCE. All rights reserved.</div>
+</footer>
+
+<script>
+function openCoupang(product) {
+  const urls = {
+    esd: 'https://www.coupang.com',
+    kapton: 'https://www.coupang.com',
+    wristband: 'https://www.coupang.com',
+    fan: 'https://www.coupang.com',
+  };
+  window.open(urls[product] || 'https://www.coupang.com', '_blank');
+}
+
+function submitQuote() {
+  const name = document.getElementById('q-name').value;
+  const phone = document.getElementById('q-phone').value;
+  const email = document.getElementById('q-email').value;
+  const product = document.getElementById('q-product').value;
+  const qty = document.getElementById('q-qty').value;
+  const deadline = document.getElementById('q-deadline').value;
+  const detail = document.getElementById('q-detail').value;
+
+  if (!name || !phone) { alert('회사명/이름과 연락처는 필수입니다.'); return; }
+
+  const message = `[견적요청] 제품: ${product || '미선택'} | 수량: ${qty || '미정'} | 납기: ${deadline || '미정'}\n${detail}`;
+
+  fetch('/api/contact', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({name, email, phone, message, product})
+  }).then(r => r.json()).then(() => {
+    const el = document.getElementById('q-result');
+    el.textContent = '견적 요청이 접수되었습니다! 빠른 시일 내 연락드리겠습니다.';
+    el.style.display = 'block';
+    ['q-name','q-phone','q-email','q-qty','q-deadline','q-detail'].forEach(id => document.getElementById(id).value = '');
+  }).catch(() => alert('전화 또는 이메일로 직접 문의해주세요.\n010-9218-1331 / cmg9722@gmail.com'));
+}
+
+function submitContact() {
+  const name = document.getElementById('cf-name').value;
+  const email = document.getElementById('cf-email').value;
+  const phone = document.getElementById('cf-phone').value;
+  const msg = document.getElementById('cf-msg').value;
+  if (!name || !msg) { alert('이름과 문의 내용을 입력해주세요.'); return; }
+
+  fetch('/api/contact', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({name, email, phone, message: msg})
+  }).then(r => r.json()).then(() => {
+    const el = document.getElementById('cf-result');
+    el.textContent = '문의가 접수되었습니다. 빠르게 답변드리겠습니다!';
+    el.style.display = 'block';
+    ['cf-name','cf-email','cf-phone','cf-msg'].forEach(id => document.getElementById(id).value = '');
+  }).catch(() => alert('이메일로 직접 문의해주세요: cmg9722@gmail.com'));
+}
+
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    const el = document.querySelector(a.getAttribute('href'));
+    if (el) el.scrollIntoView({behavior:'smooth'});
+  });
+});
+</script>
+
+</body>
+</html>
