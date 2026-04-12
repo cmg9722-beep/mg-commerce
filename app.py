@@ -4,7 +4,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for
+from functools import wraps
+import hashlib
 from modules.database import init_db, seed_initial_data, get_db
 from modules.exchange_rate import get_cny_to_krw, get_rate_info
 from modules.margin_calc import calc_margin, calc_all_products, simulate_price
@@ -29,6 +31,20 @@ from modules.pipeline import (
 )
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "mg-commerce-secret-2026")
+
+# 관리자 비밀번호 (해시 저장)
+ADMIN_PW_HASH = hashlib.sha256("Ab96460904~!".encode()).hexdigest()
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("admin_logged_in"):
+            if request.is_json:
+                return jsonify({"error": "unauthorized"}), 401
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated
 
 # === 페이지 ===
 
@@ -36,7 +52,26 @@ app = Flask(__name__)
 def homepage():
     return render_template("homepage.html")
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if session.get("admin_logged_in"):
+        return redirect(url_for("admin"))
+    error = None
+    if request.method == "POST":
+        pw = request.form.get("password", "")
+        if hashlib.sha256(pw.encode()).hexdigest() == ADMIN_PW_HASH:
+            session["admin_logged_in"] = True
+            return redirect(url_for("admin"))
+        error = "비밀번호가 틀렸습니다"
+    return render_template("login.html", error=error)
+
+@app.route("/logout")
+def logout():
+    session.pop("admin_logged_in", None)
+    return redirect(url_for("homepage"))
+
 @app.route("/admin")
+@login_required
 def admin():
     return render_template("index.html")
 
@@ -56,6 +91,7 @@ def api_contact():
     return jsonify({"ok": True, "message": "문의가 접수되었습니다"})
 
 @app.route("/api/inquiries")
+@login_required
 def api_inquiries():
     conn = get_db()
     rows = conn.execute("SELECT * FROM inquiries ORDER BY created_at DESC").fetchall()
@@ -86,6 +122,7 @@ def api_inquiry_close(iid):
 # === API: 대시보드 ===
 
 @app.route("/api/dashboard")
+@login_required
 def api_dashboard():
     summary = get_dashboard_summary()
     rate_info = get_rate_info()

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MG Commerce - 관리자 로그인</title>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;background:#0f172a;color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.login-box{background:#1e293b;border-radius:20px;padding:48px 40px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.5);text-align:center}
+.logo{font-size:28px;font-weight:900;margin-bottom:8px}
+.logo .mg{background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.subtitle{color:#94a3b8;font-size:14px;margin-bottom:32px}
+.lock-icon{font-size:48px;margin-bottom:16px}
+.input-wrap{position:relative;margin-bottom:20px}
+.input-wrap input{width:100%;padding:14px 16px 14px 44px;border:2px solid #334155;background:#0f172a;color:#fff;border-radius:12px;font-size:15px;outline:none;transition:border .2s}
+.input-wrap input:focus{border-color:#6366f1}
+.input-wrap input::placeholder{color:#475569}
+.input-wrap .icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:18px;opacity:.5}
+.btn{width:100%;padding:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;transition:all .2s}
+.btn:hover{opacity:.9;transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.error{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#f87171;padding:10px 16px;border-radius:10px;font-size:13px;margin-bottom:16px}
+.home-link{display:inline-block;margin-top:20px;color:#64748b;font-size:13px;text-decoration:none}
+.home-link:hover{color:#94a3b8}
+</style>
+</head>
+<body>
+
+<div class="login-box">
+  <div class="lock-icon">🔐</div>
+  <div class="logo"><span class="mg">MG</span> Commerce</div>
+  <div class="subtitle">관리자 전용 페이지입니다</div>
+
+  {% if error %}
+  <div class="error">{{ error }}</div>
+  {% endif %}
+
+  <form method="POST" action="/login">
+    <div class="input-wrap">
+      <span class="icon">🔑</span>
+      <input type="password" name="password" placeholder="비밀번호를 입력하세요" autofocus required>
+    </div>
+    <button type="submit" class="btn">로그인</button>
+  </form>
+
+  <a href="/" class="home-link">← 홈페이지로 돌아가기</a>
+</div>
+
+</body>
+</html>
