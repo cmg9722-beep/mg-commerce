@@ -27,6 +27,7 @@
     <div class="nav-item" data-tab="messages"><span class="icon">💬</span>메시지 생성</div>
     <div class="nav-item" data-tab="coupang"><span class="icon">🛒</span>쿠팡 보조</div>
     <div class="nav-item" data-tab="inspection"><span class="icon">🔬</span>검수 체크</div>
+    <div class="nav-item" data-tab="products"><span class="icon">📦</span>제품 관리</div>
     <div class="nav-item" data-tab="inquiries"><span class="icon">📩</span>고객 문의</div>
     <div style="border-top:1px solid #334155;margin:12px 20px;padding-top:12px">
       <a href="/" target="_blank" class="nav-item" style="color:#fbbf24"><span class="icon">🌐</span>홈페이지 보기</a>
@@ -44,6 +45,7 @@
     <div class="tab" data-tab="messages">💬</div>
     <div class="tab" data-tab="coupang">🛒</div>
     <div class="tab" data-tab="inspection">🔬</div>
+    <div class="tab" data-tab="products">📦</div>
     <div class="tab" data-tab="inquiries">📩</div>
   </div>
 
@@ -229,6 +231,54 @@
       <h2 style="color:#60a5fa;margin-bottom:16px">🔬 품질 검수 체크리스트</h2>
       <div class="tabs" id="inspection-tabs"></div>
       <div id="inspection-list"></div>
+    </div>
+
+    <!-- ===== 제품 관리 ===== -->
+    <div class="tab-content" id="tab-products">
+      <h2 style="color:#60a5fa;margin-bottom:16px">📦 제품 관리 (홈페이지 연동)</h2>
+
+      <div class="card">
+        <h3>신규 제품 추가</h3>
+        <form id="product-add-form">
+          <div class="form-row">
+            <div class="form-group"><label>제품명 (한국어) *</label><input name="name_ko" required placeholder="예: USB 미니 가습기"></div>
+            <div class="form-group"><label>제품명 (중국어)</label><input name="name_cn" placeholder="예: USB迷你加湿器"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>카테고리</label><input name="category" placeholder="예: 생활 소품"></div>
+            <div class="form-group"><label>쿠팡 판매가 (원)</label><input name="coupang_price" type="number" value="9900"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>설명 (홈페이지 표시)</label><input name="description" placeholder="짧은 제품 설명"></div>
+            <div class="form-group"><label>태그 라벨</label><input name="tag_label" value="NEW" placeholder="BEST, TECH, SPORTS 등"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>태그 스타일</label>
+              <select name="tag_type">
+                <option value="new">NEW (보라)</option>
+                <option value="best">BEST (주황)</option>
+                <option value="hot">HOT (빨강)</option>
+                <option value="trend">TREND (파랑)</option>
+              </select>
+            </div>
+            <div class="form-group"><label>이모지</label><input name="emoji" value="📦" placeholder="⚡🔥💪🌀"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>배경 그라디언트</label><input name="img_gradient" placeholder="linear-gradient(135deg,#e0e7ff,#c7d2fe)"></div>
+            <div class="form-group"><label>쿠팡 링크</label><input name="coupang_link" placeholder="https://www.coupang.com/..."></div>
+          </div>
+          <div class="form-group">
+            <label><input type="checkbox" name="show_on_homepage" value="1" checked> 홈페이지에 표시</label>
+          </div>
+          <button type="submit" class="btn btn-primary">제품 추가</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>등록된 제품 목록</h3>
+        <p style="font-size:12px;color:#94a3b8;margin-bottom:12px">🟢 = 홈페이지 표시 중 | 🔴 = 숨김</p>
+        <div id="products-list"></div>
+      </div>
     </div>
 
     <!-- ===== 고객 문의 ===== -->

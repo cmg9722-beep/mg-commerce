@@ -28,6 +28,15 @@ def init_db():
         score REAL DEFAULT 0,
         margin_category TEXT,
         notes TEXT,
+        -- 홈페이지 표시용 필드
+        show_on_homepage INTEGER DEFAULT 0,
+        display_order INTEGER DEFAULT 99,
+        description TEXT,
+        tag_label TEXT,
+        tag_type TEXT DEFAULT 'new',
+        emoji TEXT DEFAULT '📦',
+        img_gradient TEXT,
+        coupang_link TEXT,
         created_at TEXT DEFAULT (datetime('now','localtime')),
         updated_at TEXT DEFAULT (datetime('now','localtime'))
     );
@@ -162,6 +171,27 @@ def init_db():
     conn.close()
 
 
+def migrate_db():
+    """기존 DB에 홈페이지 표시용 컬럼 추가 (마이그레이션)"""
+    conn = get_db()
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(products)").fetchall()]
+    new_cols = {
+        "show_on_homepage": "INTEGER DEFAULT 0",
+        "display_order": "INTEGER DEFAULT 99",
+        "description": "TEXT",
+        "tag_label": "TEXT",
+        "tag_type": "TEXT DEFAULT 'new'",
+        "emoji": "TEXT DEFAULT '📦'",
+        "img_gradient": "TEXT",
+        "coupang_link": "TEXT",
+    }
+    for col, typedef in new_cols.items():
+        if col not in cols:
+            conn.execute(f"ALTER TABLE products ADD COLUMN {col} {typedef}")
+    conn.commit()
+    conn.close()
+
+
 def seed_initial_data():
     """기존 JSX 데이터를 DB에 마이그레이션"""
     conn = get_db()
@@ -171,16 +201,26 @@ def seed_initial_data():
         conn.close()
         return
 
-    # 제품 4종
+    # 제품 6종 (홈페이지 표시 포함)
     products = [
-        ("①", "ESD 무선 정전기방지 팔찌", "防静电手环", "전자부품/공구", 9900, "active", "높음"),
-        ("②", "카프톤(폴리이미드) 테이프", "聚酰亚胺胶带", "테이프/접착제", 9900, "active", "최고"),
-        ("③", "운동 손목밴드 (스포츠용)", "运动护腕", "스포츠 용품", 12900, "active", "보통"),
-        ("⑤", "2024 USB 미니 선풍기", "USB迷你风扇", "IT 액세서리", 9900, "active", "보통"),
+        ("①", "ESD 무선 정전기방지 팔찌", "防静电手环", "전자부품/공구", 9900, "active", "높음",
+         1, 1, "전자기기 작업 시 정전기 보호. 무선 설계로 자유로운 작업.", "TECH", "new", "⚡", "linear-gradient(135deg,#e0e7ff,#c7d2fe)", ""),
+        ("②", "카프톤(폴리이미드) 테이프", "聚酰亚胺胶带", "테이프/접착제", 9900, "active", "최고",
+         1, 2, "내열 260°C 고온 테이프. 납땜, 절연, 3D프린터에 최적.", "BEST", "best", "🔥", "linear-gradient(135deg,#fef3c7,#fde68a)", ""),
+        ("③", "프리미엄 운동 손목밴드", "运动护腕", "스포츠 용품", 12900, "active", "보통",
+         1, 3, "건초염 예방 압박밴드. 벨크로 방식, 4가지 컬러.", "SPORTS", "hot", "💪", "linear-gradient(135deg,#d1fae5,#a7f3d0)", ""),
+        ("⑤", "USB 미니 선풍기", "USB迷你风扇", "IT 액세서리", 9900, "active", "보통",
+         1, 4, "3단 풍속, USB 전원, 사무실/차량 겸용. 저소음 설계.", "TREND", "trend", "🌀", "linear-gradient(135deg,#e0e7ff,#c7d2fe)", ""),
+        ("⑥", "컬러 스포츠 흡한 손목밴드", "彩色运动吸汗护腕", "스포츠 용품", 6900, "active", "보통",
+         1, 5, "고탄력 흡한속건 소재. 15가지 컬러, 러닝·헬스·사이클링 만능.", "COLOR", "best", "🌈", "linear-gradient(135deg,#fce7f3,#fbcfe8)", ""),
+        ("⑦", "초경량 USB 핸디 선풍기", "超轻量USB手持风扇", "IT 액세서리", 7900, "active", "보통",
+         1, 6, "충전식 휴대용, 폰거치대 겸용. 82g 초경량 설계.", "SUMMER", "new", "🍃", "linear-gradient(135deg,#ecfccb,#d9f99d)", ""),
     ]
     for p in products:
         conn.execute(
-            "INSERT INTO products (code, name_ko, name_cn, category, coupang_price, status, margin_category) VALUES (?,?,?,?,?,?,?)",
+            """INSERT INTO products (code, name_ko, name_cn, category, coupang_price, status, margin_category,
+               show_on_homepage, display_order, description, tag_label, tag_type, emoji, img_gradient, coupang_link)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             p
         )
 

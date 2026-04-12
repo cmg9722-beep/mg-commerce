@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from flask import Flask, render_template, jsonify, request, session, redirect, url_for
 from functools import wraps
 import hashlib
-from modules.database import init_db, seed_initial_data, get_db
+from modules.database import init_db, seed_initial_data, migrate_db, get_db
 from modules.exchange_rate import get_cny_to_krw, get_rate_info
 from modules.margin_calc import calc_margin, calc_all_products, simulate_price
 from modules.supplier_mgr import (
@@ -50,7 +50,12 @@ def login_required(f):
 
 @app.route("/")
 def homepage():
-    return render_template("homepage.html")
+    conn = get_db()
+    products = conn.execute(
+        "SELECT * FROM products WHERE show_on_homepage=1 ORDER BY display_order"
+    ).fetchall()
+    conn.close()
+    return render_template("homepage.html", products=[dict(p) for p in products])
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -395,10 +400,14 @@ def api_product_add():
     d = request.json
     conn = get_db()
     conn.execute("""
-        INSERT INTO products (code, name_ko, name_cn, category, coupang_price, status, margin_category)
-        VALUES (?,?,?,?,?,?,?)
+        INSERT INTO products (code, name_ko, name_cn, category, coupang_price, status, margin_category,
+        show_on_homepage, display_order, description, tag_label, tag_type, emoji, img_gradient, coupang_link)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """, (d.get("code"), d["name_ko"], d.get("name_cn"), d.get("category"),
-          d.get("coupang_price", 0), "active", d.get("margin_category", "미정")))
+          d.get("coupang_price", 0), "active", d.get("margin_category", "미정"),
+          d.get("show_on_homepage", 0), d.get("display_order", 99),
+          d.get("description", ""), d.get("tag_label", "NEW"), d.get("tag_type", "new"),
+          d.get("emoji", "📦"), d.get("img_gradient", ""), d.get("coupang_link", "")))
     conn.commit()
     pid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
     conn.close()
@@ -406,10 +415,56 @@ def api_product_add():
     return jsonify({"id": pid})
 
 
+@app.route("/api/products/<int:pid>/update", methods=["POST"])
+@login_required
+def api_product_update(pid):
+    d = request.json
+    conn = get_db()
+    fields = []
+    values = []
+    allowed = ["name_ko", "name_cn", "category", "coupang_price", "status",
+               "show_on_homepage", "display_order", "description", "tag_label",
+               "tag_type", "emoji", "img_gradient", "coupang_link", "code", "margin_category"]
+    for key in allowed:
+        if key in d:
+            fields.append(f"{key}=?")
+            values.append(d[key])
+    if fields:
+        values.append(pid)
+        conn.execute(f"UPDATE products SET {','.join(fields)}, updated_at=datetime('now','localtime') WHERE id=?", values)
+        conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/products/<int:pid>/delete", methods=["POST"])
+@login_required
+def api_product_delete(pid):
+    conn = get_db()
+    conn.execute("DELETE FROM products WHERE id=?", (pid,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/products/<int:pid>/toggle-homepage", methods=["POST"])
+@login_required
+def api_product_toggle_homepage(pid):
+    conn = get_db()
+    current = conn.execute("SELECT show_on_homepage FROM products WHERE id=?", (pid,)).fetchone()
+    if current:
+        new_val = 0 if current[0] else 1
+        conn.execute("UPDATE products SET show_on_homepage=? WHERE id=?", (new_val, pid))
+        conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
 # === 시작 ===
 
 if __name__ == "__main__":
     init_db()
+    migrate_db()
     seed_initial_data()
     # 기존 제품 파이프라인 초기화
     conn = get_db()

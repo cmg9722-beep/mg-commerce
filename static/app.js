@@ -31,6 +31,7 @@ function loadTabData(tab) {
     case 'messages': loadMessages(); break;
     case 'coupang': loadCoupang(); break;
     case 'inspection': loadInspection(); break;
+    case 'products': loadProducts(); break;
     case 'inquiries': loadInquiries(); break;
   }
 }
@@ -458,6 +459,86 @@ async function toggleInspection(id) {
   await post(`/api/inspection/${id}/toggle`, {});
   loadInspectionItems(selectedInspectionProduct);
 }
+
+// === Products Management ===
+async function loadProducts() {
+  const products = await api('/api/products');
+  if (products.length === 0) {
+    document.getElementById('products-list').innerHTML =
+      '<div style="text-align:center;color:#64748b;padding:20px">등록된 제품이 없습니다.</div>';
+    return;
+  }
+
+  let html = '<table><thead><tr><th>순서</th><th>제품명</th><th>가격</th><th>태그</th><th>홈페이지</th><th>관리</th></tr></thead><tbody>';
+  products.forEach(p => {
+    const onHomepage = p.show_on_homepage ? '🟢' : '🔴';
+    html += `<tr>
+      <td><input type="number" value="${p.display_order || 99}" style="width:50px" onchange="updateProduct(${p.id},{display_order:+this.value})"></td>
+      <td><strong>${p.name_ko}</strong><br><span style="font-size:11px;color:#64748b">${p.description || '-'}</span></td>
+      <td>₩${(p.coupang_price||0).toLocaleString()}</td>
+      <td><span class="badge ${p.tag_type === 'best' ? 'badge-warn' : p.tag_type === 'hot' ? 'badge-alert' : 'badge-done'}">${p.tag_label || '-'}</span></td>
+      <td style="text-align:center;cursor:pointer;font-size:20px" onclick="toggleHomepage(${p.id})">${onHomepage}</td>
+      <td>
+        <button class="btn btn-sm btn-primary" onclick="editProduct(${p.id})">수정</button>
+        <button class="btn btn-sm btn-secondary" style="background:#ef4444" onclick="deleteProduct(${p.id})">삭제</button>
+      </td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('products-list').innerHTML = html;
+}
+
+async function toggleHomepage(pid) {
+  await post(`/api/products/${pid}/toggle-homepage`, {});
+  loadProducts();
+}
+
+async function updateProduct(pid, data) {
+  await post(`/api/products/${pid}/update`, data);
+  loadProducts();
+}
+
+async function editProduct(pid) {
+  const products = await api('/api/products');
+  const p = products.find(x => x.id === pid);
+  if (!p) return;
+
+  const name_ko = prompt('제품명 (한국어):', p.name_ko);
+  if (name_ko === null) return;
+  const description = prompt('설명:', p.description || '');
+  const coupang_price = prompt('판매가 (원):', p.coupang_price);
+  const tag_label = prompt('태그 (BEST, TECH, SPORTS 등):', p.tag_label || '');
+  const emoji = prompt('이모지:', p.emoji || '📦');
+  const coupang_link = prompt('쿠팡 링크:', p.coupang_link || '');
+
+  await post(`/api/products/${pid}/update`, {
+    name_ko, description,
+    coupang_price: parseInt(coupang_price) || 0,
+    tag_label, emoji, coupang_link
+  });
+  loadProducts();
+}
+
+async function deleteProduct(pid) {
+  if (!confirm('정말 이 제품을 삭제하시겠습니까? 홈페이지에서도 사라집니다.')) return;
+  await post(`/api/products/${pid}/delete`, {});
+  loadProducts();
+}
+
+document.getElementById('product-add-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const data = Object.fromEntries(fd);
+  data.coupang_price = parseInt(data.coupang_price) || 9900;
+  data.show_on_homepage = data.show_on_homepage ? 1 : 0;
+  data.display_order = 99;
+
+  await post('/api/products/add', data);
+  alert('제품이 추가되었습니다!');
+  e.target.reset();
+  loadProducts();
+});
+
 
 // === Inquiries ===
 async function loadInquiries() {
