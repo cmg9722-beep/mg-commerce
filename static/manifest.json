@@ -1,13 +1,29 @@
 {
-  "name": "MG Commerce 관리",
+  "name": "MG E-COMMERCE",
   "short_name": "MG Commerce",
-  "description": "앰지커머스 자동화 플랫폼",
-  "start_url": "/admin",
+  "description": "MG E-COMMERCE - 글로벌 소싱, 검증된 품질, 빠른 배송",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "categories": ["business", "shopping"],
   "icons": [
-    {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png"},
-    {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png"}
+    {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ],
+  "shortcuts": [
+    {
+      "name": "관리자 대시보드",
+      "short_name": "Admin",
+      "url": "/admin",
+      "icons": [{"src": "/static/icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "제품 둘러보기",
+      "short_name": "Products",
+      "url": "/#products"
+    }
   ]
 }

@@ -9,6 +9,13 @@
 <meta property="og:description" content="전문가가 직접 소싱하고 검수한 프리미엄 제품. 쿠팡 빠른배송.">
 <meta property="og:type" content="website">
 <title>MG E-COMMERCE | 글로벌 소싱, 검증된 품질</title>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#6366f1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MG Commerce">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
@@ -477,6 +484,45 @@ document.querySelectorAll('a[href^="#"]').forEach(a => {
     if (el) el.scrollIntoView({behavior:'smooth'});
   });
 });
+
+// PWA Service Worker 등록
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/sw.js')
+    .then(r => console.log('SW registered'))
+    .catch(e => console.log('SW failed', e));
+}
+
+// PWA 설치 프롬프트
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // 설치 배너 표시
+  const banner = document.createElement('div');
+  banner.id = 'pwa-banner';
+  banner.innerHTML = `
+    <div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:14px 24px;border-radius:16px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(99,102,241,.4);z-index:9999;font-family:Inter,sans-serif;max-width:90vw">
+      <span style="font-size:24px">📱</span>
+      <div>
+        <div style="font-weight:700;font-size:14px">앱으로 설치하기</div>
+        <div style="font-size:12px;opacity:.85">홈 화면에 추가하면 앱처럼 사용 가능!</div>
+      </div>
+      <button onclick="installPWA()" style="background:#fff;color:#6366f1;border:none;padding:8px 16px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;white-space:nowrap">설치</button>
+      <button onclick="this.parentElement.remove()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:4px">&times;</button>
+    </div>`;
+  document.body.appendChild(banner);
+});
+
+function installPWA() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(r => {
+      if (r.outcome === 'accepted') console.log('PWA installed!');
+      document.getElementById('pwa-banner')?.remove();
+      deferredPrompt = null;
+    });
+  }
+}
 </script>
 
 </body>
