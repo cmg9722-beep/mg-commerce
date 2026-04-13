@@ -41,7 +41,7 @@ a{text-decoration:none;color:inherit}
 
 /* Hero */
 .hero{background:#111;color:#fff;padding:100px 24px 80px;text-align:center;position:relative;overflow:hidden}
-.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(99,102,241,.15),transparent 60%),radial-gradient(ellipse at 70% 50%,rgba(139,92,246,.1),transparent 60%)}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(99,102,241,.15),transparent 60%),radial-gradient(ellipse at 70% 50%,rgba(139,92,246,.1),transparent 60%);pointer-events:none}
 .hero .tag{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:24px;color:#a5b4fc;letter-spacing:.5px}
 .hero .tag::before{content:'';width:6px;height:6px;background:#34d399;border-radius:50%;animation:blink 2s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
