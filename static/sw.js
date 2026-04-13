@@ -1,5 +1,5 @@
 // MG Commerce - Service Worker (PWA + Offline Support)
-const CACHE_NAME = 'mg-commerce-v2';
+const CACHE_NAME = 'mg-commerce-v3';
 const OFFLINE_URL = '/offline';
 
 const PRECACHE_URLS = [
