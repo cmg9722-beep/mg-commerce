@@ -324,16 +324,17 @@ async function loadPipeline() {
 
     let stepsHtml = '';
     group.steps.forEach(s => {
-      const badge = s.status === 'done' ? 'badge-done' : s.status === 'progress' ? 'badge-progress' : 'badge-todo';
-      const label = s.status === 'done' ? '완료' : s.status === 'progress' ? '진행' : '대기';
+      const dotClass = s.status === 'done' ? 'done' : 'pending';
+      const selBg = s.status === 'done' ? '#10b981' : s.status === 'progress' ? '#3b82f6' : '#475569';
+      const textDeco = s.status === 'done' ? 'text-decoration:line-through;color:#64748b' : '';
       stepsHtml += `<div class="timeline-item">
-        <div class="timeline-dot ${s.status === 'done' ? 'done' : 'pending'}"></div>
-        <span style="flex:1">${s.step_name}</span>
+        <div class="timeline-dot ${dotClass}"></div>
+        <span style="flex:1;font-size:14px;${textDeco}">${s.step_name}</span>
         <span class="timeline-date">${s.due_date || ''}</span>
-        <span class="badge ${badge}">${label}</span>
-        <select style="width:auto;padding:2px 6px;font-size:11px" onchange="updatePipelineStep(${s.id}, this.value)">
+        <select style="background:${selBg};color:#fff;border:0;border-radius:12px;padding:3px 8px;font-size:12px;font-weight:700;cursor:pointer;width:auto;flex-shrink:0"
+          onchange="updatePipelineStep(${s.id}, this.value, this)">
           <option value="pending" ${s.status==='pending'?'selected':''}>대기</option>
-          <option value="progress" ${s.status==='progress'?'selected':''}>진행</option>
+          <option value="progress" ${s.status==='progress'?'selected':''}>진행중</option>
           <option value="done" ${s.status==='done'?'selected':''}>완료</option>
         </select>
       </div>`;
@@ -351,7 +352,16 @@ async function loadPipeline() {
   document.getElementById('pipeline-view').innerHTML = html;
 }
 
-async function updatePipelineStep(id, status) {
+async function updatePipelineStep(id, status, selectEl) {
+  // 즉각 색상 반영
+  if (selectEl) {
+    const bg = status === 'done' ? '#10b981' : status === 'progress' ? '#3b82f6' : '#475569';
+    selectEl.style.background = bg;
+    const dot = selectEl.closest('.timeline-item')?.querySelector('.timeline-dot');
+    const nameSpan = selectEl.closest('.timeline-item')?.querySelector('span[style*="flex:1"]');
+    if (dot) { dot.className = 'timeline-dot ' + (status === 'done' ? 'done' : 'pending'); }
+    if (nameSpan) { nameSpan.style.textDecoration = status === 'done' ? 'line-through' : ''; nameSpan.style.color = status === 'done' ? '#64748b' : ''; }
+  }
   await post(`/api/pipeline/${id}/status`, { status });
   loadPipeline();
 }
