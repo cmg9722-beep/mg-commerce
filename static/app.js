@@ -69,7 +69,13 @@ async function loadDashboard() {
       <div class="timeline-dot ${m.status === 'done' ? 'done' : 'pending'}"></div>
       <span class="timeline-date">${m.target_date || ''}</span>
       <span style="flex:1;${m.status === 'done' ? 'text-decoration:line-through;color:#64748b' : ''}">${m.task}</span>
-      <span class="badge ${badge}">${label}</span>
+      <select class="badge ${badge}" style="border:0;font-size:11px;padding:2px 4px;cursor:pointer"
+        onchange="updateMilestoneStatus(${m.id}, this.value)">
+        <option value="todo" ${m.status==='todo'?'selected':''}>예정</option>
+        <option value="progress" ${m.status==='progress'?'selected':''}>진행중</option>
+        <option value="done" ${m.status==='done'?'selected':''}>완료</option>
+      </select>
+      <button class="btn btn-sm" style="padding:2px 6px;font-size:10px;opacity:0.4" onclick="deleteMilestone(${m.id})">✕</button>
     </div>`;
   });
   document.getElementById('milestones-list').innerHTML = msHtml;
@@ -86,6 +92,32 @@ async function loadDashboard() {
     mHtml += '</tbody></table>';
     document.getElementById('margin-summary').innerHTML = mHtml;
   }
+}
+
+// === Milestone helpers ===
+async function updateMilestoneStatus(id, status) {
+  await post(`/api/milestones/${id}/status`, { status });
+  loadDashboard();
+}
+async function deleteMilestone(id) {
+  if (!confirm('이 마일스톤을 삭제할까요?')) return;
+  await post(`/api/milestones/${id}/delete`, {});
+  loadDashboard();
+}
+function showAddMilestone() {
+  const f = document.getElementById('milestone-add-form');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+async function submitAddMilestone() {
+  const task = document.getElementById('ms-task').value.trim();
+  if (!task) return alert('내용을 입력하세요');
+  const date = document.getElementById('ms-date').value.trim();
+  const status = document.getElementById('ms-status').value;
+  await post('/api/milestones/add', { task, target_date: date, status });
+  document.getElementById('ms-task').value = '';
+  document.getElementById('ms-date').value = '';
+  document.getElementById('milestone-add-form').style.display = 'none';
+  loadDashboard();
 }
 
 // === Finder ===
@@ -171,27 +203,32 @@ async function loadSuppliers() {
       </div>`;
     });
 
+    const statusBadge = ['샘플확정','입고완료','검수완료','도착완료'].includes(s.status) ? 'badge-done'
+      : ['답변대기','이메일회신대기','답장대기'].includes(s.status) ? 'badge-todo' : 'badge-warn';
     html += `<div class="card">
       <div class="flex-between mb-8">
         <h3 style="border:0;padding:0;margin:0">${s.product_code} ${s.product_name}</h3>
-        <span class="badge ${s.status === '샘플확정' ? 'badge-done' : s.status === '답변대기' ? 'badge-todo' : 'badge-warn'}">${s.status}</span>
+        <span class="badge ${statusBadge}">${s.status}</span>
       </div>
       <div class="supplier-card">
-        <div class="name">${s.name_ko} (${s.name_cn})</div>
-        <div class="meta">채팅방: ${s.chat_name} | 소재지: ${s.location} | 등급: ${s.grade}</div>
+        <div class="name">${s.name_ko} <span style="color:#94a3b8;font-weight:400">(${s.name_cn})</span></div>
+        <div class="meta">채팅방: ${s.chat_name || '-'} | 소재지: ${s.location} | 등급: ${s.grade}</div>
         <div class="price">샘플: ${s.sample_price} | 100개: ${s.bulk_100 || '-'} | 500개: ${s.bulk_500 || '-'}</div>
-        <div class="meta mt-8">${s.notes || ''}</div>
+        <div class="meta mt-4">${s.notes || ''}</div>
+        ${s.sample_status ? `<div style="margin-top:6px;padding:5px 8px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;font-size:11px;color:#15803d">📋 ${s.sample_status}</div>` : ''}
       </div>
       <div class="progress-bar"><div class="progress-fill blue" style="width:${pct}%"></div></div>
       <div style="font-size:11px;color:#64748b;text-align:right">${doneCount}/${totalCount} (${pct}%)</div>
       <div class="mt-8">${timelineHtml}</div>
-      <div class="flex gap-8 mt-8">
+      <div class="flex gap-8 mt-8" style="flex-wrap:wrap">
         <select onchange="updateSupplierStatus(${s.id}, this.value)" style="width:auto">
-          ${['답변대기','단가확인','샘플확정','발송완료','도착완료','검수완료','제외'].map(st =>
+          ${['답변대기','이메일회신대기','단가확인','샘플비결제대기','답장대기','샘플확정','발송완료','입고예정','입고완료','도착완료','검수완료','제외'].map(st =>
             `<option value="${st}" ${s.status === st ? 'selected' : ''}>${st}</option>`
           ).join('')}
         </select>
-        <input placeholder="트래킹번호" value="${s.tracking_no || ''}" style="width:200px"
+        <input placeholder="샘플현황 메모" value="${s.sample_status || ''}" style="flex:1;min-width:160px"
+          onchange="updateSampleStatus(${s.id}, this.value)">
+        <input placeholder="트래킹번호" value="${s.tracking_no || ''}" style="width:160px"
           onchange="updateTracking(${s.id}, this.value)">
       </div>
     </div>`;
@@ -211,6 +248,10 @@ async function updateSupplierStatus(id, status) {
 
 async function updateTracking(id, tracking) {
   await post(`/api/suppliers/${id}/tracking`, { tracking_no: tracking });
+}
+
+async function updateSampleStatus(id, sampleStatus) {
+  await post(`/api/suppliers/${id}/status`, { status: null, sample_status: sampleStatus });
 }
 
 // === Margin ===

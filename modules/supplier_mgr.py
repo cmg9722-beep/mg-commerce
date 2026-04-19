@@ -29,7 +29,11 @@ def get_supplier(supplier_id):
 
 def update_supplier_status(supplier_id, status, sample_status=None):
     conn = get_db()
-    if sample_status:
+    if status is None and sample_status is not None:
+        # sample_status만 업데이트
+        conn.execute("UPDATE suppliers SET sample_status=?, updated_at=datetime('now','localtime') WHERE id=?",
+                      (sample_status, supplier_id))
+    elif sample_status:
         conn.execute("UPDATE suppliers SET status=?, sample_status=?, updated_at=datetime('now','localtime') WHERE id=?",
                       (status, sample_status, supplier_id))
     else:

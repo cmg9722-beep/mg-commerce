@@ -287,6 +287,30 @@ def api_milestone_update(mid):
     return jsonify({"ok": True})
 
 
+@app.route("/api/milestones/add", methods=["POST"])
+@login_required
+def api_milestone_add():
+    d = request.json
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO milestones (task, status, target_date) VALUES (?,?,?)",
+        (d["task"], d.get("status", "todo"), d.get("target_date", ""))
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/milestones/<int:mid>/delete", methods=["POST"])
+@login_required
+def api_milestone_delete(mid):
+    conn = get_db()
+    conn.execute("DELETE FROM milestones WHERE id=?", (mid,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
 # === API: 메시지 생성 ===
 
 @app.route("/api/messages/templates")

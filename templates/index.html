@@ -63,7 +63,23 @@
       <div class="kpi-row" id="kpi-row"></div>
 
       <div class="card">
-        <h3>마일스톤 진행</h3>
+        <div class="flex-between mb-8">
+          <h3 style="border:0;padding:0;margin:0">마일스톤 진행</h3>
+          <button class="btn btn-sm btn-primary" onclick="showAddMilestone()">+ 추가</button>
+        </div>
+        <div id="milestone-add-form" style="display:none;margin-bottom:12px;padding:10px;background:#f8fafc;border-radius:8px;">
+          <div class="flex gap-8" style="flex-wrap:wrap">
+            <input id="ms-task" placeholder="마일스톤 내용" style="flex:2;min-width:160px">
+            <input id="ms-date" placeholder="날짜 (예: 4/25)" style="width:90px">
+            <select id="ms-status" style="width:auto">
+              <option value="todo">예정</option>
+              <option value="progress">진행중</option>
+              <option value="done">완료</option>
+            </select>
+            <button class="btn btn-sm btn-success" onclick="submitAddMilestone()">저장</button>
+            <button class="btn btn-sm btn-secondary" onclick="document.getElementById('milestone-add-form').style.display='none'">취소</button>
+          </div>
+        </div>
         <div id="milestones-list"></div>
       </div>
 
