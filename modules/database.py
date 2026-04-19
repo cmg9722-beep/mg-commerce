@@ -247,6 +247,7 @@ def init_db():
         tag_type TEXT DEFAULT 'new',
         emoji TEXT DEFAULT '📦',
         img_gradient TEXT,
+        image_url TEXT,
         coupang_link TEXT,
         created_at TEXT DEFAULT (datetime('now','localtime')),
         updated_at TEXT DEFAULT (datetime('now','localtime'))
@@ -398,6 +399,7 @@ def migrate_db():
         "emoji":            "TEXT DEFAULT '📦'",
         "img_gradient":     "TEXT",
         "coupang_link":     "TEXT",
+        "image_url":        "TEXT",
     }
     for col, typedef in new_cols.items():
         if col not in cols:

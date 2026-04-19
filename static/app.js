@@ -510,11 +510,15 @@ async function loadProducts() {
     return;
   }
 
-  let html = '<table><thead><tr><th>순서</th><th>제품명</th><th>가격</th><th>태그</th><th>홈페이지</th><th>관리</th></tr></thead><tbody>';
+  let html = '<table><thead><tr><th>순서</th><th>이미지</th><th>제품명</th><th>가격</th><th>태그</th><th>홈페이지</th><th>관리</th></tr></thead><tbody>';
   products.forEach(p => {
     const onHomepage = p.show_on_homepage ? '🟢' : '🔴';
+    const imgThumb = p.image_url
+      ? `<img src="${p.image_url}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;cursor:pointer" onclick="openImageModal(${p.id},'${p.image_url}')">`
+      : `<div style="width:48px;height:48px;background:#1e293b;border:2px dashed #334155;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer" onclick="openImageModal(${p.id},'')">➕</div>`;
     html += `<tr>
       <td><input type="number" value="${p.display_order || 99}" style="width:50px" onchange="updateProduct(${p.id},{display_order:+this.value})"></td>
+      <td style="text-align:center">${imgThumb}</td>
       <td><strong>${p.name_ko}</strong><br><span style="font-size:11px;color:#64748b">${p.description || '-'}</span></td>
       <td>₩${(p.coupang_price||0).toLocaleString()}</td>
       <td><span class="badge ${p.tag_type === 'best' ? 'badge-warn' : p.tag_type === 'hot' ? 'badge-alert' : 'badge-done'}">${p.tag_label || '-'}</span></td>
@@ -700,3 +704,102 @@ if ('serviceWorker' in navigator) {
 // === Init ===
 loadDashboard();
 checkNewInquiries();
+
+// === 이미지 업로드 모달 ===
+let _imgModalPid = null;
+
+function openImageModal(pid, currentUrl) {
+  _imgModalPid = pid;
+  const modal = document.getElementById('image-modal');
+  modal.style.display = 'flex';
+
+  // 미리보기 초기화
+  const preview = document.getElementById('img-preview');
+  if (currentUrl) {
+    preview.innerHTML = `<img src="${currentUrl}" style="width:100%;height:100%;object-fit:cover">`;
+  } else {
+    preview.innerHTML = `<span style="color:#64748b;font-size:13px">미리보기</span>`;
+  }
+  document.getElementById('img-url-input').value = '';
+  document.getElementById('img-status').textContent = '';
+}
+
+function closeImageModal() {
+  document.getElementById('image-modal').style.display = 'none';
+  _imgModalPid = null;
+}
+
+// 모달 외부 클릭 시 닫기
+document.getElementById('image-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeImageModal();
+});
+
+function handleImageDrop(e) {
+  e.preventDefault();
+  document.getElementById('img-dropzone').style.borderColor = '#334155';
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    uploadImageFile(file);
+  }
+}
+
+function handleImageFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) uploadImageFile(file);
+}
+
+async function uploadImageFile(file) {
+  if (!_imgModalPid) return;
+  const status = document.getElementById('img-status');
+  status.textContent = '업로드 중...';
+  status.style.color = '#60a5fa';
+
+  const fd = new FormData();
+  fd.append('file', file);
+
+  try {
+    const resp = await fetch(`/api/products/${_imgModalPid}/upload-image`, {
+      method: 'POST', body: fd
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      document.getElementById('img-preview').innerHTML =
+        `<img src="${data.image_url}" style="width:100%;height:100%;object-fit:cover">`;
+      status.textContent = '✅ 업로드 완료!';
+      status.style.color = '#10b981';
+      loadProducts();
+    } else {
+      status.textContent = '❌ 업로드 실패: ' + (data.error || '');
+      status.style.color = '#ef4444';
+    }
+  } catch {
+    status.textContent = '❌ 오류 발생';
+    status.style.color = '#ef4444';
+  }
+}
+
+async function submitImageUrl() {
+  if (!_imgModalPid) return;
+  const url = document.getElementById('img-url-input').value.trim();
+  if (!url) return;
+  const status = document.getElementById('img-status');
+  status.textContent = '적용 중...';
+  status.style.color = '#60a5fa';
+
+  try {
+    const data = await post(`/api/products/${_imgModalPid}/upload-image`, { image_url: url });
+    if (data.ok) {
+      document.getElementById('img-preview').innerHTML =
+        `<img src="${url}" style="width:100%;height:100%;object-fit:cover">`;
+      status.textContent = '✅ URL 적용 완료!';
+      status.style.color = '#10b981';
+      loadProducts();
+    } else {
+      status.textContent = '❌ 실패: ' + (data.error || '');
+      status.style.color = '#ef4444';
+    }
+  } catch {
+    status.textContent = '❌ 오류 발생';
+    status.style.color = '#ef4444';
+  }
+}

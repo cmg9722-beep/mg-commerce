@@ -7,6 +7,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from flask import Flask, render_template, jsonify, request, session, redirect, url_for
 from functools import wraps
 import hashlib
+from werkzeug.utils import secure_filename
+import uuid
 from modules.database import init_db, seed_initial_data, migrate_db, get_db
 from modules.exchange_rate import get_cny_to_krw, get_rate_info
 from modules.margin_calc import calc_margin, calc_all_products, simulate_price
@@ -448,7 +450,8 @@ def api_product_update(pid):
     values = []
     allowed = ["name_ko", "name_cn", "category", "coupang_price", "status",
                "show_on_homepage", "display_order", "description", "tag_label",
-               "tag_type", "emoji", "img_gradient", "coupang_link", "code", "margin_category"]
+               "tag_type", "emoji", "img_gradient", "coupang_link", "code", "margin_category",
+               "image_url"]
     for key in allowed:
         if key in d:
             fields.append(f"{key}=?")
@@ -469,6 +472,49 @@ def api_product_delete(pid):
     conn.commit()
     conn.close()
     return jsonify({"ok": True})
+
+
+@app.route("/api/products/<int:pid>/upload-image", methods=["POST"])
+@login_required
+def api_product_upload_image(pid):
+    """제품 이미지 업로드 (파일 또는 URL)"""
+    # URL 방식
+    if request.is_json:
+        image_url = request.json.get("image_url", "").strip()
+        if not image_url:
+            return jsonify({"ok": False, "error": "URL이 없습니다"}), 400
+        conn = get_db()
+        conn.execute("UPDATE products SET image_url=?, updated_at=datetime('now','localtime') WHERE id=?",
+                     (image_url, pid))
+        conn.commit()
+        conn.close()
+        return jsonify({"ok": True, "image_url": image_url})
+
+    # 파일 업로드 방식
+    if "file" not in request.files:
+        return jsonify({"ok": False, "error": "파일이 없습니다"}), 400
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"ok": False, "error": "파일명이 없습니다"}), 400
+
+    allowed_ext = {"jpg", "jpeg", "png", "webp", "gif"}
+    ext = file.filename.rsplit(".", 1)[-1].lower()
+    if ext not in allowed_ext:
+        return jsonify({"ok": False, "error": "지원하지 않는 형식"}), 400
+
+    upload_dir = os.path.join(os.path.dirname(__file__), "static", "images", "products")
+    os.makedirs(upload_dir, exist_ok=True)
+
+    filename = f"p{pid}_{uuid.uuid4().hex[:8]}.{ext}"
+    file.save(os.path.join(upload_dir, filename))
+
+    image_url = f"/static/images/products/{filename}"
+    conn = get_db()
+    conn.execute("UPDATE products SET image_url=?, updated_at=datetime('now','localtime') WHERE id=?",
+                 (image_url, pid))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "image_url": image_url})
 
 
 @app.route("/api/products/<int:pid>/toggle-homepage", methods=["POST"])
