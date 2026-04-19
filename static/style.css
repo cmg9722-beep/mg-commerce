@@ -80,7 +80,7 @@ label{font-size:12px;color:#94a3b8;margin-bottom:4px;display:block}
 .supplier-card .price{color:#fbbf24;font-weight:700;margin-top:4px}
 
 /* Timeline */
-.timeline-item{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px}
+.timeline-item{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:14px}
 .timeline-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .timeline-dot.done{background:#10b981}
 .timeline-dot.pending{background:#334155;border:2px solid #64748b}

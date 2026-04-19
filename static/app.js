@@ -68,8 +68,8 @@ async function loadDashboard() {
     msHtml += `<div class="timeline-item">
       <div class="timeline-dot ${m.status === 'done' ? 'done' : 'pending'}"></div>
       <span class="timeline-date">${m.target_date || ''}</span>
-      <span style="flex:1;${m.status === 'done' ? 'text-decoration:line-through;color:#64748b' : ''}">${m.task}</span>
-      <select class="badge ${badge}" style="border:0;font-size:11px;padding:2px 4px;cursor:pointer"
+      <span style="flex:1;font-size:14px;${m.status === 'done' ? 'text-decoration:line-through;color:#64748b' : ''}">${m.task}</span>
+      <select class="badge ${badge}" style="border:0;font-size:12px;padding:2px 6px;cursor:pointer;width:auto;flex-shrink:0"
         onchange="updateMilestoneStatus(${m.id}, this.value)">
         <option value="todo" ${m.status==='todo'?'selected':''}>예정</option>
         <option value="progress" ${m.status==='progress'?'selected':''}>진행중</option>
