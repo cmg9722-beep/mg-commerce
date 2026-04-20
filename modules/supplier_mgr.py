@@ -3,6 +3,16 @@ from modules.database import get_db
 from datetime import datetime
 
 
+def _sync(supplier_id):
+    """공급사 변경 후 파이프라인 자동 동기화"""
+    from modules.pipeline import sync_pipeline
+    conn = get_db()
+    row = conn.execute("SELECT product_id FROM suppliers WHERE id=?", (supplier_id,)).fetchone()
+    conn.close()
+    if row:
+        sync_pipeline(row["product_id"])
+
+
 def get_all_suppliers():
     conn = get_db()
     rows = conn.execute("""
@@ -30,7 +40,6 @@ def get_supplier(supplier_id):
 def update_supplier_status(supplier_id, status, sample_status=None):
     conn = get_db()
     if status is None and sample_status is not None:
-        # sample_status만 업데이트
         conn.execute("UPDATE suppliers SET sample_status=?, updated_at=datetime('now','localtime') WHERE id=?",
                       (sample_status, supplier_id))
     elif sample_status:
@@ -41,6 +50,7 @@ def update_supplier_status(supplier_id, status, sample_status=None):
                       (status, supplier_id))
     conn.commit()
     conn.close()
+    _sync(supplier_id)  # 파이프라인 자동 동기화
 
 
 def update_tracking(supplier_id, tracking_no):
@@ -49,6 +59,7 @@ def update_tracking(supplier_id, tracking_no):
                   (tracking_no, supplier_id))
     conn.commit()
     conn.close()
+    _sync(supplier_id)  # 파이프라인 자동 동기화
 
 
 def add_supplier(data):
