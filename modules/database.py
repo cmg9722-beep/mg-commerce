@@ -405,6 +405,27 @@ def migrate_db():
         if col not in cols:
             conn.execute(f"ALTER TABLE products ADD COLUMN {col} {typedef}")
     conn.commit()
+
+    # 파이프라인 초기 상태 마이그레이션
+    # 전체가 pending 상태이면 실제 진행 현황으로 1회 업데이트
+    total = conn.execute("SELECT COUNT(*) FROM pipeline_steps WHERE product_id <= 4").fetchone()[0]
+    still_pending = conn.execute(
+        "SELECT COUNT(*) FROM pipeline_steps WHERE product_id <= 4 AND status='pending'"
+    ).fetchone()[0]
+    if total > 0 and total == still_pending:
+        from datetime import datetime
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        for pid in [1, 2, 3, 4]:
+            for step in [1, 2, 3]:
+                conn.execute(
+                    "UPDATE pipeline_steps SET status='done', completed_at=? WHERE product_id=? AND step_order=?",
+                    (now, pid, step)
+                )
+            conn.execute(
+                "UPDATE pipeline_steps SET status='progress' WHERE product_id=? AND step_order=4",
+                (pid,)
+            )
+        conn.commit()
     conn.close()
 
 
