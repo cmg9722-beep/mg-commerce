@@ -406,6 +406,18 @@ def migrate_db():
             conn.execute(f"ALTER TABLE products ADD COLUMN {col} {typedef}")
     conn.commit()
 
+    # 제품 이미지 URL 마이그레이션 (기존 DB에 image_url 없는 경우 자동 설정)
+    img_map = {
+        1: "/static/images/products/p001.jpg",
+        2: "/static/images/products/p002.jpg",
+        3: "/static/images/products/p003.jpg",
+    }
+    for pid, url in img_map.items():
+        row = conn.execute("SELECT image_url FROM products WHERE id=?", (pid,)).fetchone()
+        if row and not row[0]:
+            conn.execute("UPDATE products SET image_url=? WHERE id=?", (url, pid))
+    conn.commit()
+
     # 파이프라인 초기 상태 마이그레이션
     # 전체가 pending 상태이면 실제 진행 현황으로 1회 업데이트
     total = conn.execute("SELECT COUNT(*) FROM pipeline_steps WHERE product_id <= 4").fetchone()[0]
@@ -441,28 +453,28 @@ def seed_initial_data():
     products = [
         ("①", "ESD 무선 정전기방지 팔찌", "防静电手环", "전자부품/공구", 9900, "active", "높음",
          1, 1, "전자기기 작업 시 정전기 보호. 무선 설계로 자유로운 작업.", "TECH", "new", "⚡",
-         "linear-gradient(135deg,#e0e7ff,#c7d2fe)", ""),
+         "linear-gradient(135deg,#e0e7ff,#c7d2fe)", "", "/static/images/products/p001.jpg"),
         ("②", "카프톤(폴리이미드) 테이프", "聚酰亚胺胶带", "테이프/접착제", 9900, "active", "최고",
          1, 2, "내열 260°C 고온 테이프. 납땜, 절연, 3D프린터에 최적.", "BEST", "best", "🔥",
-         "linear-gradient(135deg,#fef3c7,#fde68a)", ""),
+         "linear-gradient(135deg,#fef3c7,#fde68a)", "", "/static/images/products/p002.jpg"),
         ("③", "프리미엄 운동 손목밴드", "运动护腕", "스포츠 용품", 12900, "active", "보통",
          1, 3, "건초염 예방 압박밴드. 벨크로 방식, 4가지 컬러.", "SPORTS", "hot", "💪",
-         "linear-gradient(135deg,#d1fae5,#a7f3d0)", ""),
+         "linear-gradient(135deg,#d1fae5,#a7f3d0)", "", "/static/images/products/p003.jpg"),
         ("⑤", "USB 미니 선풍기", "USB迷你风扇", "IT 액세서리", 9900, "active", "보통",
          1, 4, "3단 풍속, USB 전원, 사무실/차량 겸용. 저소음 설계.", "TREND", "trend", "🌀",
-         "linear-gradient(135deg,#e0e7ff,#c7d2fe)", ""),
+         "linear-gradient(135deg,#e0e7ff,#c7d2fe)", "", ""),
         ("⑥", "컬러 스포츠 흡한 손목밴드", "彩色运动吸汗护腕", "스포츠 용품", 6900, "active", "보통",
          1, 5, "고탄력 흡한속건 소재. 15가지 컬러, 러닝·헬스·사이클링 만능.", "COLOR", "best", "🌈",
-         "linear-gradient(135deg,#fce7f3,#fbcfe8)", ""),
+         "linear-gradient(135deg,#fce7f3,#fbcfe8)", "", ""),
         ("⑦", "초경량 USB 핸디 선풍기", "超轻量USB手持风扇", "IT 액세서리", 7900, "active", "보통",
          1, 6, "충전식 휴대용, 폰거치대 겸용. 82g 초경량 설계.", "SUMMER", "new", "🍃",
-         "linear-gradient(135deg,#ecfccb,#d9f99d)", ""),
+         "linear-gradient(135deg,#ecfccb,#d9f99d)", "", ""),
     ]
     for p in products:
         conn.execute(
             """INSERT INTO products (code,name_ko,name_cn,category,coupang_price,status,margin_category,
-               show_on_homepage,display_order,description,tag_label,tag_type,emoji,img_gradient,coupang_link)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", p)
+               show_on_homepage,display_order,description,tag_label,tag_type,emoji,img_gradient,coupang_link,image_url)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", p)
 
     # 공급사 8곳 (4/19 현재 최신 현황)
     suppliers = [
