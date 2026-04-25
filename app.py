@@ -1,4 +1,4 @@
-"""MG Commerce 자동화 플랫폼 - Flask 서버"""
+"""MG Commerce 자동화 플랫폼 - Flask 서버 v1.1 (2026-04-25 시드데이터 4/25 현황 반영)"""
 import os
 import sys
 
