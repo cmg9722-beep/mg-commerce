@@ -458,7 +458,7 @@ def seed_initial_data():
          1, 2, "내열 260°C 고온 테이프. 납땜, 절연, 3D프린터에 최적.", "BEST", "best", "🔥",
          "linear-gradient(135deg,#fef3c7,#fde68a)", "", "/static/images/products/p002.jpg"),
         ("③", "프리미엄 운동 손목밴드", "运动护腕", "스포츠 용품", 12900, "active", "보통",
-         1, 3, "건초염 예방 압박밴드. 벨크로 방식, 4가지 컬러.", "SPORTS", "hot", "💪",
+         1, 3, "운동용 손목 압박밴드. 벨크로 방식, 4가지 컬러.", "SPORTS", "hot", "💪",
          "linear-gradient(135deg,#d1fae5,#a7f3d0)", "", "/static/images/products/p003.jpg"),
         ("⑤", "USB 미니 선풍기", "USB迷你风扇", "IT 액세서리", 9900, "active", "보통",
          1, 4, "3단 풍속, USB 전원, 사무실/차량 겸용. 저소음 설계.", "TREND", "trend", "🌀",
