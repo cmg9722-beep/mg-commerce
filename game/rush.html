@@ -1,0 +1,1366 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>정시 퇴근 — 오늘도 6시에 나간다</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;600;800&display=swap">
+<style>
+:root{--bg:#0b0e14;--panel:#141922;--line:#232a36;--ink:#e8ecf4;--dim:#7d8699;
+      --accent:#f5c451;--good:#57d98a;--bad:#ff6b6b;--blue:#9ec8ff;--deep:#6f9fd8}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden;
+  font-family:'Gothic A1',"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif}
+.ttl{font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
+.num{font-variant-numeric:tabular-nums}
+#wrap{position:relative;width:100vw;height:100vh;overflow:hidden}
+canvas{display:block;position:absolute;inset:0;width:100%;height:100%}
+
+/* ── 상단 HUD ── */
+#hud{position:absolute;top:0;left:0;right:0;padding:10px 58px 10px 14px;z-index:5;pointer-events:none;
+  display:flex;align-items:center;gap:14px;
+  background:linear-gradient(180deg,rgba(11,14,20,.92),rgba(11,14,20,0))}
+#clock{font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-size:30px;line-height:1;
+  font-variant-numeric:tabular-nums;letter-spacing:.5px}
+#clock small{font-size:12px;color:var(--dim);font-family:inherit;margin-left:6px}
+#daybar{flex:1;height:8px;background:#0b0d12;border-radius:5px;overflow:hidden;
+  border:1px solid var(--line);position:relative}
+#daybar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#6f9fd8,#9ec8ff);
+  border-radius:5px}
+#daybar u{position:absolute;top:-3px;width:2px;height:14px;background:#3b4658}
+#lv{font-size:13px;color:var(--dim)}
+#lv b{color:var(--accent);font-size:17px}
+#kills{font-size:13px;color:var(--dim)}
+#kills b{color:var(--ink);font-size:17px}
+
+/* 체력 + 경험치 */
+#bars{position:absolute;left:14px;right:14px;bottom:12px;z-index:5;pointer-events:none}
+.bar{height:12px;background:#0b0d12;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;width:100%;border-radius:6px;transition:width .08s linear}
+#hpb i{background:linear-gradient(90deg,#b93b3b,#ff6b6b)}
+#xpb i{background:linear-gradient(90deg,#d9a94e,#f5c451);width:0}
+#hplab{font-size:11px;color:var(--dim);display:flex;justify-content:space-between}
+
+/* 무기 슬롯 */
+#slots{position:absolute;top:56px;left:14px;z-index:5;display:flex;gap:6px;pointer-events:none}
+.slot{width:42px;height:42px;background:rgba(20,25,34,.9);border:1px solid var(--line);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;position:relative}
+.slot canvas{position:static;width:34px;height:34px}
+.slot b{position:absolute;right:2px;bottom:0;font-size:10px;color:var(--accent)}
+
+/* ── 오버레이(레벨업/시작/결과) ── */
+#ov{position:absolute;inset:0;z-index:20;display:none;align-items:center;justify-content:center;
+  background:rgba(8,10,15,.82);padding:20px}
+#ov.on{display:flex}
+#card{width:100%;max-width:760px;background:var(--panel);border:1px solid var(--line);
+  border-radius:14px;padding:24px}
+#card h1{font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400;
+  font-size:30px;margin:0 0 6px}
+#card .sub{color:var(--dim);font-size:14px;margin-bottom:18px}
+.picks{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.pick{background:#232936;border:1px solid var(--line);border-radius:10px;padding:14px;
+  cursor:pointer;text-align:left;color:var(--ink);font-family:inherit;display:flex;gap:12px;align-items:flex-start}
+.pick:hover{border-color:var(--accent);background:#2c3342}
+.pick canvas{position:static;width:40px;height:40px;flex:none}
+.pick .n{font-weight:800;font-size:14px;display:block}
+.pick .lvl{font-size:11px;color:var(--accent);display:block;margin:1px 0 4px}
+.pick .d{font-size:12px;color:var(--dim);line-height:1.45}
+.primary{background:var(--accent);color:#17191f;border:0;border-radius:8px;font-weight:800;
+  padding:13px;width:100%;margin-top:16px;font-size:15px;font-family:inherit;cursor:pointer}
+.ghost{background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:8px;
+  padding:11px;width:100%;margin-top:8px;font-family:inherit;cursor:pointer}
+input{width:100%;padding:11px;border-radius:8px;border:1px solid var(--line);
+  background:#0b0d12;color:var(--ink);font-size:14px;font-family:inherit}
+label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
+.tally{display:flex;gap:26px;margin:18px 0 4px;flex-wrap:wrap}
+.tally div{display:flex;flex-direction:column}
+.tally b{font-size:26px;font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
+.tally span{font-size:11px;color:var(--dim)}
+.hint{color:var(--dim);font-size:12px;margin-top:14px;line-height:1.6}
+#mute{position:absolute;top:10px;right:14px;z-index:30;width:34px;height:34px;padding:0;
+  display:flex;align-items:center;justify-content:center;background:rgba(20,25,34,.86);
+  border:1px solid var(--line);color:var(--dim);border-radius:8px;cursor:pointer}
+#mute:hover{border-color:var(--accent);color:var(--ink)}
+#mute .x{display:none}
+#mute[aria-pressed="true"]{color:var(--bad)}
+#mute[aria-pressed="true"] .wave{display:none}
+#mute[aria-pressed="true"] .x{display:block}
+#toast{position:absolute;left:50%;top:110px;transform:translateX(-50%);z-index:6;
+  font-weight:800;font-size:15px;color:var(--accent);text-shadow:0 2px 10px #000;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv"></canvas>
+  <div id="hud">
+    <div id="clock" class="num">09:00<small>출근</small></div>
+    <div id="daybar"><i></i></div>
+    <div id="lv">Lv <b class="num">1</b></div>
+    <div id="kills">처리 <b class="num">0</b></div>
+  </div>
+  <div id="slots"></div>
+  <div id="bars">
+    <div id="hplab"><span>체력</span><span id="hpn" class="num">100 / 100</span></div>
+    <div class="bar" id="hpb"><i></i></div>
+    <div class="bar" id="xpb"><i></i></div>
+  </div>
+  <div id="toast"></div>
+  <button id="mute" type="button" aria-pressed="false" title="소리 켜기/끄기 (M)" aria-label="소리 끄기">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 9h3l5-4v14l-5-4H4z" fill="currentColor" stroke="none"/>
+      <g class="wave"><path d="M16 9.2a4 4 0 0 1 0 5.6"/><path d="M18.7 6.5a8 8 0 0 1 0 11"/></g>
+      <g class="x"><path d="M16.5 9.5l5 5"/><path d="M21.5 9.5l-5 5"/></g>
+    </svg>
+  </button>
+  <div id="ov"><div id="card"></div></div>
+</div>
+
+<script>
+/* _audio.js — 「출근 저지」 사운드 엔진
+   Web Audio 런타임 합성 전용: 오실레이터 + 자체 생성 노이즈 버퍼만 사용.
+   오디오 파일·네트워크·base64 샘플 없음 (file:// 더블클릭 오프라인 동작).
+   전역은 window.SFX 하나만 노출한다.
+   사운드 방향: 「형광등 꺼진 사무실」 — 건조하고 작고 종이 같은 소리. */
+(function () {
+  "use strict";
+
+  var LS_KEY = "chulgeun.muted";
+  var MAX_VOICES = 16;      // 동시 보이스 상한 — 넘치면 새 소리를 그냥 버린다
+  var MASTER_LEVEL = 0.32;  // 마스터 헤드룸 (다중 동시 발음 시 클리핑 방지)
+
+  var ctx = null, master = null, noiseBuf = null;
+  var masterNow = 0;              // master.gain 목표값의 JS 그림자 (.value 게터는 입력이 끊기면 stale)
+  var live = 0, created = 0, dropped = 0;   // 보이스 수명 계측
+  var muted = readMuted();
+
+  function readMuted() {
+    try { return localStorage.getItem(LS_KEY) === "1"; } catch (e) { return false; }
+  }
+  function writeMuted(b) {
+    try { localStorage.setItem(LS_KEY, b ? "1" : "0"); } catch (e) {}
+  }
+
+  /* ── 고빈도 사운드 스로틀 (ms) ── */
+  var THROTTLE = { shoot: 30, hit: 25, chew: 200, select: 40 };
+  var lastAt = { shoot: -1e9, hit: -1e9, chew: -1e9, select: -1e9 };
+  function gate(name) {
+    var t = Date.now();
+    if (t - lastAt[name] < THROTTLE[name]) return false;
+    lastAt[name] = t;
+    return true;
+  }
+
+  /* ── 컨텍스트 지연 생성 (로드 시점엔 절대 만들지 않는다) ── */
+  function ensure() {
+    var A = window.AudioContext || window.webkitAudioContext;
+    if (!A) return null;
+    if (!ctx) {
+      try { ctx = new A(); } catch (e) { ctx = null; return null; }
+      master = ctx.createGain();
+      masterNow = muted ? 0 : MASTER_LEVEL;
+      master.gain.value = masterNow;
+      var tail = master;
+      try {                                  // 안전망 컴프레서
+        var comp = ctx.createDynamicsCompressor();
+        comp.threshold.value = -18; comp.knee.value = 20; comp.ratio.value = 12;
+        comp.attack.value = 0.002; comp.release.value = 0.15;
+        master.connect(comp); tail = comp;
+      } catch (e) {}
+      tail.connect(ctx.destination);
+      // 화이트 노이즈 버퍼 — 1초, 1회만 생성해서 전 사운드가 공유
+      var n = Math.max(1, Math.floor(ctx.sampleRate));
+      noiseBuf = ctx.createBuffer(1, n, ctx.sampleRate);
+      var d = noiseBuf.getChannelData(0);
+      for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    }
+    if (ctx.state === "suspended") {
+      try { var p = ctx.resume(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+    }
+    return ctx;
+  }
+
+  /* 사운드 공통 진입: 컨텍스트 확보 + 보이스 상한. 음수면 재생 불가 */
+  function ready() {
+    if (muted) return -1;                    // 음소거면 스케줄 자체를 생략
+    var c = ensure();
+    if (!c) return -1;
+    if (live >= MAX_VOICES) { dropped++; return -1; }
+    return c.currentTime;
+  }
+
+  /* ── 보이스: 소스 → (필터) → 게인 → 마스터. 끝나면 반드시 해제 ──
+     o: { a:어택초, flat:유지형 엔벌로프, filter:[type,f0,f1,Q], rate:재생속도 } */
+  function voice(src, t0, dur, peak, o) {
+    var nodes = [src], head = src;
+    if (o && o.filter) {
+      var f = ctx.createBiquadFilter();
+      f.type = o.filter[0];
+      f.frequency.setValueAtTime(o.filter[1], t0);
+      if (o.filter[2]) f.frequency.exponentialRampToValueAtTime(Math.max(20, o.filter[2]), t0 + dur);
+      if (o.filter[3]) f.Q.value = o.filter[3];
+      head.connect(f); head = f; nodes.push(f);
+    }
+    var g = ctx.createGain(), a = (o && o.a) || 0.004;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(peak, t0 + a);
+    if (o && o.flat) {                        // 버즈용: 어택-유지-릴리즈
+      g.gain.setValueAtTime(peak, t0 + Math.max(a, dur - 0.02));
+      g.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+    } else {                                  // 기본: 즉시 감쇠 (건조한 소리)
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    }
+    head.connect(g); g.connect(master); nodes.push(g);
+    live++; created++;
+    src.onended = function () {               // 누수 방지: 전 노드 disconnect
+      live--; src.onended = null;
+      for (var i = 0; i < nodes.length; i++) { try { nodes[i].disconnect(); } catch (e) {} }
+    };
+    src.start(t0);
+    src.stop(t0 + dur + 0.03);
+  }
+
+  function tone(t0, dur, peak, type, f0, f1, o) {
+    var osc = ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.setValueAtTime(f0, t0);
+    if (f1 && f1 !== f0) osc.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t0 + dur);
+    voice(osc, t0, dur, peak, o);
+  }
+
+  function noise(t0, dur, peak, o) {
+    var src = ctx.createBufferSource();
+    src.buffer = noiseBuf; src.loop = true;
+    if (o && o.rate) src.playbackRate.value = o.rate;
+    voice(src, t0, dur, peak, o);
+  }
+
+  /* ══════════ 사운드 정의 ══════════ */
+
+  /* 설치 — 책상에 사물을 내려놓는 "턱" 소리. 유닛별 재질 차이 */
+  var PLACE = {
+    water:  { f: 150, f1: 48,  dur: 0.20, tp: "sine",     tv: 0.20, bp: 240,  np: 0.09, q: 6 },   // 물통 — 공명하는 빈 통
+    wall:   { f: 100, f1: 40,  dur: 0.16, tp: "triangle", tv: 0.24, bp: 170,  np: 0.11, q: 1.5 }, // 파티션 — 묵직한 판
+    copy:   { f: 185, f1: 72,  dur: 0.12, tp: "triangle", tv: 0.20, bp: 850,  np: 0.09, q: 1 },   // 복사기 — 기계 몸통
+    stap:   { f: 330, f1: 140, dur: 0.06, tp: "square",   tv: 0.10, bp: 2600, np: 0.09, q: 2 },   // 스테이플러 — 금속 딸깍
+    quit:   { f: 520, f1: 300, dur: 0.05, tp: "triangle", tv: 0.05, bp: 3600, np: 0.13, q: 0.8, paper: true } // 사직서 — 종이 놓기
+  };
+  // 학생 팩은 같은 역할의 재질로 매핑
+  PLACE.vend = PLACE.water; PLACE.locker = PLACE.wall; PLACE.book = PLACE.copy;
+  PLACE.pencil = PLACE.stap; PLACE.leave = PLACE.quit;
+
+  function hashId(s) {
+    s = String(s); var h = 0;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
+  }
+
+  function place(unitId) {
+    var t0 = ready(); if (t0 < 0) return;
+    var p = PLACE[unitId];
+    if (!p) {                                 // 모르는 id — 해시로 재질을 변주
+      var h = hashId(unitId);
+      p = { f: 120 + h % 140, f1: 45 + h % 40, dur: 0.13, tp: "triangle",
+            tv: 0.18, bp: 300 + h % 900, np: 0.10, q: 1.2 };
+    }
+    tone(t0, p.dur, p.tv, p.tp, p.f, p.f1);
+    noise(t0, p.paper ? 0.09 : 0.05, p.np, { filter: ["bandpass", p.bp, p.bp * 0.6, p.q], a: 0.002 });
+  }
+
+  /* 발사 — 트레이에서 종이가 빠지는 "특". 초당 10회에도 거슬리지 않게 아주 짧고 작게 */
+  function shoot(unitId) {
+    if (!gate("shoot")) return;
+    var t0 = ready(); if (t0 < 0) return;
+    var hi = unitId === "stap" || unitId === "pencil";     // 스테이플러 계열은 더 딱딱하게
+    var f = (hi ? 5200 : 3000) * (0.92 + Math.random() * 0.16);
+    noise(t0, hi ? 0.028 : 0.042, hi ? 0.16 : 0.14,
+          { filter: ["bandpass", f, f * 0.45, hi ? 1.6 : 1.1], a: 0.002 });
+  }
+
+  /* 명중 — 아주 작은 틱 */
+  function hit() {
+    if (!gate("hit")) return;
+    var t0 = ready(); if (t0 < 0) return;
+    tone(t0, 0.03, 0.10, "sine", 1850, 1300, { a: 0.002 });
+  }
+
+  /* 처치 — 종이 구겨져 떨어지는 소리. 보스는 더 낮고 길게 */
+  function kill(boss) {
+    var t0 = ready(); if (t0 < 0) return;
+    if (boss) {
+      noise(t0, 0.30, 0.20, { filter: ["bandpass", 1500, 380, 0.9], a: 0.004, rate: 0.85 });
+      tone(t0 + 0.03, 0.34, 0.28, "sine", 120, 42, { a: 0.006 });
+    } else {
+      noise(t0, 0.15, 0.14, { filter: ["bandpass", 1700, 500, 0.9], a: 0.003 });
+      tone(t0 + 0.02, 0.10, 0.12, "sine", 210, 90, { a: 0.004 });
+    }
+  }
+
+  /* 갉아먹기 — 둔한 반복음. 아무리 많이 물어뜯어도 초당 5회 이하 */
+  function chew() {
+    if (!gate("chew")) return;
+    var t0 = ready(); if (t0 < 0) return;
+    noise(t0, 0.08, 0.12, { filter: ["lowpass", 420, 250, 1], a: 0.003, rate: 0.7 });
+    tone(t0, 0.07, 0.08, "triangle", 88, 60, { a: 0.003 });
+  }
+
+  /* 자원 획득 — 게임에서 유일하게 밝은 소리. 작은 보상 */
+  function coin() {
+    var t0 = ready(); if (t0 < 0) return;
+    tone(t0, 0.22, 0.14, "sine", 1245, 1245, { a: 0.002 });
+    tone(t0, 0.09, 0.05, "sine", 2530, 2530, { a: 0.002 });
+  }
+
+  /* 사직서/조퇴증 — 종이 찢기 → 낮은 둔중음. 게임에서 제일 큰 소리지만 여전히 건조하게 */
+  function nuke() {
+    var t0 = ready(); if (t0 < 0) return;
+    noise(t0, 0.32, 0.26, { filter: ["bandpass", 3400, 320, 0.8], a: 0.010 });          // 찢기
+    noise(t0 + 0.16, 0.50, 0.16, { filter: ["lowpass", 200, 90, 0.7], a: 0.010, rate: 0.6 }); // 저역 럼블
+    tone(t0 + 0.17, 0.55, 0.34, "sine", 92, 36, { a: 0.008 });                          // 둔중음
+  }
+
+  /* 보스 등장 — 낮은 드론이 부풀었다 멎는다 (~1.2초). 놀래키지 않는다 */
+  function bossIn() {
+    var t0 = ready(); if (t0 < 0) return;
+    tone(t0, 1.2, 0.15, "sawtooth", 52, 47, { a: 0.75, filter: ["lowpass", 270, 130, 4] });
+    tone(t0, 1.2, 0.15, "sawtooth", 55.5, 50, { a: 0.75, filter: ["lowpass", 270, 130, 4] });
+    tone(t0, 1.1, 0.03, "sine", 208, 197, { a: 0.7 });   // 형광등 험 같은 잔음
+  }
+
+  /* UI 클릭 — 아주 작은 클릭 */
+  function select() {
+    if (!gate("select")) return;
+    var t0 = ready(); if (t0 < 0) return;
+    noise(t0, 0.02, 0.10, { filter: ["highpass", 2500, 0, 0.7], a: 0.001 });
+  }
+
+  /* 설치 불가 / 자원 부족 — 짧고 밋밋한 버즈 */
+  function deny() {
+    var t0 = ready(); if (t0 < 0) return;
+    tone(t0, 0.14, 0.07, "square", 110, 106, { a: 0.005, flat: true, filter: ["lowpass", 900, 0, 0.8] });
+  }
+
+  /* 승리 — 짧게 올라가며 매듭. 팡파르 아님 */
+  function win() {
+    var t0 = ready(); if (t0 < 0) return;
+    var notes = [349.2, 440, 523.3, 698.5];
+    for (var i = 0; i < notes.length; i++) {
+      var last = i === notes.length - 1;
+      tone(t0 + i * 0.13, last ? 0.5 : 0.28, last ? 0.13 : 0.10, "triangle", notes[i], notes[i], { a: 0.006 });
+    }
+  }
+
+  /* 패배 — 미끄러지듯 내려가는 하강 */
+  function lose() {
+    var t0 = ready(); if (t0 < 0) return;
+    var notes = [392, 311.1, 261.6, 196];
+    for (var i = 0; i < notes.length; i++) {
+      tone(t0 + i * 0.18, 0.35, 0.10, "sine", notes[i], notes[i] * 0.93, { a: 0.008 });
+    }
+  }
+
+  /* ══════════ 제어 ══════════ */
+
+  function setMuted(b) {
+    b = !!b;
+    muted = b; api.muted = b;
+    writeMuted(b);
+    if (ctx && master) {                      // 즉시·완전 소거: 게인 자체를 램프
+      try {
+        var t = ctx.currentTime, g = master.gain;
+        var target = b ? 0 : MASTER_LEVEL;
+        g.cancelScheduledValues(t);
+        g.setValueAtTime(masterNow, t);       // .value 게터는 믿지 않는다 (stale 가능)
+        g.linearRampToValueAtTime(target, t + 0.03);
+        masterNow = target;
+      } catch (e) {}
+    }
+  }
+
+  function resume() { ensure(); }
+
+  /* 어떤 상황에서도 게임 루프에 예외를 던지지 않는다 */
+  function safe(fn) {
+    return function () { try { return fn.apply(null, arguments); } catch (e) {} };
+  }
+
+  var api = {
+    place: safe(place),
+    shoot: safe(shoot),
+    hit: safe(hit),
+    kill: safe(kill),
+    chew: safe(chew),
+    coin: safe(coin),
+    nuke: safe(nuke),
+    bossIn: safe(bossIn),
+    select: safe(select),
+    deny: safe(deny),
+    win: safe(win),
+    lose: safe(lose),
+    setMuted: safe(setMuted),
+    muted: muted,
+    resume: safe(resume),
+    /* 테스트/디버그 계측 — 게임 코드는 사용하지 않음 */
+    _debug: function () {
+      return { live: live, created: created, dropped: dropped,
+               masterGain: master ? master.gain.value : null, masterTarget: master ? masterNow : null,
+               state: ctx ? ctx.state : null };
+    }
+  };
+  window.SFX = api;
+})();
+</script>
+
+<script>
+/* ═══ 스프라이트 (design/ 아트 디렉션 기반) ═══ */
+/* _sprites.js — 출근 저지 벡터 스프라이트
+   아트 디렉션: design/Units.dc.html, design/Foes.dc.html (「형광등 꺼진 사무실」)
+   전 함수 시그니처: (ctx, cx, cy, s) — cx,cy 중심, s = 정사각 박스 한 변(px).
+   순수 Canvas2D 패스만 사용. 이모지/텍스트/이미지 없음. */
+(function () {
+  "use strict";
+
+  /* ── 팔레트 ── */
+  var PAPER = "#f2f5fa", PAPER2 = "#dfe6f2", PAPER3 = "#c3ccdb";
+  var G1 = "#98a4b8", G2 = "#74829a", G3 = "#5d6a7f", G4 = "#4c5769", INK = "#2f3542";
+  var BLUE = "#9ec8ff", BLUE2 = "#6f9fd8";
+  var YEL = "#f5c451", YEL2 = "#d9a94e";
+  var RED = "#ff6b6b", DRED = "#b93b3b";
+  var SKIN = "#e8d3bd", HAIR = "#2f3542";
+
+  /* 둥근 사각형 패스 (roundRect 폴리필 불요) */
+  function rr(ctx, x, y, w, h, r) {
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function frr(ctx, x, y, w, h, r, fill) {
+    ctx.fillStyle = fill;
+    rr(ctx, x, y, w, h, r);
+    ctx.fill();
+  }
+
+  /* 72×72 디자인 좌표계로 진입 (Units.dc.html의 viewBox와 동일) */
+  function in72(ctx, cx, cy, s) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    var k = s / 72;
+    ctx.scale(k, k);
+    ctx.translate(-36, -36);
+  }
+
+  /* ══════════ 설치 사물 (오른쪽을 향함) ══════════ */
+
+  /* 정수기 — 흰 본체, 파란 물통, 파란 꼭지(오른쪽) */
+  function water(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 20, 30, 32, 34, 3, PAPER2);          // 본체
+    frr(ctx, 20, 30, 32, 8, 2, G1);               // 상단 밴드
+    ctx.fillStyle = BLUE;                          // 거꾸로 꽂힌 물통
+    ctx.beginPath();
+    ctx.moveTo(28, 8); ctx.lineTo(44, 8);
+    ctx.lineTo(41, 28); ctx.lineTo(31, 28);
+    ctx.closePath(); ctx.fill();
+    frr(ctx, 27, 4, 18, 6, 2, BLUE2);             // 물통 목
+    frr(ctx, 38, 44, 8, 9, 2, BLUE2);             // 꼭지 — 진행 방향(오른쪽)
+    ctx.restore();
+  }
+
+  /* 파티션 — 3단 접이식, 가운데가 가장 큼 */
+  function wall(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 6, 18, 20, 42, 2, G3);
+    frr(ctx, 46, 22, 18, 38, 2, G4);
+    frr(ctx, 26, 12, 20, 48, 2, G2);
+    ctx.restore();
+  }
+
+  /* 복사기 — 회색 몸통, 세워진 원고, 노란 배출 트레이(오른쪽) */
+  function copy(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 10, 26, 48, 30, 4, PAPER3);          // 몸통
+    frr(ctx, 10, 26, 48, 9, 3, G1);               // 상단 패널
+    frr(ctx, 20, 8, 28, 18, 2, PAPER);            // 원고
+    frr(ctx, 24, 13, 20, 2.5, 1, G1);
+    frr(ctx, 24, 18, 14, 2.5, 1, G1);
+    frr(ctx, 30, 44, 26, 14, 2, YEL);             // 배출 트레이 — 오른쪽
+    ctx.restore();
+  }
+
+  /* 스테이플러 — 비스듬한 2단 몸체 + 파란 윗팔 */
+  function stap(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    ctx.fillStyle = G4;                            // 받침
+    ctx.beginPath();
+    ctx.moveTo(8, 44); ctx.lineTo(56, 44);
+    ctx.arcTo(61, 44, 61, 49, 5);
+    ctx.lineTo(61, 55); ctx.lineTo(8, 55);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = G2;                            // 중간 몸체
+    ctx.beginPath();
+    ctx.moveTo(12, 26); ctx.lineTo(52, 26);
+    ctx.arcTo(58, 26, 58, 32, 6);
+    ctx.lineTo(58, 42); ctx.lineTo(12, 42);
+    ctx.closePath(); ctx.fill();
+    frr(ctx, 14, 18, 36, 8, 3, BLUE);             // 윗팔
+    frr(ctx, 20, 46, 22, 4, 1, PAPER2);           // 심 배출구
+    ctx.restore();
+  }
+
+  /* 사직서 — 흰 종이, 3줄 텍스트, 우하단 빨간 도장 */
+  function quit(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 14, 6, 38, 52, 3, PAPER);
+    frr(ctx, 21, 16, 24, 3, 1.5, G1);
+    frr(ctx, 21, 24, 24, 3, 1.5, G1);
+    frr(ctx, 21, 32, 16, 3, 1.5, G1);
+    ctx.fillStyle = RED;
+    ctx.beginPath(); ctx.arc(44, 46, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2.4;
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(40, 46); ctx.lineTo(43, 49); ctx.lineTo(49, 43);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ══════════ 적 (왼쪽을 향해 걸어옴) ══════════ */
+  /* 공통 몸: 발밑 그림자 + 몸통 라운드렉트 + 살색 머리 + 반원 머리카락.
+     시선(눈 두 점)을 왼쪽으로 몰아 진행 방향을 표시. 소품도 왼쪽 손에. */
+
+  function foeBase(ctx, torso, wide) {
+    var tx = wide ? 18 : 22, tw = wide ? 40 : 32;   // 보스는 어깨가 넓다
+    ctx.fillStyle = "rgba(0,0,0,.35)";               // 그림자
+    ctx.beginPath();
+    ctx.ellipse(38, 90, wide ? 24 : 21, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    frr(ctx, tx, 36, tw, 44, 9, torso);              // 몸통
+    ctx.fillStyle = SKIN;                            // 머리
+    ctx.beginPath(); ctx.arc(38, 22, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = HAIR;                            // 머리카락(윗 반원)
+    ctx.beginPath(); ctx.arc(38, 20, 14, Math.PI, 0, false); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = INK;                             // 눈 — 왼쪽을 본다
+    ctx.beginPath(); ctx.arc(29, 25, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(36, 25, 1.8, 0, Math.PI * 2); ctx.fill();
+  }
+
+  /* 76×96 디자인 좌표계로 진입 (Foes.dc.html의 viewBox와 동일) */
+  function makeFoe(torso, wide, prop) {
+    return function (ctx, cx, cy, s) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      var k = s / 96;
+      ctx.scale(k, k);
+      ctx.translate(-38, -48);
+      foeBase(ctx, torso, wide);
+      if (prop) prop(ctx);
+      ctx.restore();
+    };
+  }
+
+  var foes = {
+    /* 인턴 — 목걸이 사원증 */
+    intern: makeFoe("#8b97ab", false, function (ctx) {
+      frr(ctx, 30, 40, 16, 5, 2, G4);               // 스트랩 클립
+      frr(ctx, 34, 44, 8, 14, 2, BLUE);             // 카드
+    }),
+    /* 사원 — 빨간 넥타이 */
+    staff: makeFoe("#6d7d96", false, function (ctx) {
+      ctx.fillStyle = RED;
+      ctx.beginPath();
+      ctx.moveTo(38, 40); ctx.lineTo(43, 45); ctx.lineTo(38, 63); ctx.lineTo(33, 45);
+      ctx.closePath(); ctx.fill();
+    }),
+    /* 대리 — 옆구리의 노란 서류철 (진행 방향 손) */
+    senior: makeFoe("#5b7bab", false, function (ctx) {
+      frr(ctx, 12, 50, 20, 16, 2, YEL);
+      frr(ctx, 12, 50, 20, 4, 2, YEL2);
+    }),
+    /* 과장 — 앞에 든 운전대 */
+    manager: makeFoe("#a8703f", false, function (ctx) {
+      ctx.strokeStyle = INK; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(38, 56, 11, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = INK;
+      ctx.beginPath(); ctx.arc(38, 56, 3, 0, Math.PI * 2); ctx.fill();
+    }),
+    /* 부장 — 어두운 서류가방 (진행 방향 손) */
+    gm: makeFoe("#a04a4a", false, function (ctx) {
+      frr(ctx, 15, 48, 8, 5, 2, INK);               // 손잡이
+      frr(ctx, 8, 52, 22, 18, 3, INK);              // 가방
+      ctx.fillStyle = "#1f232c";                    // 가방 이음선
+      ctx.fillRect(8, 59, 22, 3);
+    }),
+    /* 회식조 — 치켜든 맥주잔 + 발그레한 볼 */
+    drunk: makeFoe("#c99a3f", false, function (ctx) {
+      frr(ctx, 16, 44, 14, 18, 2, YEL);             // 잔
+      frr(ctx, 16, 44, 14, 5, 2, PAPER);            // 거품
+      ctx.save();
+      ctx.globalAlpha = 0.7; ctx.fillStyle = RED;    // 볼터치
+      ctx.beginPath(); ctx.arc(30, 27, 3.4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(46, 27, 3.4, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }),
+    /* 점검단(보스) — 줄 그어진 흰 클립보드, 어깨 넓음 */
+    audit: makeFoe(DRED, true, function (ctx) {
+      frr(ctx, 6, 44, 24, 30, 2, PAPER);            // 보드
+      frr(ctx, 6, 44, 24, 6, 2, G1);                // 클립
+      ctx.fillStyle = G1;
+      ctx.fillRect(11, 55, 14, 2.5);
+      ctx.fillRect(11, 61, 14, 2.5);
+      ctx.fillRect(11, 67, 9, 2.5);
+    })
+  };
+
+  /* ══════════ 내 자리 — 옆에서 본 사무용 의자 (오른쪽을 향함) ══════════ */
+  function seat(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 16, 8, 11, 34, 5, BLUE2);              // 등받이 (왼쪽 = 뒤)
+    frr(ctx, 16, 36, 36, 11, 5, BLUE2);             // 좌판 — 오른쪽으로 열림
+    frr(ctx, 30, 47, 7, 12, 2, G4);                 // 기둥
+    frr(ctx, 16, 58, 36, 5, 2.5, G4);               // 다리
+    ctx.fillStyle = INK;                            // 바퀴
+    ctx.beginPath(); ctx.arc(20, 65, 3.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(48, 65, 3.4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  window.SPRITES = {
+    units: { water: water, wall: wall, copy: copy, stap: stap, quit: quit },
+    foes: foes,
+    seat: seat
+  };
+})();
+</script>
+
+<script>
+"use strict";
+/* ════════════════════════════════════════════════════════════════
+   정시 퇴근 — 오늘도 6시에 나간다
+   생존형 액션(뱀서라이크). 09:00에 출근해서 18:00까지 버티면 정시 퇴근.
+   사방에서 몰려오는 상사들을 갈아버리며 레벨을 올린다.
+   ════════════════════════════════════════════════════════════════ */
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+const S = (m,...a) => { try{ const x=window.SFX; if(x&&typeof x[m]==="function") x[m](...a); }catch(e){} };
+
+/* 하루 = 09:00 → 18:00, 9시간을 DAY초에 압축 */
+const DAY = 420;                 // 한 판 길이(초)
+const H0 = 9, H1 = 18;
+const hourOf = t => H0 + (t/DAY)*(H1-H0);
+function clockStr(t){
+  const h=hourOf(t), hh=Math.floor(h), mm=Math.floor((h-hh)*60);
+  return String(hh).padStart(2,"0")+":"+String(Math.floor(mm/5)*5).padStart(2,"0");
+}
+
+/* ── 무기 ─────────────────────────────────────────────────────── */
+const WEAPONS = {
+  stamp:{ id:"stamp", name:"반려 도장", max:8, base:"start",
+    desc:"가장 가까운 적을 찍는다",
+    lv:l=>({cd:.72-l*.05, dmg:16+l*7, count:1+Math.floor(l/3), range:150+l*10}),
+    up:l=>l===2?"동시에 2명":l===5?"동시에 3명":"피해 +7, 간격 −0.05초" },
+  copy:{ id:"copy", name:"복사기", max:8,
+    desc:"사방으로 서류를 뿌린다",
+    lv:l=>({cd:2.2-l*.11, dmg:12+l*4, n:5+l, spd:250}),
+    up:l=>"장수 +1, 피해 +4" },
+  mail:{ id:"mail", name:"참조 메일", max:8,
+    desc:"적을 쫓아가는 유도 메일",
+    lv:l=>({cd:1.5-l*.08, dmg:20+l*8, n:1+Math.floor(l/2), turn:3.4}),
+    up:l=>l%2===0?"동시 발송 +1":"피해 +8" },
+  coffee:{ id:"coffee", name:"쏟은 커피", max:8,
+    desc:"발밑에 장판. 밟는 적이 계속 닳는다",
+    lv:l=>({cd:3.4-l*.15, dps:14+l*6, r:58+l*7, life:3.4}),
+    up:l=>"범위 +7, 초당 피해 +6" },
+  clock:{ id:"clock", name:"퇴근 시계", max:6,
+    desc:"주변 적을 느리게 만든다",
+    lv:l=>({r:96+l*14, slow:.62-l*.05}),
+    up:l=>"범위 +14, 감속 강화" },
+  quit:{ id:"quit", name:"사직서", max:5,
+    desc:"화면 전체를 쓸어버린다",
+    lv:l=>({cd:26-l*2.6, dmg:150+l*90}),
+    up:l=>"피해 +90, 재사용 −2.6초" },
+};
+/* ── 강화(패시브) ─────────────────────────────────────────────── */
+const PERKS = {
+  shoes :{ id:"shoes", name:"편한 구두",   max:5, desc:"이동 속도 +12%",        f:(P,l)=>P.spd*=1.12 },
+  laptop:{ id:"laptop",name:"노트북",      max:5, desc:"공격 속도 +10%",        f:(P,l)=>P.haste*=.90 },
+  card  :{ id:"card",  name:"명함",        max:5, desc:"공격 범위 +14%",        f:(P,l)=>P.range*=1.14 },
+  leave :{ id:"leave", name:"연차",        max:5, desc:"경험치 획득 +18%",      f:(P,l)=>P.xpMul*=1.18 },
+  cup   :{ id:"cup",   name:"텀블러",      max:5, desc:"경험치 수집 범위 +30%", f:(P,l)=>P.magnet*=1.30 },
+  suit  :{ id:"suit",  name:"정장",        max:5, desc:"최대 체력 +25",         f:(P,l)=>{P.maxhp+=25; P.hp+=25;} },
+};
+
+/* ── 적 ──────────────────────────────────────────────────────── */
+const E = {
+  intern :{name:"인턴", hp:26,  spd:78, dmg:5,  xp:1, r:15},
+  staff  :{name:"사원", hp:52,  spd:62, dmg:8,  xp:2, r:16},
+  senior :{name:"대리", hp:96,  spd:55, dmg:11, xp:3, r:17},
+  manager:{name:"과장", hp:130, spd:70, dmg:14, xp:5, r:18},
+  drunk  :{name:"회식조",hp:74, spd:92, dmg:11, xp:4, r:17},
+  gm     :{name:"부장", hp:340, spd:44, dmg:22, xp:12,r:22},
+  audit  :{name:"점검단",hp:2600,spd:38, dmg:34, xp:120,r:30, boss:true},
+};
+/* 시간대별 스폰 구성 — 시(hour) 기준 */
+const SCHED = [
+  {h:9,  kinds:["intern"],                       rate:1.30, n:1},
+  {h:10, kinds:["intern","staff"],               rate:0.95, n:2},
+  {h:11, kinds:["staff","senior"],               rate:0.80, n:2},
+  {h:12, kinds:["staff","drunk"],                rate:0.62, n:3},
+  {h:13, kinds:["senior","manager"],             rate:0.58, n:3},
+  {h:14, kinds:["staff","senior","manager"],     rate:0.48, n:4},
+  {h:15, kinds:["manager","gm"],                 rate:0.44, n:4},
+  {h:16, kinds:["senior","manager","drunk"],     rate:0.36, n:5},
+  {h:17, kinds:["manager","gm","drunk"],         rate:0.30, n:6},
+];
+/* 정각 보스 */
+const BOSSES = [
+  {h:12,   kind:"gm",    msg:"12:00 — 점심 회의 소집"},
+  {h:15,   kind:"gm",    msg:"15:00 — 갑작스러운 보고 요청"},
+  {h:17,   kind:"audit", msg:"17:00 — 고객사 점검단 도착"},
+  {h:17.7, kind:"audit", msg:"17:42 — 부장님이 퇴근 전에 부릅니다"},
+];
+
+/* ── 상태 ────────────────────────────────────────────────────── */
+let cv, ctx, G=null, raf=null, VW=960, VH=600, DPR=1, ZOOM=1;
+/* 화면이 클수록 배율을 올려 캐릭터가 작아 보이지 않게 한다 (기준 1000px 폭) */
+function calcZoom(){ return clamp(Math.min(VW,VH*1.6)/760, 1.15, 2.0); }
+const keys = Object.create(null);
+
+function newGame(grudge){
+  return {
+    t:0, over:null, grudge,
+    P:{ x:0, y:0, vx:0, vy:0, r:14, face:-1, walk:0,
+        hp:100, maxhp:100, spd:168, haste:1, range:1, xpMul:1, magnet:1,
+        inv:0, hurt:0 },
+    lv:1, xp:0, next:6, kills:0, dmgDealt:0,
+    weapons:{ stamp:1 }, perks:{},
+    cds:{}, foes:[], shots:[], orbs:[], pools:[], fx:[], floats:[],
+    spawnAcc:0, bossIdx:0, shake:0, hitstop:0,
+    toast:"", toastT:0, paused:false, best:0,
+  };
+}
+
+/* ── 파생 스탯 ───────────────────────────────────────────────── */
+function stats(g){
+  const P={ spd:168, haste:1, range:1, xpMul:1, magnet:1, maxhp:100 };
+  for(const k in g.perks){ const p=PERKS[k]; for(let i=0;i<g.perks[k];i++) p.f(P,i+1); }
+  return P;
+}
+function applyPerks(g){
+  const P=stats(g), p=g.P;
+  const dh = P.maxhp - p.maxhp;
+  p.spd=P.spd; p.haste=P.haste; p.range=P.range; p.xpMul=P.xpMul; p.magnet=P.magnet;
+  p.maxhp=P.maxhp; if(dh>0) p.hp=Math.min(p.maxhp,p.hp+dh);
+  p.hp=Math.min(p.hp,p.maxhp);
+}
+
+/* ── 스폰 ────────────────────────────────────────────────────── */
+function schedFor(h){
+  let s=SCHED[0];
+  for(const e of SCHED) if(h>=e.h) s=e;
+  return s;
+}
+function spawnAt(g,kind,x,y){
+  const d=E[kind];
+  g.foes.push({kind, x, y, hp:d.hp, maxhp:d.hp, spd:d.spd, dmg:d.dmg,
+               r:d.r, xp:d.xp, boss:!!d.boss, hit:0, slow:1, kb:0, kbx:0, kby:0});
+}
+function spawnRing(g,kind,n){
+  const P=g.P, R=Math.max(VW,VH)/ZOOM*0.62+90;
+  const a0=Math.random()*Math.PI*2;
+  for(let i=0;i<n;i++){
+    const a=a0+i*(Math.PI*2/n)+ (Math.random()-.5)*.5;
+    spawnAt(g,kind,P.x+Math.cos(a)*R,P.y+Math.sin(a)*R);
+  }
+}
+function doSpawns(g,dt){
+  const h=hourOf(g.t), s=schedFor(h);
+  g.spawnAcc+=dt;
+  if(g.spawnAcc>=s.rate){
+    g.spawnAcc=0;
+    const k=s.kinds[(Math.random()*s.kinds.length)|0];
+    spawnRing(g,k,s.n);
+  }
+  while(g.bossIdx<BOSSES.length && h>=BOSSES[g.bossIdx].h){
+    const b=BOSSES[g.bossIdx++];
+    spawnRing(g,b.kind,1);
+    flash(g,b.msg); S("bossIn"); g.shake=Math.max(g.shake,9);
+  }
+}
+
+/* ── 무기 발사 ───────────────────────────────────────────────── */
+function nearest(g,x,y,maxd){
+  let best=null,bd=maxd*maxd;
+  for(const f of g.foes){ const dx=f.x-x,dy=f.y-y,d=dx*dx+dy*dy; if(d<bd){bd=d;best=f;} }
+  return best;
+}
+function fireWeapons(g,dt){
+  const P=g.P;
+  for(const id in g.weapons){
+    const W=WEAPONS[id], L=W.lv(g.weapons[id]);
+    if(id==="clock") continue;                    // 지속형
+    g.cds[id]=(g.cds[id]||0)-dt;
+    if(g.cds[id]>0) continue;
+
+    if(id==="stamp"){
+      const R=L.range*P.range;
+      let fired=0;
+      const used=new Set();
+      for(let i=0;i<L.count;i++){
+        let tgt=null,bd=R*R;
+        for(const f of g.foes){ if(used.has(f)) continue;
+          const dx=f.x-P.x,dy=f.y-P.y,d=dx*dx+dy*dy; if(d<bd){bd=d;tgt=f;} }
+        if(!tgt) break;
+        used.add(tgt); fired++;
+        damage(g,tgt,L.dmg,P.x,P.y,10);
+        g.fx.push({type:"stamp",x:tgt.x,y:tgt.y,t:0});
+      }
+      if(fired){ S("hit"); g.cds[id]=L.cd*P.haste; } else g.cds[id]=.12;
+      continue;
+    }
+    if(id==="copy"){
+      for(let i=0;i<L.n;i++){
+        const a=(i/L.n)*Math.PI*2 + g.t*.7;
+        g.shots.push({x:P.x,y:P.y,vx:Math.cos(a)*L.spd,vy:Math.sin(a)*L.spd,
+                      dmg:L.dmg,life:1.6*P.range,kind:"paper",r:7});
+      }
+      S("shoot","copy"); g.cds[id]=L.cd*P.haste; continue;
+    }
+    if(id==="mail"){
+      for(let i=0;i<L.n;i++){
+        const tgt=nearest(g,P.x,P.y,900);
+        const a=tgt?Math.atan2(tgt.y-P.y,tgt.x-P.x):(Math.random()*7);
+        g.shots.push({x:P.x,y:P.y,vx:Math.cos(a)*300,vy:Math.sin(a)*300,
+                      dmg:L.dmg,life:3.2,kind:"mail",r:8,turn:L.turn});
+      }
+      S("shoot","stap"); g.cds[id]=L.cd*P.haste; continue;
+    }
+    if(id==="coffee"){
+      g.pools.push({x:P.x,y:P.y,r:L.r*P.range,dps:L.dps,life:L.life,t:0});
+      S("place","water"); g.cds[id]=L.cd*P.haste; continue;
+    }
+    if(id==="quit"){
+      let n=0;
+      for(const f of g.foes){ damage(g,f,L.dmg,P.x,P.y,26); n++; }
+      g.fx.push({type:"quit",t:0});
+      g.shake=Math.max(g.shake,16); g.hitstop=Math.max(g.hitstop,.10);
+      S("nuke"); flash(g,"사직서 — "+n+"명 정리");
+      g.cds[id]=L.cd; continue;
+    }
+  }
+}
+
+/* ── 피해 / 처치 ─────────────────────────────────────────────── */
+function damage(g,f,dmg,sx,sy,kb){
+  f.hp-=dmg; g.dmgDealt+=dmg; f.hit=.12;
+  if(kb){ const dx=f.x-sx, dy=f.y-sy, d=Math.hypot(dx,dy)||1;
+          f.kbx=dx/d*kb; f.kby=dy/d*kb; f.kb=.14; }
+  g.floats.push({x:f.x,y:f.y-f.r-4,v:Math.round(dmg),t:0,big:dmg>=80});
+}
+function killFoe(g,f,i){
+  g.foes.splice(i,1); g.kills++;
+  g.orbs.push({x:f.x,y:f.y,xp:f.xp,t:0,boss:f.boss});
+  g.fx.push({type:"burst",x:f.x,y:f.y,t:0,boss:f.boss,r:f.r});
+  // 히트스톱 + 화면 흔들림 — 때리는 맛의 90%가 여기서 나온다
+  g.hitstop=Math.max(g.hitstop, f.boss?.14:.035);
+  g.shake  =Math.max(g.shake,   f.boss?14:3.2);
+  S("kill",!!f.boss);
+}
+
+/* ── 갱신 ────────────────────────────────────────────────────── */
+function step(g,dt){
+  const P=g.P;
+  g.t+=dt;
+  if(g.t>=DAY){ finish(g,"win"); return; }
+  if(g.toastT>0){ g.toastT-=dt; if(g.toastT<=0) g.toast=""; }
+  if(g.shake>0) g.shake=Math.max(0,g.shake-dt*34);
+
+  // 이동
+  let ix=(keys.d||keys.ArrowRight?1:0)-(keys.a||keys.ArrowLeft?1:0);
+  let iy=(keys.s||keys.ArrowDown?1:0)-(keys.w||keys.ArrowUp?1:0);
+  const m=Math.hypot(ix,iy)||1; ix/=m; iy/=m;
+  P.x+=ix*P.spd*dt; P.y+=iy*P.spd*dt;
+  if(ix) P.face=ix<0?-1:1;
+  P.walk += (ix||iy) ? dt*9 : -P.walk*Math.min(1,dt*12);
+  if(P.inv>0) P.inv-=dt;
+  if(P.hurt>0) P.hurt-=dt;
+
+  doSpawns(g,dt);
+  fireWeapons(g,dt);
+
+  // 퇴근 시계(지속형 감속)
+  const CK=g.weapons.clock?WEAPONS.clock.lv(g.weapons.clock):null;
+  const ckR=CK?CK.r*P.range:0;
+
+  // 적
+  for(let i=g.foes.length-1;i>=0;i--){
+    const f=g.foes[i];
+    if(f.hp<=0){ killFoe(g,f,i); continue; }
+    if(f.hit>0) f.hit-=dt;
+    const dx=P.x-f.x, dy=P.y-f.y, d=Math.hypot(dx,dy)||1;
+    f.slow = (CK && d<ckR) ? CK.slow : 1;
+    if(f.kb>0){ f.kb-=dt; f.x+=f.kbx*dt*9; f.y+=f.kby*dt*9; }
+    else { f.x+=dx/d*f.spd*f.slow*dt; f.y+=dy/d*f.spd*f.slow*dt; }
+    // 접촉
+    if(d < f.r+P.r && P.inv<=0){
+      P.hp-=f.dmg; P.inv=.62; P.hurt=.3;
+      g.shake=Math.max(g.shake,6); S("chew");
+      if(P.hp<=0){ finish(g,"lose"); return; }
+    }
+  }
+  // 적끼리 겹침 완화 — 뭉쳐서 한 덩어리로 보이는 걸 막는다
+  for(let a=0;a<g.foes.length;a++){
+    const f=g.foes[a];
+    for(let b=a+1;b<Math.min(g.foes.length,a+9);b++){
+      const o=g.foes[b], dx=o.x-f.x, dy=o.y-f.y, dd=dx*dx+dy*dy, mr=f.r+o.r;
+      if(dd>0.01 && dd<mr*mr){ const d=Math.sqrt(dd), push=(mr-d)*.34/d;
+        f.x-=dx*push; f.y-=dy*push; o.x+=dx*push; o.y+=dy*push; }
+    }
+  }
+
+  // 탄
+  for(let i=g.shots.length-1;i>=0;i--){
+    const s=g.shots[i];
+    s.life-=dt; if(s.life<=0){ g.shots.splice(i,1); continue; }
+    if(s.kind==="mail"){
+      const tgt=nearest(g,s.x,s.y,420);
+      if(tgt){ const want=Math.atan2(tgt.y-s.y,tgt.x-s.x);
+        const cur=Math.atan2(s.vy,s.vx), sp=Math.hypot(s.vx,s.vy);
+        let dA=((want-cur+Math.PI*3)%(Math.PI*2))-Math.PI;
+        const na=cur+clamp(dA,-s.turn*dt,s.turn*dt);
+        s.vx=Math.cos(na)*sp; s.vy=Math.sin(na)*sp; }
+    }
+    s.x+=s.vx*dt; s.y+=s.vy*dt;
+    for(const f of g.foes){
+      const dx=f.x-s.x, dy=f.y-s.y;
+      if(dx*dx+dy*dy < (f.r+s.r)*(f.r+s.r)){
+        damage(g,f,s.dmg,s.x,s.y,8); S("hit");
+        g.fx.push({type:"spark",x:s.x,y:s.y,t:0});
+        g.shots.splice(i,1); break;
+      }
+    }
+  }
+  // 커피 장판
+  for(let i=g.pools.length-1;i>=0;i--){
+    const p=g.pools[i]; p.life-=dt; p.t+=dt;
+    if(p.life<=0){ g.pools.splice(i,1); continue; }
+    for(const f of g.foes){
+      const dx=f.x-p.x, dy=f.y-p.y;
+      if(dx*dx+dy*dy < p.r*p.r) damage(g,f,p.dps*dt,0,0,0);
+    }
+  }
+  // 경험치 구슬 — 자석 범위는 무기 사거리보다 넓어야 한다.
+  // 그렇지 않으면 멀리서 죽인 경험치가 영영 바닥에 남는다.
+  const mag=140*P.magnet;
+  for(let i=g.orbs.length-1;i>=0;i--){
+    const o=g.orbs[i]; o.t+=dt;
+    const dx=P.x-o.x, dy=P.y-o.y, d=Math.hypot(dx,dy)||1;
+    const pull = d<mag ? Math.min(620,150+(mag-d)*6.5)
+                       : 26;                       // 범위 밖에서도 천천히 따라온다
+    o.x+=dx/d*pull*dt; o.y+=dy/d*pull*dt;
+    if(d<P.r+10){ g.orbs.splice(i,1); gainXp(g,o.xp); }
+  }
+  // 이펙트
+  for(let i=g.fx.length-1;i>=0;i--){ g.fx[i].t+=dt; if(g.fx[i].t>.55) g.fx.splice(i,1); }
+  for(let i=g.floats.length-1;i>=0;i--){ g.floats[i].t+=dt; if(g.floats[i].t>.6) g.floats.splice(i,1); }
+}
+
+function gainXp(g,n){
+  g.xp += n*g.P.xpMul; S("coin");
+  if(g.xp>=g.next && !g.paused){    // 오버레이는 한 번에 하나만
+    g.xp-=g.next; g.lv++;
+    g.next=Math.round(g.next*1.34+3);
+    levelUp(g);
+  }
+}
+function flash(g,msg){ g.toast=msg; g.toastT=2.6; }
+function finish(g,how){
+  if(g.over) return;
+  g.over=how; if(raf) cancelAnimationFrame(raf); raf=null;
+  S(how==="win"?"win":"lose");
+  renderEnd(g);
+}
+
+/* ── 그리기 ──────────────────────────────────────────────────── */
+function drawFloor(g,camX,camY,VW,VH){
+  const B=window.BACKDROP;
+  if(B && B.office){ try{ B.office(ctx,VW,VH,camX,camY,g.t); return; }catch(e){} }
+  // 폴백 — 배경 모듈이 없어도 게임은 돈다
+  ctx.fillStyle="#0b0e14"; ctx.fillRect(0,0,VW,VH);
+  const T=96, ox=-((camX%T)+T)%T, oy=-((camY%T)+T)%T;
+  ctx.strokeStyle="rgba(158,200,255,.055)"; ctx.lineWidth=1;
+  ctx.beginPath();
+  for(let x=ox;x<VW+T;x+=T){ ctx.moveTo(x|0,0); ctx.lineTo(x|0,VH); }
+  for(let y=oy;y<VH+T;y+=T){ ctx.moveTo(0,y|0); ctx.lineTo(VW,y|0); }
+  ctx.stroke();
+}
+
+function drawFoe(g,f,sx,sy){
+  const SP=window.SPRITES, R=window.SPRITES_RANK;
+  const fn=(R&&R[f.kind])||(SP&&SP.foes&&SP.foes[f.kind]);
+  const size=f.boss?76:52;
+  // 바닥 그림자 — 이게 없으면 캐릭터가 공중에 떠 보인다
+  ctx.save();
+  ctx.fillStyle="rgba(0,0,0,.42)";
+  ctx.beginPath(); ctx.ellipse(sx,sy+f.r*0.82,f.r*0.92,f.r*0.34,0,0,7); ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.translate(sx,sy);
+  // 걷는 흔들림 — 미끄러지지 않게
+  const ph=g.t*10+f.x*.05;
+  ctx.translate(0,Math.abs(Math.sin(ph))*-1.1);   // 발을 딛는 쪽으로만 살짝
+  ctx.rotate(Math.sin(ph)*0.045);                 // 좌우로 기우뚱 — 걷는 느낌
+  if(f.kb>0) ctx.rotate(-.12);
+  ctx.scale(-1,1);                       // 스프라이트는 왼쪽을 보므로 뒤집어 플레이어를 향하게
+  if(fn) fn(ctx,0,0,size);
+  ctx.restore();
+  // 피격 플래시
+  if(f.hit>0){
+    ctx.save(); ctx.globalCompositeOperation="lighter";
+    ctx.globalAlpha=clamp(f.hit/.12,0,1)*.85;
+    ctx.fillStyle="#ffffff";
+    ctx.beginPath(); ctx.arc(sx,sy,f.r+6,0,7); ctx.fill();
+    ctx.restore();
+  }
+  // 체력바 — 보스와 다친 적만
+  if(f.boss || f.hp<f.maxhp){
+    const w=f.boss?70:30, rt=clamp(f.hp/f.maxhp,0,1);
+    ctx.fillStyle="rgba(11,14,20,.85)"; ctx.fillRect(sx-w/2,sy+f.r+6,w,4);
+    ctx.fillStyle=f.boss?"#ff6b6b":"#c3cbe0"; ctx.fillRect(sx-w/2,sy+f.r+6,w*rt,4);
+  }
+}
+
+function drawPlayer(g,sx,sy){
+  const P=g.P;
+  ctx.save(); ctx.translate(sx,sy);
+  ctx.translate(0,Math.sin(P.walk)*2.0);
+  if(P.face>0) ctx.scale(-1,1);
+  // 그림자
+  ctx.fillStyle="rgba(0,0,0,.35)";
+  ctx.beginPath(); ctx.ellipse(0,17,13,5,0,0,7); ctx.fill();
+  const hurt=P.hurt>0;
+  // 다리
+  const sw=Math.sin(P.walk)*4;
+  ctx.fillStyle="#2f3542";
+  ctx.fillRect(-7, 6, 5, 12+sw); ctx.fillRect( 2, 6, 5, 12-sw);
+  // 몸통 (셔츠)
+  ctx.fillStyle=hurt?"#ff9f9f":"#dfe6f2";
+  ctx.beginPath(); ctx.roundRect?ctx.roundRect(-10,-8,20,16,4):ctx.rect(-10,-8,20,16); ctx.fill();
+  // 넥타이
+  ctx.fillStyle="#6f9fd8";
+  ctx.beginPath(); ctx.moveTo(-2,-8); ctx.lineTo(2,-8); ctx.lineTo(1.5,4); ctx.lineTo(-1.5,4); ctx.closePath(); ctx.fill();
+  // 머리
+  ctx.fillStyle=hurt?"#ffd0d0":"#e8d3bd";
+  ctx.beginPath(); ctx.arc(0,-15,8,0,7); ctx.fill();
+  ctx.fillStyle="#2f3542";                       // 머리카락
+  ctx.beginPath(); ctx.arc(0,-17,8,Math.PI,0); ctx.fill();
+  ctx.fillStyle="#2f3542";                       // 눈 (왼쪽 보는 얼굴)
+  ctx.fillRect(-5,-16,2,2); ctx.fillRect(-1,-16,2,2);
+  ctx.restore();
+  // 무적 깜빡임
+  if(P.inv>0 && ((g.t*18)|0)%2===0){
+    ctx.save(); ctx.globalAlpha=.35; ctx.fillStyle="#ff6b6b";
+    ctx.beginPath(); ctx.arc(sx,sy,P.r+8,0,7); ctx.fill(); ctx.restore();
+  }
+}
+
+function draw(g){
+  ctx.setTransform(DPR*ZOOM,0,0,DPR*ZOOM,0,0);
+  try{ drawWorld(g); } finally { ctx.setTransform(DPR,0,0,DPR,0,0); }
+}
+function drawWorld(g){
+  const P=g.P;
+  const VWz=VW/ZOOM, VHz=VH/ZOOM;
+  let camX=P.x-VWz/2, camY=P.y-VHz/2;
+  if(g.shake>0){ camX+=(Math.random()-.5)*g.shake; camY+=(Math.random()-.5)*g.shake; }
+  const X=v=>v-camX, Y=v=>v-camY;
+
+  drawFloor(g,camX,camY,VWz,VHz);
+
+  // 커피 장판
+  for(const p of g.pools){
+    const a=clamp(p.life/1.2,0,1)*.5;
+    const gr=ctx.createRadialGradient(X(p.x),Y(p.y),4,X(p.x),Y(p.y),p.r);
+    gr.addColorStop(0,"rgba(245,196,81,"+(a*.7)+")");
+    gr.addColorStop(1,"rgba(217,169,78,0)");
+    ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(X(p.x),Y(p.y),p.r,0,7); ctx.fill();
+  }
+  // 퇴근 시계 범위
+  if(g.weapons.clock){
+    const L=WEAPONS.clock.lv(g.weapons.clock), r=L.r*P.range;
+    ctx.save(); ctx.globalAlpha=.16; ctx.strokeStyle="#9ec8ff"; ctx.lineWidth=2;
+    ctx.setLineDash([6,6]); ctx.lineDashOffset=-g.t*20;
+    ctx.beginPath(); ctx.arc(X(P.x),Y(P.y),r,0,7); ctx.stroke(); ctx.restore();
+  }
+  // 경험치 구슬
+  for(const o of g.orbs){
+    const s=o.boss?5:3, pul=1+Math.sin(g.t*8+o.x)*0.18;
+    ctx.fillStyle=o.boss?"#57d98a":"#f5c451";
+    ctx.beginPath(); ctx.arc(X(o.x),Y(o.y),s*pul,0,7); ctx.fill();
+    ctx.save(); ctx.globalAlpha=.25;
+    ctx.beginPath(); ctx.arc(X(o.x),Y(o.y),s*3*pul,0,7); ctx.fill(); ctx.restore();
+  }
+  // 적 (아래쪽이 앞)
+  const sorted=g.foes.slice().sort((a,b)=>a.y-b.y);
+  for(const f of sorted){
+    const sx=X(f.x), sy=Y(f.y);
+    if(sx<-90||sx>VWz+90||sy<-90||sy>VHz+90) continue;
+    drawFoe(g,f,sx,sy);
+  }
+  drawPlayer(g,X(P.x),Y(P.y));
+
+  // 탄
+  for(const s of g.shots){
+    ctx.save(); ctx.translate(X(s.x),Y(s.y));
+    ctx.rotate(Math.atan2(s.vy,s.vx));
+    if(s.kind==="paper"){ ctx.fillStyle="#f2f5fa"; ctx.fillRect(-6,-4,12,8);
+      ctx.fillStyle="#c3ccdb"; ctx.fillRect(-6,-4,12,2); }
+    else { ctx.fillStyle="#dfe6f2"; ctx.fillRect(-7,-5,14,10);
+      ctx.strokeStyle="#7d8699"; ctx.lineWidth=1.2;
+      ctx.beginPath(); ctx.moveTo(-7,-5); ctx.lineTo(0,1); ctx.lineTo(7,-5); ctx.stroke(); }
+    ctx.restore();
+  }
+  // 이펙트
+  for(const e of g.fx){
+    const a=1-e.t/.55;
+    if(e.type==="spark"){ ctx.fillStyle="rgba(255,255,255,"+a+")";
+      ctx.beginPath(); ctx.arc(X(e.x),Y(e.y),3+(1-a)*7,0,7); ctx.fill(); }
+    else if(e.type==="stamp"){
+      ctx.save(); ctx.translate(X(e.x),Y(e.y)); ctx.rotate(-.2);
+      ctx.globalAlpha=a; ctx.strokeStyle="#ff6b6b"; ctx.lineWidth=3;
+      const r=8+(1-a)*14; ctx.beginPath(); ctx.arc(0,0,r,0,7); ctx.stroke();
+      ctx.restore(); }
+    else if(e.type==="burst"){
+      // 처치 — 서류가 흩날린다
+      const n=e.boss?16:7;
+      for(let i=0;i<n;i++){
+        const ang=i*(6.283/n)+e.x*.01, dist=(1-a)*(e.boss?90:46);
+        ctx.save();
+        ctx.translate(X(e.x)+Math.cos(ang)*dist, Y(e.y)+Math.sin(ang)*dist);
+        ctx.rotate(ang+e.t*7); ctx.globalAlpha=a;
+        ctx.fillStyle= i%3===0?"#6f9fd8":"#f2f5fa";
+        ctx.fillRect(-4,-3,8,6);
+        ctx.restore();
+      }
+      ctx.globalAlpha=a*.5; ctx.fillStyle="#ff6b6b";
+      ctx.beginPath(); ctx.arc(X(e.x),Y(e.y),(e.r||16)*(1+(1-a)*1.6),0,7); ctx.fill();
+      ctx.globalAlpha=1; }
+    else if(e.type==="quit"){
+      ctx.fillStyle="rgba(245,196,81,"+(a*.5)+")"; ctx.fillRect(0,0,VWz,VHz); }
+  }
+  // 데미지 숫자
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  for(const t of g.floats){
+    const a=1-t.t/.6;
+    ctx.font=(t.big?"800 20px":"800 14px")+" 'Gothic A1','Malgun Gothic',sans-serif";
+    ctx.fillStyle="rgba(11,14,20,"+a+")";
+    ctx.fillText(t.v,X(t.x)+1,Y(t.y)-t.t*34+1);
+    ctx.fillStyle=t.big?"rgba(245,196,81,"+a+")":"rgba(255,255,255,"+a+")";
+    ctx.fillText(t.v,X(t.x),Y(t.y)-t.t*34);
+  }
+  // 화면 밖 보스 표시
+  for(const f of g.foes){ if(!f.boss) continue;
+    const sx=X(f.x), sy=Y(f.y);
+    if(sx>=0&&sx<=VWz&&sy>=0&&sy<=VHz) continue;
+    const cx=VWz/2, cy=VHz/2, ang=Math.atan2(sy-cy,sx-cx);
+    const px=cx+Math.cos(ang)*(Math.min(VWz,VHz)/2-26), py=cy+Math.sin(ang)*(Math.min(VWz,VHz)/2-26);
+    ctx.save(); ctx.translate(px,py); ctx.rotate(ang);
+    ctx.fillStyle="#ff6b6b"; ctx.beginPath();
+    ctx.moveTo(12,0); ctx.lineTo(-8,-7); ctx.lineTo(-8,7); ctx.closePath(); ctx.fill();
+    ctx.restore(); }
+}
+
+/* ── 아이콘 (무기/강화 카드용) ────────────────────────────────── */
+function icon(id,size){
+  const c=document.createElement("canvas"); c.width=c.height=72;
+  const x=c.getContext("2d"); const SP=window.SPRITES;
+  const map={stamp:"quit",copy:"copy",mail:"stap",coffee:"water",clock:"wall",quit:"quit",
+             shoes:"wall",laptop:"copy",card:"stap",leave:"quit",cup:"water",suit:"wall"};
+  const f=SP&&SP.units&&SP.units[map[id]];
+  if(f) f(x,36,36,64);
+  else { x.fillStyle="#6f9fd8"; x.fillRect(18,18,36,36); }
+  c.style.width=c.style.height=size+"px";
+  return c;
+}
+
+/* ── 레벨업 선택 ─────────────────────────────────────────────── */
+function offers(g){
+  const out=[];
+  for(const id in WEAPONS){ const lv=g.weapons[id]||0;
+    if(lv>=WEAPONS[id].max) continue;
+    if(!lv && Object.keys(g.weapons).length>=5) continue;      // 무기는 최대 5종
+    out.push({kind:"w",id,lv}); }
+  for(const id in PERKS){ const lv=g.perks[id]||0;
+    if(lv>=PERKS[id].max) continue;
+    out.push({kind:"p",id,lv}); }
+  // 셋 뽑기 — 이미 가진 걸 조금 더 자주 준다(빌드가 완성되게)
+  const pool=[];
+  for(const o of out){ pool.push(o); if(o.lv>0) pool.push(o); }
+  const pick=[],seen=new Set();
+  while(pick.length<3 && pool.length){
+    const i=(Math.random()*pool.length)|0, o=pool[i];
+    pool.splice(i,1);
+    const key=o.kind+o.id; if(seen.has(key)) continue;
+    seen.add(key); pick.push(o);
+  }
+  return pick;
+}
+function levelUp(g){
+  g.paused=true; S("select");
+  const list=offers(g);
+  if(!list.length){ g.paused=false; return; }
+  const card=$("#card");
+  card.innerHTML='<h1 class="ttl">레벨 '+g.lv+'</h1>'
+    +'<div class="sub">하나를 고르세요</div><div class="picks"></div>';
+  const box=card.querySelector(".picks");
+  list.forEach(o=>{
+    const D = o.kind==="w"?WEAPONS[o.id]:PERKS[o.id];
+    const b=document.createElement("button"); b.className="pick";
+    b.appendChild(icon(o.id,40));
+    const txt=document.createElement("div");
+    const lvl = o.lv===0 ? "신규" : ("Lv "+o.lv+" → "+(o.lv+1));
+    const desc = o.kind==="w" ? (o.lv===0?D.desc:D.up(o.lv+1)) : D.desc;
+    txt.innerHTML='<span class="n">'+esc(D.name)+'</span>'
+      +'<span class="lvl">'+lvl+'</span><span class="d">'+esc(desc)+'</span>';
+    b.appendChild(txt);
+    b.onclick=()=>{
+      if(o.kind==="w") g.weapons[o.id]=(g.weapons[o.id]||0)+1;
+      else { g.perks[o.id]=(g.perks[o.id]||0)+1; applyPerks(g); }
+      S("place"); closeOverlay(); g.paused=false; syncSlots(g);
+    };
+    box.appendChild(b);
+  });
+  openOverlay();
+}
+function openOverlay(){ $("#ov").classList.add("on"); }
+function closeOverlay(){ $("#ov").classList.remove("on"); }
+
+/* ── HUD ─────────────────────────────────────────────────────── */
+function syncSlots(g){
+  const el=$("#slots"); el.innerHTML="";
+  for(const id in g.weapons){
+    const d=document.createElement("div"); d.className="slot";
+    d.appendChild(icon(id,34));
+    const b=document.createElement("b"); b.textContent=g.weapons[id]; d.appendChild(b);
+    d.title=WEAPONS[id].name+" Lv"+g.weapons[id];
+    el.appendChild(d);
+  }
+}
+function syncHud(g){
+  const P=g.P;
+  $("#clock").innerHTML=clockStr(g.t)+"<small>"+(hourOf(g.t)>=17?"곧 퇴근":"근무 중")+"</small>";
+  $("#daybar i").style.width=(g.t/DAY*100).toFixed(1)+"%";
+  $("#lv b").textContent=g.lv;
+  $("#kills b").textContent=g.kills;
+  $("#hpn").textContent=Math.max(0,Math.ceil(P.hp))+" / "+P.maxhp;
+  $("#hpb i").style.width=clamp(P.hp/P.maxhp,0,1)*100+"%";
+  $("#xpb i").style.width=clamp(g.xp/g.next,0,1)*100+"%";
+  $("#toast").textContent=g.toast;
+}
+
+/* ── 화면 ────────────────────────────────────────────────────── */
+function renderStart(){
+  const card=$("#card");
+  card.innerHTML=`
+    <h1 class="ttl">정시 퇴근</h1>
+    <div class="sub">09:00 출근. 18:00까지 버티면 정시 퇴근입니다.</div>
+    <div class="hint" style="margin:0 0 4px">
+      이동 <b>WASD</b> 또는 <b>방향키</b> · 공격은 자동입니다<br>
+      적을 처리하면 경험치가 떨어집니다. 주우면 레벨이 오르고 무기를 고릅니다.<br>
+      12:00 · 15:00 · 17:00 정각에 큰 게 옵니다.
+    </div>
+    <label>오늘 누구 때문에 힘드셨나요? (적 대사가 됩니다)</label>
+    <input id="grudge" maxlength="40" placeholder="예: 이거 오늘 안에 되죠?" autocomplete="off">
+    <button class="primary" id="go">출근</button>
+    <div class="hint">M — 음소거</div>`;
+  $("#go").onclick=()=>{
+    S("resume");
+    start(($("#grudge").value||"").trim()||"이거 오늘 안에 되죠?");
+  };
+  openOverlay();
+}
+function renderEnd(g){
+  const win=g.over==="win";
+  const acc=win?"var(--good)":"var(--bad)";
+  $("#card").innerHTML=`
+    <h1 class="ttl" style="color:${acc}">${win?"정시 퇴근":"야근 확정"}</h1>
+    <div class="sub">${win?"18:00. 가방 들고 나왔습니다.":clockStr(g.t)+" — 자리에서 쓰러졌습니다."}</div>
+    <div class="tally">
+      <div><b class="num">${g.kills}</b><span>처리</span></div>
+      <div><b class="num">${clockStr(g.t)}</b><span>도달 시각</span></div>
+      <div><b class="num">${g.lv}</b><span>레벨</span></div>
+      <div><b class="num">${Math.round(g.dmgDealt).toLocaleString()}</b><span>누적 피해</span></div>
+    </div>
+    <div class="hint" style="margin-top:6px">${esc(g.grudge)} — ${win?"이제 안 들립니다.":"내일 또 듣습니다."}</div>
+    <button class="primary" id="again" style="background:${acc}">다시 출근</button>`;
+  $("#again").onclick=()=>{ S("select"); start(g.grudge); };
+  openOverlay();
+}
+
+/* ── 루프 ────────────────────────────────────────────────────── */
+function resize(){
+  DPR=Math.min(2,window.devicePixelRatio||1);
+  VW=window.innerWidth; VH=window.innerHeight;
+  cv.width=Math.round(VW*DPR); cv.height=Math.round(VH*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ZOOM=calcZoom();
+}
+function start(grudge){
+  closeOverlay();
+  G=newGame(grudge); applyPerks(G); syncSlots(G);
+  let last=performance.now();
+  const loop=now=>{
+    const g=G; if(!g||g.over) return;
+    let dt=(now-last)/1000; last=now;
+    dt=Math.min(dt,0.05)*(window.__fast||1);
+    if(g.hitstop>0){ g.hitstop-=dt; dt*=0.12; }   // 히트스톱
+    if(!g.paused) step(g,dt);
+    if(!G||G.over) return;
+    draw(g); syncHud(g);
+    raf=requestAnimationFrame(loop);
+  };
+  raf=requestAnimationFrame(loop);
+}
+
+/* ── 입력 ────────────────────────────────────────────────────── */
+addEventListener("keydown",e=>{
+  const k=e.key.length===1?e.key.toLowerCase():e.key;
+  keys[k]=true;
+  if(k==="m" && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)){
+    e.preventDefault(); toggleMute();
+  }
+  if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
+});
+addEventListener("keyup",e=>{ keys[e.key.length===1?e.key.toLowerCase():e.key]=false; });
+addEventListener("blur",()=>{ for(const k in keys) keys[k]=false; });
+
+function toggleMute(){
+  if(!window.SFX) return;
+  S("resume"); window.SFX.setMuted(!window.SFX.muted);
+  const b=$("#mute"), m=!!window.SFX.muted;
+  b.setAttribute("aria-pressed",m?"true":"false");
+  b.setAttribute("aria-label",m?"소리 켜기":"소리 끄기");
+  if(!m) S("select");
+}
+
+/* ── 부팅 ────────────────────────────────────────────────────── */
+cv=$("#cv"); ctx=cv.getContext("2d");
+resize(); addEventListener("resize",resize);
+$("#mute").onclick=toggleMute;
+(function(){ const m=!!(window.SFX&&window.SFX.muted);
+  $("#mute").setAttribute("aria-pressed",m?"true":"false"); })();
+window.__g=()=>G;                       // 테스트 훅
+window.__api={WEAPONS,PERKS,E,SCHED,BOSSES,DAY,hourOf,clockStr,spawnRing,start};
+renderStart();
+
+</script>
+</body>
+</html>
