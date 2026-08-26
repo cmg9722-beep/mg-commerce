@@ -2,113 +2,85 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>출근 저지 — MVP 프로토타입</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>사무실 방어 — 출근 저지</title>
 <style>
-  :root{
-    --bg:#12141a; --panel:#1c1f28; --line:#2c3140; --ink:#e8eaf0;
-    --dim:#8d94a6; --accent:#ffcf5c; --good:#4ade80; --bad:#f87171; --blue:#60a5fa;
-  }
-  *{box-sizing:border-box}
-  body{
-    margin:0; background:var(--bg); color:var(--ink);
-    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
-    display:flex; justify-content:center; padding:16px;
-  }
-  #app{width:100%; max-width:860px}
-  h1{font-size:20px; margin:0 0 4px}
-  .sub{color:var(--dim); font-size:13px; margin-bottom:16px}
-  .panel{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:12px}
-  label{display:block; font-size:13px; color:var(--dim); margin:12px 0 6px}
-  input,select{
-    width:100%; padding:10px; border-radius:6px; border:1px solid var(--line);
-    background:#0e1015; color:var(--ink); font-size:14px; font-family:inherit;
-  }
-  .row{display:flex; gap:10px}
-  .row>*{flex:1}
-  button{
-    font-family:inherit; cursor:pointer; border-radius:6px; border:1px solid var(--line);
-    background:#262b36; color:var(--ink); padding:10px 14px; font-size:14px;
-  }
-  button:hover:not(:disabled){border-color:var(--accent)}
-  button:disabled{opacity:.35; cursor:not-allowed}
-  .primary{background:var(--accent); color:#1a1a1a; border-color:var(--accent); font-weight:bold; width:100%; margin-top:16px; padding:12px}
+:root{--bg:#0f1116;--panel:#191d26;--line:#2b3140;--ink:#e9ecf3;--dim:#8b93a6;
+      --accent:#ffcf5c;--good:#4ade80;--bad:#f87171;--blue:#60a5fa}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  display:flex;justify-content:center;padding:14px}
+#app{width:100%;max-width:840px}
+h1{font-size:19px;margin:0 0 4px}
+.sub{color:var(--dim);font-size:13px;margin-bottom:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:10px}
+label{display:block;font-size:13px;color:var(--dim);margin:12px 0 6px}
+input{width:100%;padding:10px;border-radius:6px;border:1px solid var(--line);
+  background:#0b0d12;color:var(--ink);font-size:14px;font-family:inherit}
+button{font-family:inherit;cursor:pointer;border-radius:6px;border:1px solid var(--line);
+  background:#252b37;color:var(--ink);padding:10px 14px;font-size:14px;text-align:left}
+button:hover:not(:disabled){border-color:var(--accent)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.primary{background:var(--accent);color:#17191f;border-color:var(--accent);font-weight:bold;
+  width:100%;margin-top:14px;padding:12px;text-align:center}
+.ghost{background:transparent;color:var(--dim);text-align:center;width:100%;margin-top:8px}
 
-  /* HUD */
-  .hud{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
-  .clock{font-size:34px; font-weight:bold; letter-spacing:1px; font-variant-numeric:tabular-nums}
-  .eta{font-size:13px; color:var(--dim)}
-  .eta b{font-size:17px; font-variant-numeric:tabular-nums}
-  .safe{color:var(--good)} .danger{color:var(--bad)}
-  .who{font-size:14px}
-  .who b{color:var(--accent)}
+.stages{display:grid;gap:10px}
+.stage{padding:15px;display:flex;gap:13px;align-items:flex-start;background:#232936}
+.stage .ico{font-size:26px;line-height:1}
+.stage .t{font-weight:bold;font-size:15px;margin-bottom:3px;display:block}
+.stage .d{font-size:12px;color:var(--dim);line-height:1.6;display:block}
+.tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:20px;
+  border:1px solid var(--line);color:var(--dim);margin-left:6px;vertical-align:middle}
+.tag.boss{color:var(--bad);border-color:var(--bad)}
 
-  /* 경로 */
-  .track{display:flex; align-items:flex-start; margin:18px 0 6px}
-  .node{flex:1; text-align:center; position:relative}
-  .node::before{
-    content:""; position:absolute; top:15px; left:-50%; width:100%; height:2px;
-    background:var(--line);
-  }
-  .node:first-child::before{display:none}
-  .dot{
-    width:32px; height:32px; line-height:30px; border-radius:50%; margin:0 auto 6px;
-    border:2px solid var(--line); background:var(--panel); position:relative; z-index:1; font-size:15px;
-  }
-  .node.done .dot{border-color:var(--good)}
-  .node.here .dot{border-color:var(--accent); box-shadow:0 0 0 4px rgba(255,207,92,.15)}
-  .nlabel{font-size:11px; color:var(--dim)}
-  .node.here .nlabel{color:var(--accent)}
-  .bar{height:5px; background:#0e1015; border-radius:3px; overflow:hidden; margin-top:8px}
-  .bar>i{display:block; height:100%; background:var(--accent); width:0; transition:width .12s linear}
+/* HUD */
+.hud{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.coffee{font-size:24px;font-weight:bold;font-variant-numeric:tabular-nums}
+.coffee small{font-size:12px;color:var(--dim);font-weight:normal}
+.wavebar{flex:1;min-width:140px;height:7px;background:#0b0d12;border-radius:4px;overflow:hidden}
+.wavebar>i{display:block;height:100%;background:var(--blue);width:0}
+.hp{font-size:12px;color:var(--dim);text-align:right;line-height:1.6}
+.hp b{color:var(--ink)}
 
-  /* 말풍선 */
-  .bubble{
-    margin:14px 0 0; padding:11px 14px; background:#0e1015; border:1px solid var(--line);
-    border-radius:10px; font-size:14px; position:relative; min-height:20px;
-  }
-  .bubble.pop{animation:pop .45s ease forwards}
-  @keyframes pop{
-    0%{transform:scale(1)} 40%{transform:scale(1.06); border-color:var(--bad)}
-    100%{transform:scale(.6); opacity:0}
-  }
+/* 팔레트 */
+.pal{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px;margin-bottom:10px}
+.u{padding:9px;background:#232936;display:flex;flex-direction:column;gap:2px;line-height:1.35}
+.u.sel{border-color:var(--accent);background:#2c3342}
+.u .e{font-size:19px}
+.u .n{font-size:12px;font-weight:bold}
+.u .c{font-size:11px;color:var(--accent)}
+.u .d{font-size:10px;color:var(--dim)}
+.u.poor{opacity:.42}
 
-  /* 카드 */
-  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px}
-  .card{
-    text-align:left; padding:12px; line-height:1.45; background:#232833;
-    display:flex; flex-direction:column; gap:4px; min-height:96px;
-  }
-  .card .t{font-weight:bold; font-size:14px}
-  .card .d{font-size:11px; color:var(--dim)}
-  .card .n{font-size:11px; color:var(--accent)}
+canvas{width:100%;display:block;border-radius:8px;background:#141821;
+  border:1px solid var(--line);touch-action:none;cursor:crosshair}
+.toast{height:19px;font-size:12px;color:var(--accent);margin-top:8px}
 
-  /* 로그 */
-  .log{height:120px; overflow-y:auto; font-size:12px; line-height:1.7; color:var(--dim)}
-  .log .hit{color:var(--good)} .log .miss{color:var(--bad)}
+.result{text-align:center;padding:24px 14px}
+.result h2{font-size:29px;margin:0 0 8px}
+.result p{color:var(--dim);font-size:14px;margin:6px 0}
+.safe{color:var(--good)}.danger{color:var(--bad)}
+.bubble{margin-top:14px;padding:10px 13px;background:#0b0d12;border:1px solid var(--line);
+  border-radius:9px;font-size:14px;text-align:left}
+.bubble.pop{animation:pop .5s ease forwards}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.06);border-color:var(--bad)}
+  100%{transform:scale(.6);opacity:0}}
 
-  /* 결과 */
-  .result{text-align:center; padding:28px 16px}
-  .result h2{font-size:30px; margin:0 0 10px}
-  .result p{color:var(--dim); font-size:14px; margin:6px 0}
-
-  /* 보스키 */
-  #boss{
-    display:none; position:fixed; inset:0; z-index:99; background:#fff; color:#000;
-    font-family:"Malgun Gothic",sans-serif; font-size:12px; overflow:auto;
-  }
-  #boss.on{display:block}
-  #boss .ribbon{background:#217346; color:#fff; padding:6px 12px; font-size:13px}
-  #boss .tabs{background:#f3f2f1; border-bottom:1px solid #d0cece; padding:5px 12px; font-size:12px}
-  #boss table{border-collapse:collapse; width:100%; font-size:12px}
-  #boss td,#boss th{border:1px solid #d0cece; padding:4px 8px; text-align:left}
-  #boss th{background:#f3f2f1; font-weight:normal; color:#555}
-  .hint{font-size:11px; color:var(--dim); text-align:center; margin-top:14px}
+#boss{display:none;position:fixed;inset:0;z-index:99;background:#fff;color:#000;
+  font-family:"Malgun Gothic",sans-serif;font-size:12px;overflow:auto}
+#boss.on{display:block}
+#boss .ribbon{background:#217346;color:#fff;padding:6px 12px;font-size:13px}
+#boss .tabs{background:#f3f2f1;border-bottom:1px solid #d0cece;padding:5px 12px}
+#boss table{border-collapse:collapse;width:100%;font-size:12px}
+#boss td,#boss th{border:1px solid #d0cece;padding:4px 8px;text-align:left}
+#boss th{background:#f3f2f1;font-weight:normal;color:#555}
+.hint{font-size:11px;color:var(--dim);text-align:center;margin-top:12px}
 </style>
 </head>
 <body>
 <div id="app"></div>
-
 <div id="boss">
   <div class="ribbon">Excel — 2026년_생산실적_집계.xlsx</div>
   <div class="tabs">파일 &nbsp; 홈 &nbsp; 삽입 &nbsp; 페이지 레이아웃 &nbsp; 수식 &nbsp; 데이터 &nbsp; 검토 &nbsp; 보기</div>
@@ -118,374 +90,447 @@
 <script>
 "use strict";
 
-/* ─────────── 데이터 ─────────── */
+/* ══════════════ 상수 ══════════════ */
+const COLS=9, ROWS=5, CW=86, CH=92;
+const FW=COLS*CW, FH=ROWS*CH;
+const HOME=0;                       // 좌측 경계 = 내 자리
+const $=(s,r)=>(r||document).querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 
-const RANKS = {
-  daeri: { key:"daeri", name:"대리", depart:460, car:false,
-           note:"성실해서 지하철 지연에 강함 (지하철 방해 ×0.5)" },
-  gwajang:{ key:"gwajang", name:"과장", depart:460, car:true,
-           note:"차를 몰고 옴 — 지하철 방해 무효, 도로 방해만 통함" },
-  bujang: { key:"bujang", name:"부장", depart:430, car:false,
-           note:"30분 일찍 출발 — 막을 시간이 그만큼 줄어듦" },
+/* ══════════════ 유닛 ══════════════ */
+const UNITS={
+  water:{id:"water",e:"💧",name:"정수기",cost:50,hp:60,
+         desc:"5초마다 커피 +25",gen:5},
+  wall :{id:"wall", e:"🧱",name:"파티션",cost:50,hp:520,
+         desc:"때리는 동안 시간을 번다"},
+  copy :{id:"copy", e:"🖨️",name:"복사기",cost:100,hp:110,
+         desc:"서류 발사 (1.4초/22)",rate:1.4,dmg:22},
+  stap :{id:"stap", e:"📎",name:"스테이플러",cost:175,hp:110,
+         desc:"연사 (0.55초/14)",rate:.55,dmg:14},
+  quit :{id:"quit", e:"📄",name:"사직서",cost:125,hp:1,
+         desc:"설치 즉시 그 줄 전체 소각",nuke:420},
+};
+const PAL=["water","wall","copy","stap","quit"];
+
+/* ══════════════ 적 ══════════════ */
+const FOES={
+  intern :{e:"🧑‍💼",name:"인턴",  hp:70,  spd:26,dmg:8 ,color:"#9aa4bb"},
+  staff  :{e:"👔",  name:"사원",  hp:140, spd:20,dmg:11,color:"#c3cbe0"},
+  senior :{e:"🗂️",  name:"대리",  hp:230, spd:17,dmg:13,color:"#8fb4ff"},
+  manager:{e:"🚗",  name:"과장",  hp:280, spd:27,dmg:15,color:"#ffb26b"},
+  gm     :{e:"🧳",  name:"부장",  hp:620, spd:12,dmg:22,color:"#ff8f8f"},
+  drunk  :{e:"🍻",  name:"회식조", hp:180, spd:30,dmg:12,color:"#ffd166"},
+  audit  :{e:"📋",  name:"점검단", hp:1500,spd:10,dmg:34,color:"#f87171",boss:true},
 };
 
-const DEPTS = {
-  sales:{ key:"sales", name:"영업부", mult:1,
-          note:"외근 지시 한 장이면 그대로 이탈" },
-  prod: { key:"prod",  name:"생산부", mult:0.7,
-          note:"현장이라 웬만하면 옴 — 모든 지연 ×0.7, 외근 무효" },
+/* ══════════════ 스테이지 ══════════════ */
+// [초, 레인(0~4), 적]
+function wave(list){ return list.map(([t,l,k])=>({t,l,k,done:false})); }
+
+const STAGES={
+  commute:{
+    id:"commute",icon:"🚇",name:"출근 저지",
+    tagline:"복도로 밀려오는 상사들을 내 자리 앞에서 막아라",
+    brief:"월요일 아침. 복도 끝에서 하나둘 걸어옵니다. 왼쪽 끝 내 자리가 뚫리면 하루가 시작됩니다.",
+    coffee:225, trickle:6,
+    waves:wave([
+      [10,2,"staff"],[17,0,"staff"],[24,4,"intern"],[30,3,"senior"],
+      [27,1,"staff"],[33,2,"senior"],[40,4,"manager"],
+      [47,0,"staff"],[47,3,"staff"],[55,1,"senior"],[62,2,"manager"],
+      [70,3,"gm"],[78,0,"senior"],[78,4,"senior"],
+      [88,2,"gm"],[95,1,"manager"],[95,3,"manager"],
+      [104,0,"gm"],[104,4,"gm"],[112,2,"gm"],
+    ]),
+    winMsg:"복도가 조용해졌습니다. 아무도 자리에 도달하지 못했습니다.",
+    loseMsg:"자리에 도달했습니다. 하루가 시작됩니다.",
+  },
+  dinner:{
+    id:"dinner",icon:"🍻",name:"회식 저지",
+    tagline:"몰려오는 회식조를 전부 돌려보내라",
+    brief:"18시. 팀장이 회식을 소집했습니다. 회식조는 수가 많고 빠릅니다. 화력을 빨리 세우세요.",
+    coffee:250, trickle:5,
+    waves:wave([
+      [11,2,"drunk"],[16,0,"drunk"],[21,4,"drunk"],
+      [17,1,"staff"],[17,3,"staff"],
+      [24,2,"drunk"],[27,0,"drunk"],[30,4,"drunk"],
+      [36,1,"manager"],[40,3,"manager"],
+      [46,0,"drunk"],[48,1,"drunk"],[50,2,"drunk"],[52,3,"drunk"],[54,4,"drunk"],
+      [62,2,"gm"],[68,0,"manager"],[68,4,"manager"],
+      [76,1,"drunk"],[78,3,"drunk"],[80,2,"drunk"],
+      [88,0,"gm"],[88,4,"gm"],[96,2,"gm"],[100,1,"manager"],[100,3,"manager"],
+    ]),
+    winMsg:"정족수 미달. 회식은 다음 주로 미뤄졌습니다.",
+    loseMsg:"회식조가 자리까지 왔습니다. 끌려갑니다.",
+  },
+  audit:{
+    id:"audit",icon:"📋",name:"고객사 점검",boss:true,
+    tagline:"점검단 3명을 회의실 앞에서 저지하라",
+    brief:"(주)갑을산업 점검단이 공장에 도착했습니다. 수행 인원이 먼저 들어오고, 점검단 본대가 뒤따릅니다.",
+    coffee:275, trickle:5,
+    waves:wave([
+      [11,2,"staff"],[18,0,"senior"],[18,4,"senior"],
+      [16,1,"manager"],[16,3,"manager"],
+      [25,2,"gm"],[32,0,"senior"],[32,4,"senior"],
+      [42,1,"gm"],[42,3,"gm"],
+      [54,2,"audit"],
+      [64,0,"manager"],[64,4,"manager"],[70,1,"gm"],[70,3,"gm"],
+      [82,0,"audit"],
+      [92,2,"gm"],[96,1,"manager"],[96,3,"manager"],
+      [108,4,"audit"],
+      [116,2,"gm"],[120,0,"gm"],[120,4,"gm"],
+    ]),
+    winMsg:"점검단 전원 저지. 점검은 무기한 연기되었습니다.",
+    loseMsg:"점검단이 회의실에 도달했습니다. 점검이 시작됩니다.",
+  },
 };
 
-// 이동 경로. need = 기본 소요(분)
-const SEGS = [
-  { id:"home",     icon:"🏠", label:"집",       need:10 },
-  { id:"commute",  icon:"🚇", label:"이동",     need:35 },  // 차량이면 30
-  { id:"lobby",    icon:"🏢", label:"로비",     need:5  },
-  { id:"elevator", icon:"🛗", label:"엘리베이터", need:5  },
-  { id:"desk",     icon:"💺", label:"자리",     need:0  },
-];
+/* ══════════════ 상태 ══════════════ */
+let G=null, raf=null, ctx=null, cvs=null;
 
-const CARDS = [
-  { id:"signal", name:"지하철 신호 고장", uses:1, delay:25, target:"commute",
-    desc:"지하철 구간 지연", onlyTransit:"subway" },
-  { id:"jam",    name:"교통 체증",       uses:1, delay:25, target:"commute",
-    desc:"도로 구간 지연", onlyTransit:"car" },
-  { id:"elev",   name:"엘리베이터 점검중", uses:1, delay:22, target:"elevator",
-    desc:"엘리베이터 앞에서 발 묶기" },
-  { id:"katok",  name:"카톡 폭탄",       uses:3, delay:12, target:"any",
-    desc:"어느 구간에서든 이동 속도 저하" },
-  { id:"field",  name:"외근 지시",       uses:1, delay:15, target:"any",
-    desc:"영업부면 그대로 이탈 / 생산부는 무효" },
-];
-
-const DEADLINE = 540; // 09:00
-const START    = 420; // 07:00
-const TICK_MS  = 300; // 게임 내 1분
-
-/* ─────────── 유틸 ─────────── */
-
-const $ = (sel, root) => (root || document).querySelector(sel);
-const clock = m => String(Math.floor(m/60)).padStart(2,"0") + ":" + String(m%60).padStart(2,"0");
-const esc = s => String(s).replace(/[&<>"']/g, c =>
-  ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
-
-/* ─────────── 상태 ─────────── */
-
-let S = null;
-let timer = null;
-
-function newGame(cfg){
-  const rank = RANKS[cfg.rank], dept = DEPTS[cfg.dept];
-  const segs = SEGS.map(s => {
-    const need = (s.id === "commute" && rank.car) ? 30 : s.need;
-    return { ...s, need, delay:0, done:0,
-             icon:(s.id === "commute" && rank.car) ? "🚗" : s.icon };
-  });
+function newGame(stageId,grudge){
+  const st=STAGES[stageId];
   return {
-    cfg, rank, dept, segs,
-    grudge: cfg.grudge,
-    now: START,
-    seg: 0,
-    progress: 0,
-    started: false,      // 출발했는가
-    over: null,          // "win" | "lose"
-    uses: Object.fromEntries(CARDS.map(c => [c.id, c.uses])),
-    log: [],
+    st, grudge,
+    coffee:st.coffee, t:0, trickle:0,
+    grid:Array.from({length:ROWS},()=>Array(COLS).fill(null)),
+    foes:[], shots:[], fx:[],
+    waves:st.waves.map(w=>({...w,done:false})),
+    sel:"water", over:null, toast:"", toastT:0,
+    killed:0, leaked:0, last:0,
   };
 }
 
-// 남은 총 소요(분) — 예상 도착 계산용
-function remaining(s){
-  let r = 0;
-  for (let i = s.seg; i < s.segs.length; i++){
-    const g = s.segs[i];
-    r += (g.need + g.delay) - (i === s.seg ? s.progress : 0);
-  }
-  return Math.max(0, r);
-}
+/* ══════════════ 배치 ══════════════ */
+function place(r,c){
+  const g=G; if(!g||g.over) return;
+  if(r<0||r>=ROWS||c<1||c>=COLS) { flash(g,"내 자리 열에는 설치할 수 없습니다."); return; }
+  const def=UNITS[g.sel];
+  if(g.coffee<def.cost){ flash(g,"커피가 부족합니다 ("+def.cost+" 필요)"); return; }
 
-function eta(s){
-  const waiting = Math.max(0, s.rank.depart - s.now);
-  return s.now + waiting + remaining(s);
-}
-
-function say(s, text, cls){
-  s.log.unshift({ text, cls });
-  if (s.log.length > 40) s.log.pop();
-}
-
-/* ─────────── 카드 사용 ─────────── */
-
-function playCard(cardId){
-  const s = S;
-  if (!s || s.over) return;
-  const card = CARDS.find(c => c.id === cardId);
-  if (!card || s.uses[cardId] <= 0) return;
-
-  s.uses[cardId]--;
-
-  // 외근 지시 — 영업부는 즉시 이탈
-  if (card.id === "field"){
-    if (s.dept.key === "sales"){
-      say(s, "외근 지시 → " + s.dept.name + " " + s.rank.name + ", 그대로 현장으로 빠짐. 오늘 회사 안 옴.", "hit");
-      finish(s, "win");
-      render();
-      return;
-    }
-    if (s.dept.key === "prod"){
-      say(s, "외근 지시 → 생산부는 현장이 회사임. 무효.", "miss");
-      render();
-      return;
-    }
-  }
-
-  // 이동수단 불일치 → 무효
-  if (card.onlyTransit){
-    const transit = s.rank.car ? "car" : "subway";
-    if (card.onlyTransit !== transit){
-      say(s, card.name + " → " + (s.rank.car ? "차로 오는 중이라 무효." : "지하철로 오는 중이라 무효."), "miss");
-      render();
-      return;
-    }
-  }
-
-  // 구간 지정
-  let idx;
-  if (card.target === "any") idx = s.seg;
-  else {
-    idx = s.segs.findIndex(g => g.id === card.target);
-    if (idx < s.seg){
-      say(s, card.name + " → 이미 지나간 구간. 무효.", "miss");
-      render();
-      return;
-    }
-  }
-
-  // 배율 계산
-  let mult = s.dept.mult;
-  if (s.rank.key === "daeri" && card.target === "commute" && !s.rank.car) mult *= 0.5;
-
-  const gain = Math.round(card.delay * mult);
-  if (gain <= 0){
-    say(s, card.name + " → 효과 없음.", "miss");
-    render();
+  if(def.nuke){
+    const hitFoes=g.foes.filter(f=>f.lane===r);
+    if(!hitFoes.length){ flash(g,"그 줄에 아무도 없습니다."); return; }
+    g.coffee-=def.cost;
+    hitFoes.forEach(f=>{ f.hp-=def.nuke; });
+    g.fx.push({type:"nuke",lane:r,t:0});
+    flash(g,"사직서 — "+r+"번 줄 소각");
     return;
   }
-
-  s.segs[idx].delay += gain;
-  const tail = mult < 1 ? " (저항 적용, 원래 " + card.delay + "분)" : "";
-  say(s, card.name + " → [" + s.segs[idx].label + "] +" + gain + "분 지연" + tail, "hit");
-  render();
+  if(g.grid[r][c]){ flash(g,"이미 뭔가 놓여 있습니다."); return; }
+  g.coffee-=def.cost;
+  g.grid[r][c]={type:def.id,hp:def.hp,maxhp:def.hp,cd:def.rate?def.rate*0.5:0,gen:0};
 }
+function flash(g,msg){ g.toast=msg; g.toastT=2.2; }
 
-/* ─────────── 진행 ─────────── */
+/* ══════════════ 루프 ══════════════ */
+function step(dt){
+  const g=G; if(!g||g.over) return;
+  g.t+=dt;
+  if(g.toastT>0){ g.toastT-=dt; if(g.toastT<=0) g.toast=""; }
 
-function tick(){
-  const s = S;
-  if (!s || s.over) return;
+  // 커피 기본 수급
+  g.trickle+=dt;
+  if(g.trickle>=g.st.trickle){ g.trickle=0; g.coffee+=25; }
 
-  s.now++;
+  // 스폰
+  g.waves.forEach(w=>{
+    if(!w.done && g.t>=w.t){
+      w.done=true;
+      const d=FOES[w.k];
+      g.foes.push({kind:w.k,lane:w.l,x:FW+18,hp:d.hp,maxhp:d.hp,
+                   spd:d.spd,dmg:d.dmg,eat:0,slow:0});
+    }
+  });
 
-  if (s.now >= s.rank.depart) s.started = true;
-
-  if (s.started){
-    s.progress++;
-    const g = s.segs[s.seg];
-    if (s.progress >= g.need + g.delay){
-      s.progress = 0;
-      s.seg++;
-      if (s.seg >= s.segs.length - 1){
-        // 자리 도착
-        say(s, clock(s.now) + " — 자리에 앉았습니다.", "miss");
-        finish(s, "lose");
-        render();
-        return;
+  // 유닛
+  for(let r=0;r<ROWS;r++) for(let c=1;c<COLS;c++){
+    const u=g.grid[r][c]; if(!u) continue;
+    const def=UNITS[u.type];
+    if(def.gen){
+      u.gen+=dt;
+      if(u.gen>=def.gen){ u.gen=0; g.coffee+=25; g.fx.push({type:"coin",x:c*CW+CW/2,y:r*CH+30,t:0}); }
+    }
+    if(def.rate){
+      // 같은 레인 오른쪽에 적이 있을 때만 발사
+      const ahead=g.foes.some(f=>f.lane===r && f.x>c*CW);
+      u.cd-=dt;
+      if(ahead && u.cd<=0){
+        u.cd=def.rate;
+        g.shots.push({lane:r,x:c*CW+CW*0.72,dmg:def.dmg});
       }
-      say(s, clock(s.now) + " — " + s.segs[s.seg].label + " 도착", null);
     }
   }
 
-  if (s.now >= DEADLINE){
-    finish(s, "win");
-    render();
-    return;
+  // 탄
+  for(let i=g.shots.length-1;i>=0;i--){
+    const s=g.shots[i];
+    const px=s.x;                       // 스윕 판정 — 프레임 간 관통 방지
+    s.x+=430*dt;
+    if(px>FW+20){ g.shots.splice(i,1); continue; }
+    const hit=g.foes.find(f=>f.lane===s.lane && f.x>=px-16 && f.x<=s.x+16);
+    if(hit){ hit.hp-=s.dmg; g.fx.push({type:"hit",x:s.x,y:s.lane*CH+CH/2,t:0}); g.shots.splice(i,1); }
   }
 
+  // 적
+  for(let i=g.foes.length-1;i>=0;i--){
+    const f=g.foes[i];
+    if(f.hp<=0){ g.foes.splice(i,1); g.killed++;
+      g.fx.push({type:"pop",x:f.x,y:f.lane*CH+CH/2,t:0}); continue; }
+
+    const cc=clamp(Math.floor((f.x-20)/CW),0,COLS-1);
+    const front=g.grid[f.lane][cc];
+    if(front){
+      // 먹는 중
+      f.eat+=dt;
+      front.hp-=f.dmg*dt;
+      if(front.hp<=0){ g.grid[f.lane][cc]=null;
+        g.fx.push({type:"pop",x:cc*CW+CW/2,y:f.lane*CH+CH/2,t:0}); }
+    } else {
+      f.x-=f.spd*dt;
+    }
+    if(f.x<=HOME){ g.leaked++; finish("lose"); return; }
+  }
+
+  // 이펙트
+  for(let i=g.fx.length-1;i>=0;i--){ g.fx[i].t+=dt; if(g.fx[i].t>.5) g.fx.splice(i,1); }
+
+  // 승리 판정
+  if(g.waves.every(w=>w.done) && g.foes.length===0) finish("win");
+}
+
+function finish(o){
+  if(G.over) return;
+  G.over=o;
+  if(raf) cancelAnimationFrame(raf);
+  raf=null;
   render();
 }
 
-function finish(s, outcome){
-  s.over = outcome;
-  clearInterval(timer);
-  timer = null;
+/* ══════════════ 그리기 ══════════════ */
+function draw(){
+  const g=G; if(!g||!ctx) return;
+  ctx.clearRect(0,0,FW,FH);
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+
+  // 바닥
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    ctx.fillStyle=(r+c)%2 ? "#161b25" : "#131822";
+    ctx.fillRect(c*CW,r*CH,CW,CH);
+  }
+  // 내 자리 열
+  ctx.fillStyle="rgba(96,165,250,.10)";
+  ctx.fillRect(0,0,CW,FH);
+  ctx.strokeStyle="rgba(96,165,250,.5)";
+  ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(CW,0); ctx.lineTo(CW,FH); ctx.stroke();
+  ctx.fillStyle="rgba(96,165,250,.75)";
+  ctx.font="11px 'Malgun Gothic',sans-serif"; ctx.textAlign="center";
+  for(let r=0;r<ROWS;r++){
+    ctx.font="20px sans-serif"; ctx.fillText("💺",CW/2,r*CH+CH/2+2);
+  }
+
+  // 유닛
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  for(let r=0;r<ROWS;r++) for(let c=1;c<COLS;c++){
+    const u=g.grid[r][c]; if(!u) continue;
+    const x=c*CW+CW/2, y=r*CH+CH/2;
+    ctx.font="30px sans-serif";
+    ctx.fillText(UNITS[u.type].e,x,y-4);
+    const ratio=u.hp/u.maxhp;
+    if(ratio<1){
+      ctx.fillStyle="#0b0d12"; ctx.fillRect(x-22,y+22,44,4);
+      ctx.fillStyle=ratio>.5?"#4ade80":ratio>.25?"#ffcf5c":"#f87171";
+      ctx.fillRect(x-22,y+22,44*ratio,4);
+    }
+  }
+
+  // 탄
+  ctx.fillStyle="#e9ecf3";
+  g.shots.forEach(s=>{
+    ctx.fillRect(s.x-7,s.lane*CH+CH/2-4,13,8);
+  });
+
+  // 적
+  g.foes.forEach(f=>{
+    const d=FOES[f.kind], y=f.lane*CH+CH/2;
+    ctx.font=(d.boss?"36px":"28px")+" sans-serif";
+    ctx.fillText(d.e,f.x,y-4);
+    const ratio=clamp(f.hp/f.maxhp,0,1), w=d.boss?52:38;
+    ctx.fillStyle="#0b0d12"; ctx.fillRect(f.x-w/2,y+20,w,5);
+    ctx.fillStyle=d.color; ctx.fillRect(f.x-w/2,y+20,w*ratio,5);
+    if(d.boss){
+      ctx.fillStyle="#f87171"; ctx.font="10px 'Malgun Gothic',sans-serif";
+      ctx.fillText("점검단",f.x,y+34);
+    }
+  });
+
+  // 이펙트
+  g.fx.forEach(e=>{
+    const a=1-e.t/.5;
+    if(e.type==="hit"){ ctx.fillStyle="rgba(255,255,255,"+a+")";
+      ctx.beginPath(); ctx.arc(e.x,e.y,7*(1-a)+3,0,7); ctx.fill(); }
+    else if(e.type==="pop"){ ctx.fillStyle="rgba(248,113,113,"+a+")";
+      ctx.beginPath(); ctx.arc(e.x,e.y,20*(1-a)+6,0,7); ctx.fill(); }
+    else if(e.type==="coin"){ ctx.fillStyle="rgba(255,207,92,"+a+")";
+      ctx.font="15px sans-serif"; ctx.fillText("+25",e.x,e.y-e.t*26); }
+    else if(e.type==="nuke"){ ctx.fillStyle="rgba(255,207,92,"+a*.55+")";
+      ctx.fillRect(0,e.lane*CH,FW,CH); }
+  });
 }
 
-/* ─────────── 화면 ─────────── */
+/* ══════════════ 화면 ══════════════ */
+function renderStageSelect(){
+  const items=Object.values(STAGES).map(s=>`
+    <button class="stage" data-stage="${s.id}">
+      <span class="ico">${s.icon}</span>
+      <span><span class="t">${esc(s.name)}${s.boss?'<span class="tag boss">BOSS</span>':
+        (s.id==="commute"?'<span class="tag">기본</span>':'')}</span>
+      <span class="d">${esc(s.tagline)}</span></span>
+    </button>`).join("");
+  $("#app").innerHTML=`
+    <h1>사무실 방어</h1>
+    <div class="sub">복도로 걸어오는 상사를 내 자리 앞에서 막는 레인 디펜스</div>
+    <div class="panel"><div class="stages">${items}</div></div>
+    <div class="hint">ESC — 보스키 (즉시 엑셀 화면)</div>`;
+  $("#app").querySelectorAll("[data-stage]").forEach(b=>b.onclick=()=>renderSetup(b.dataset.stage));
+}
 
-function renderStart(){
-  $("#app").innerHTML = `
-    <h1>출근 저지</h1>
-    <div class="sub">상사를 09:00까지 자리에 못 앉히면 당신의 승리입니다. · MVP 프로토타입</div>
+function renderSetup(id){
+  const st=STAGES[id];
+  $("#app").innerHTML=`
+    <h1>${st.icon} ${esc(st.name)}</h1>
+    <div class="sub">${esc(st.tagline)}</div>
     <div class="panel">
-      <label>오늘 누구 때문에 힘드셨나요?</label>
+      <div class="sub" style="margin:0">${esc(st.brief)}</div>
+      <label>오늘 누구 때문에 힘드셨나요? (적 말풍선이 됩니다)</label>
       <input id="grudge" maxlength="40" placeholder="예: 이거 오늘 안에 되죠?" autocomplete="off">
-      <div class="row">
-        <div>
-          <label>직급</label>
-          <select id="rank">
-            <option value="daeri">대리</option>
-            <option value="gwajang">과장</option>
-            <option value="bujang">부장 (어려움)</option>
-          </select>
-        </div>
-        <div>
-          <label>부서</label>
-          <select id="dept">
-            <option value="sales">영업부</option>
-            <option value="prod">생산부 (어려움)</option>
-          </select>
-        </div>
-      </div>
-      <div class="sub" id="combo" style="margin:14px 0 0"></div>
-      <button class="primary" id="go">출근 저지 시작</button>
+      <button class="primary" id="go">시작</button>
+      <button class="ghost" id="back">← 스테이지 선택</button>
     </div>
-    <div class="hint">ESC — 보스키 (즉시 엑셀 화면으로 전환)</div>
-  `;
-  const upd = () => {
-    const r = RANKS[$("#rank").value], d = DEPTS[$("#dept").value];
-    $("#combo").innerHTML = "· " + esc(r.note) + "<br>· " + esc(d.note);
-  };
-  $("#rank").onchange = upd;
-  $("#dept").onchange = upd;
-  upd();
-  $("#go").onclick = () => {
-    const g = $("#grudge").value.trim();
-    S = newGame({
-      rank: $("#rank").value,
-      dept: $("#dept").value,
-      grudge: g || "이거 오늘 안에 되죠?",
-    });
-    say(S, "07:00 — 저지 작전 시작.", null);
-    render();
-    timer = setInterval(tick, TICK_MS);
+    <div class="hint">설치할 사물을 고른 뒤 복도 칸을 클릭하세요 · ESC — 보스키</div>`;
+  $("#back").onclick=renderStageSelect;
+  $("#go").onclick=()=>{
+    G=newGame(id,($("#grudge").value.trim())||"이거 오늘 안에 되죠?");
+    renderGame(); start();
   };
 }
 
 function renderGame(){
-  const s = S;
-  const arrive = eta(s);
-  const safe = arrive > DEADLINE;
-  const g = s.segs[s.seg];
-  const pct = s.started ? Math.min(100, (s.progress / Math.max(1, g.need + g.delay)) * 100) : 0;
-
-  const nodes = s.segs.map((seg, i) => {
-    const cls = i < s.seg ? "done" : (i === s.seg && s.started ? "here" : "");
-    return `<div class="node ${cls}">
-      <div class="dot">${seg.icon}</div>
-      <div class="nlabel">${esc(seg.label)}${seg.delay ? " +" + seg.delay : ""}</div>
-    </div>`;
+  const g=G;
+  const pal=PAL.map(k=>{
+    const u=UNITS[k];
+    return `<button class="u ${g.sel===k?"sel":""} ${g.coffee<u.cost?"poor":""}" data-u="${k}">
+      <span class="e">${u.e}</span><span class="n">${esc(u.name)}</span>
+      <span class="c">☕ ${u.cost}</span><span class="d">${esc(u.desc)}</span></button>`;
   }).join("");
+  const total=g.waves.length, done=g.waves.filter(w=>w.done).length;
 
-  const cards = CARDS.map(c => {
-    const left = s.uses[c.id];
-    return `<button class="card" data-card="${c.id}" ${left <= 0 ? "disabled" : ""}>
-      <span class="t">${esc(c.name)}</span>
-      <span class="d">${esc(c.desc)}</span>
-      <span class="n">남은 횟수 ${left} · 기본 ${c.delay}분</span>
-    </button>`;
-  }).join("");
-
-  const logs = s.log.map(l =>
-    `<div class="${l.cls || ""}">${esc(l.text)}</div>`).join("");
-
-  $("#app").innerHTML = `
-    <h1>출근 저지</h1>
-    <div class="sub">09:00까지 자리에 못 앉히면 승리</div>
+  $("#app").innerHTML=`
+    <h1>${g.st.icon} ${esc(g.st.name)}</h1>
+    <div class="sub">${esc(g.st.tagline)}</div>
     <div class="panel">
       <div class="hud">
-        <div>
-          <div class="clock">${clock(s.now)}</div>
-          <div class="who"><b>${esc(s.dept.name)} ${esc(s.rank.name)}</b> ·
-            ${s.started ? esc(g.label) + " 통과 중" : "출발 전 (" + clock(s.rank.depart) + " 출발 예정)"}</div>
-        </div>
-        <div class="eta" style="text-align:right">
-          예상 도착<br>
-          <b class="${safe ? "safe" : "danger"}">${clock(Math.min(arrive, 1439))}</b>
-          <div>${safe ? "✅ 09시 넘김 — 저지 성공권" : "⚠️ 정시 출근 — 더 막아야 함"}</div>
-        </div>
+        <div class="coffee" id="cf">☕ ${g.coffee} <small>커피</small></div>
+        <div class="wavebar"><i id="wb" style="width:${(done/total*100).toFixed(1)}%"></i></div>
+        <div class="hp" id="stat">복도 <b>${g.foes.length}</b>명 · 처리 <b>${g.killed}</b></div>
       </div>
-      <div class="track">${nodes}</div>
-      <div class="bar"><i style="width:${pct}%"></i></div>
-      <div class="bubble" id="bubble">💬 ${esc(s.grudge)}</div>
+      <div class="pal" id="pal">${pal}</div>
+      <canvas id="cv" width="${FW}" height="${FH}"></canvas>
+      <div class="toast" id="toast"></div>
     </div>
-    <div class="panel"><div class="cards">${cards}</div></div>
-    <div class="panel"><div class="log">${logs}</div></div>
-    <div class="hint">ESC — 보스키</div>
-  `;
+    <div class="hint">사물 선택 → 복도 칸 클릭 · 파란 칸(내 자리)에는 설치 불가 · ESC — 보스키</div>`;
 
-  $("#app").querySelectorAll("[data-card]").forEach(b => {
-    b.onclick = () => playCard(b.dataset.card);
+  cvs=$("#cv"); ctx=cvs.getContext("2d");
+  $("#pal").querySelectorAll("[data-u]").forEach(b=>{
+    b.onclick=()=>{ g.sel=b.dataset.u; syncPal(); };
+  });
+  cvs.onpointerdown=e=>{
+    const r=cvs.getBoundingClientRect();
+    const x=(e.clientX-r.left)*(FW/r.width), y=(e.clientY-r.top)*(FH/r.height);
+    place(Math.floor(y/CH),Math.floor(x/CW));
+    syncPal();
+  };
+}
+
+function syncPal(){
+  const g=G; if(!g||g.over) return;
+  const pal=$("#pal"); if(!pal) return;
+  pal.querySelectorAll("[data-u]").forEach(b=>{
+    const u=UNITS[b.dataset.u];
+    b.classList.toggle("sel",g.sel===b.dataset.u);
+    b.classList.toggle("poor",g.coffee<u.cost);
   });
 }
 
+function syncHud(){
+  const g=G; if(!g||g.over) return;
+  const cf=$("#cf"); if(!cf) return;
+  cf.innerHTML="☕ "+g.coffee+" <small>커피</small>";
+  const total=g.waves.length, done=g.waves.filter(w=>w.done).length;
+  $("#wb").style.width=(done/total*100).toFixed(1)+"%";
+  $("#stat").innerHTML="복도 <b>"+g.foes.length+"</b>명 · 처리 <b>"+g.killed+"</b>";
+  $("#toast").textContent=g.toast;
+}
+
 function renderEnd(){
-  const s = S;
-  const win = s.over === "win";
-  $("#app").innerHTML = `
-    <h1>출근 저지</h1>
-    <div class="sub">${clock(s.now)} 종료</div>
+  const g=G, win=g.over==="win";
+  $("#app").innerHTML=`
+    <h1>${g.st.icon} ${esc(g.st.name)}</h1>
+    <div class="sub">${win?"클리어":"방어 실패"}</div>
     <div class="panel result">
-      <h2 class="${win ? "safe" : "danger"}">${win ? "저지 성공" : "저지 실패"}</h2>
-      <div class="bubble ${win ? "pop" : ""}" style="text-align:left">💬 ${esc(s.grudge)}</div>
-      <p style="margin-top:18px">${esc(s.dept.name)} ${esc(s.rank.name)} —
-        ${win ? "09:00까지 자리에 앉지 못했습니다." : clock(s.now) + "에 자리에 앉았습니다."}</p>
-      <p>${win ? "오늘 하루는 조용합니다." : "하루가 시작됩니다."}</p>
+      <h2 class="${win?"safe":"danger"}">${win?"저지 성공":"자리 함락"}</h2>
+      <div class="bubble ${win?"pop":""}">💬 ${esc(g.grudge)}</div>
+      <p style="margin-top:16px">${esc(win?g.st.winMsg:g.st.loseMsg)}</p>
+      <p>처리한 인원 <b style="color:var(--ink)">${g.killed}</b>명 · 생존 시간 ${g.t.toFixed(0)}초</p>
       <button class="primary" id="again">다시 하기</button>
+      <button class="ghost" id="back">← 스테이지 선택</button>
     </div>
-    <div class="hint">ESC — 보스키</div>
-  `;
-  $("#again").onclick = () => { S = null; renderStart(); };
+    <div class="hint">ESC — 보스키</div>`;
+  $("#again").onclick=()=>renderSetup(g.st.id);
+  $("#back").onclick=()=>{ G=null; renderStageSelect(); };
 }
 
 function render(){
-  if (!S) renderStart();
-  else if (S.over) renderEnd();
+  if(!G) renderStageSelect();
+  else if(G.over) renderEnd();
   else renderGame();
 }
 
-/* ─────────── 보스키 ─────────── */
-
-function buildBossSheet(){
-  const cols = ["","A","B","C","D","E","F"];
-  const head = "<tr>" + cols.map(c => "<th>" + c + "</th>").join("") + "</tr>";
-  const items = ["전처리","노광","에칭","전해","검사","출하"];
-  let rows = "";
-  for (let r = 1; r <= 22; r++){
-    let tds = "<th>" + r + "</th>";
-    if (r === 1){
-      tds += "<td>공정</td><td>계획</td><td>실적</td><td>달성률</td><td>불량</td><td>비고</td>";
-    } else if (r <= 7){
-      const i = r - 2;
-      const plan = 1200 + i * 130;
-      const act  = plan - (i * 37 + 11);
-      tds += "<td>" + items[i] + "</td><td>" + plan + "</td><td>" + act + "</td><td>" +
-             ((act / plan) * 100).toFixed(1) + "%</td><td>" + (3 + i) + "</td><td></td>";
-    } else {
-      tds += "<td></td><td></td><td></td><td></td><td></td><td></td>";
-    }
-    rows += "<tr>" + tds + "</tr>";
-  }
-  $("#bossSheet").innerHTML = head + rows;
+/* ══════════════ 시작/루프 ══════════════ */
+function start(){
+  G.last=performance.now();
+  const loop=now=>{
+    if(!G||G.over) return;
+    let dt=(now-G.last)/1000; G.last=now;
+    dt=Math.min(dt,0.05)*(window.__fast||1);
+    step(dt);
+    if(!G||G.over) return;
+    draw(); syncHud();
+    raf=requestAnimationFrame(loop);
+  };
+  raf=requestAnimationFrame(loop);
 }
 
-document.addEventListener("keydown", e => {
-  if (e.key === "Escape"){
-    e.preventDefault();
-    $("#boss").classList.toggle("on");
+/* ══════════════ 보스키 ══════════════ */
+function buildBossSheet(){
+  const cols=["","A","B","C","D","E","F"];
+  const items=["전처리","노광","에칭","전해","검사","출하"];
+  let rows="<tr>"+cols.map(c=>"<th>"+c+"</th>").join("")+"</tr>";
+  for(let r=1;r<=22;r++){
+    let t="<th>"+r+"</th>";
+    if(r===1) t+="<td>공정</td><td>계획</td><td>실적</td><td>달성률</td><td>불량</td><td>비고</td>";
+    else if(r<=7){ const i=r-2,p=1200+i*130,a=p-(i*37+11);
+      t+=`<td>${items[i]}</td><td>${p}</td><td>${a}</td><td>${((a/p)*100).toFixed(1)}%</td><td>${3+i}</td><td></td>`; }
+    else t+="<td></td>".repeat(6);
+    rows+="<tr>"+t+"</tr>";
   }
+  $("#bossSheet").innerHTML=rows;
+}
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){ e.preventDefault(); $("#boss").classList.toggle("on"); }
 });
 
-/* ─────────── 시작 ─────────── */
+window.__g=()=>G;   // 테스트 훅
 buildBossSheet();
 render();
 </script>
