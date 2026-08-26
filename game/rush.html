@@ -640,6 +640,503 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
 </script>
 
 <script>
+/* _rank_chars.js — 「정시 퇴근」 직급 캐릭터 v2 (실루엣 개편판)
+   ────────────────────────────────────────────────────────────────
+   기존 판의 문제: 다섯 직급이 전부 같은 체형에 몸통 색만 달랐다.
+   이 판의 원칙: **직급은 몸으로 구분한다.** 색은 보조 신호일 뿐.
+
+   전 함수 시그니처: (ctx, cx, cy, s)
+   · cx,cy = 도형 중심, s = 정사각 박스 한 변(px). 적 52px, 보스 76px.
+   · 순수 Canvas2D 패스만. 이모지/fillText/이미지 없음.
+   · save/restore 짝 맞춤 — 캔버스 상태 누수 0.
+   · 뱀서식 옆모습(전방 3/4), 전원 **왼쪽**을 본다. 엔진이 좌우 반전.
+   · 발은 지면선 **cy + 0.34*s** 에 닿는다 (엔진이 거기에 타원 그림자를 깖).
+   · 모든 부위는 cy ± 0.5*s 박스 안.
+
+   설계 좌표계: 100×100 유닛, 중심 (0,0), 지면 y=+34, 상한 y=-50.
+   1유닛 = s/100 px (52px 렌더에서 0.52px).
+
+   실루엣 지도 (검은 그림자만 보고도 구분되게):
+   · intern  작다 + 웅크림 + 큰 머리, 박스를 확연히 덜 채움
+   · staff   기준 체형, 꼿꼿한 보통 몸 — 아무 돌출 없음
+   · senior  앞으로 기울음 + 가슴 앞 서류 더미 + 보폭 큰 다리
+   · manager 어깨 넓고 가슴 폄 + 앞으로 뻗은 손가락 하나
+   · gm      압도적 부피 — 넓은 어깨·배·벌린 발, 박스를 가득 채움
+   · drunk   축이 통째로 기울음 + 머리 위로 치켜든 술잔 + 머리띠 넥타이
+   · audit   (보스) 곧고 좁은 기둥 + 앞으로 든 흰 클립보드
+   · hero    (플레이어) 셔츠 차림 보통 체형 + 파란 타이 + 사원증 끈 */
+(function () {
+  "use strict";
+
+  /* ── 팔레트 — design/README.md 의 시스템을 계승 ── */
+  var SKIN  = "#e8d3bd", SKIN2 = "#d9bfa3";
+  var HAIR  = "#262b38";
+  var INKD  = "#1d2129";                 // 얼굴 표식·구두
+  var PAPER = "#f2f5fa", PAPER2 = "#dfe6f2";
+  var OUT   = "rgba(6,8,13,0.85)";       // 어두운 바닥 위 분리용 림 라인
+  var YEL   = "#f5c451", YEL2 = "#d9a94e";  // 토너(서류·명찰)
+  var RED   = "#ff6b6b";                 // 볼터치·경고
+  var BLUE  = "#6f9fd8";                 // 히어로 타이 (기존 플레이어 계승)
+
+  /* 직급 수트색 — 명도는 #0b0e14 바닥에서 뜨도록 반 단계씩 올림 */
+  var C_INTERN = "#aeb7c6", C_INTERN2 = "#909aab";   // 인턴: 창백한 회색
+  var C_STAFF  = "#4e5a76", C_STAFF2  = "#3d4860";   // 사원: 짙은 남색
+  var C_SENIOR = "#5e80b2", C_SENIOR2 = "#4c6a97";   // 대리: 청회색
+  var C_MGR    = "#948b7c", C_MGR2    = "#7a7264";   // 과장: 따뜻한 회색
+  var TIE_MGR  = "#e08a3c";                          // 과장의 주황 타이
+  var C_GM     = "#a34d4d", C_GM2     = "#833b3b";   // 부장: 적갈색
+  var C_AUDIT  = "#3a4254", C_AUDIT2  = "#2d3444";   // 점검단: 근흑색
+  var C_DRUNK  = "#6d7d96", C_DRUNK2  = "#59687f";   // 회식조
+  var AMBER    = "#e0aa4b";                          // 회식조 앰버 포인트
+  var TROUS    = "#2b3140";                          // 공용 정장 바지
+
+  /* ── 공용 도형 ── */
+  function rrPath(ctx, x, y, w, h, r) {
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  /* 채움 + 어두운 림 — 크라우드에서 몸끼리 분리되는 핵심 */
+  function box(ctx, x, y, w, h, r, fill) {
+    rrPath(ctx, x, y, w, h, r);
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.strokeStyle = OUT; ctx.lineWidth = 1.7; ctx.stroke();
+  }
+  function disc(ctx, x, y, r, fill) {
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.strokeStyle = OUT; ctx.lineWidth = 1.7; ctx.stroke();
+  }
+  /* 팔·다리 — 어두운 심 위에 색을 얹어 자체 림을 만든다 */
+  function limb(ctx, x1, y1, x2, y2, w, color) {
+    ctx.lineCap = "round";
+    ctx.strokeStyle = OUT; ctx.lineWidth = w + 2.2;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.strokeStyle = color; ctx.lineWidth = w;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  }
+  /* 구두 — 발끝은 앞(-x), 밑창은 정확히 y=34 지면선 */
+  function shoe(ctx, x, w) {
+    rrPath(ctx, x, 30.4, w, 3.6, 1.8);
+    ctx.fillStyle = INKD; ctx.fill();
+    ctx.strokeStyle = OUT; ctx.lineWidth = 1.2; ctx.stroke();
+  }
+  /* 얼굴 표식용 선 */
+  function stroke(ctx, color, w, fn) {
+    ctx.strokeStyle = color; ctx.lineWidth = w; ctx.lineCap = "round";
+    ctx.beginPath(); fn(ctx); ctx.stroke();
+  }
+  function dot(ctx, x, y, r, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  }
+  /* 머리카락 — 머리원(hx,hy,hr) 위 반구 + 이마에서 끝나는 앞머리.
+     앞머리 밑선은 hy - hr*0.3 근처 — 절대 눈을 덮지 않는다 */
+  function hairCap(ctx, hx, hy, hr, drop) {
+    ctx.fillStyle = HAIR;
+    ctx.beginPath();
+    ctx.arc(hx, hy, hr, Math.PI, 0, false);
+    ctx.lineTo(hx + hr, hy + 1.5);                    // 뒷머리(+x)는 귀선까지
+    ctx.quadraticCurveTo(hx + hr * 0.4, hy - hr * 0.15 + drop,
+                         hx, hy - hr * 0.3 + drop);   // 이마 중앙
+    ctx.quadraticCurveTo(hx - hr * 0.6, hy - hr * 0.45 + drop,
+                         hx - hr, hy - hr * 0.25);    // 앞이마 — 높게 끝
+    ctx.closePath(); ctx.fill();
+  }
+  /* 100유닛 설계 공간 진입 */
+  function unit(ctx, cx, cy, s, fn) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    var k = s / 100;
+    ctx.scale(k, k);
+    fn(ctx);
+    ctx.restore();
+  }
+
+  /* ══════════ 인턴 — 작고, 좁고, 웅크림. 눈치 보는 중 ══════════ */
+  function intern(ctx, cx, cy, s) {
+    unit(ctx, cx, cy, s, function (ctx) {
+      /* 작은 몸: 전고 ~56유닛 — 박스를 확연히 덜 채운다 */
+      limb(ctx, -3.5, 16, -4.5, 29, 4.6, C_INTERN2);   // 앞다리 (바지도 연회색)
+      limb(ctx, 3.5, 16, 4.5, 29, 4.6, C_INTERN2);     // 뒷다리
+      shoe(ctx, -9.5, 8); shoe(ctx, 1.5, 8);
+      /* 웅크린 몸통 — 어깨가 안으로 말림, 위가 둥글다 */
+      box(ctx, -9, -3, 18, 20, 8, C_INTERN);
+      /* 너무 큰 소매 — 손을 완전히 덮고 몸통 아래까지 늘어짐 */
+      limb(ctx, -8.5, 1, -10.5, 15.5, 6, C_INTERN);
+      limb(ctx, 8.5, 1, 10.5, 15.5, 6, C_INTERN);
+      /* 큰 머리, 앞으로 숙임 */
+      disc(ctx, -2.5, -12, 10.5, SKIN);
+      hairCap(ctx, -2.5, -13, 10.5, 4.5);              // 앞머리 긴 단정머리
+      /* 불안한 얼굴: 흰자 큰 눈 + 치켜올린 눈썹 */
+      dot(ctx, -8, -10.5, 2.6, PAPER);  dot(ctx, -1.5, -10.5, 2.6, PAPER);
+      dot(ctx, -8.6, -10.2, 1.2, INKD); dot(ctx, -2.1, -10.2, 1.2, INKD);
+      stroke(ctx, INKD, 1.3, function (c) {            // 八자 눈썹 (걱정)
+        c.moveTo(-10.5, -15); c.lineTo(-6.5, -16.2);
+        c.moveTo(-4, -16.2); c.lineTo(0, -15);
+      });
+      stroke(ctx, INKD, 1.2, function (c) {            // 옹송한 입
+        c.moveTo(-6.5, -5.2); c.quadraticCurveTo(-5, -4.2, -3.5, -5.2);
+      });
+    });
+  }
+
+  /* ══════════ 사원 — 기준 체형. 반듯하고, 지쳐 있고, 무표정 ══════════ */
+  function staff(ctx, cx, cy, s) {
+    unit(ctx, cx, cy, s, function (ctx) {
+      limb(ctx, -5, 13, -5.5, 29, 5, TROUS);
+      limb(ctx, 5, 13, 5.5, 29, 5, TROUS);
+      shoe(ctx, -11, 9); shoe(ctx, 1.5, 9);
+      /* 반듯한 재킷 */
+      box(ctx, -12, -14, 24, 28, 5, C_STAFF);
+      limb(ctx, -12, -9.5, -13, 8, 5, C_STAFF2);       // 차렷 팔
+      limb(ctx, 12, -9.5, 13, 8, 5, C_STAFF2);
+      dot(ctx, -13, 9.5, 2.2, SKIN);                   // 손
+      dot(ctx, 13, 9.5, 2.2, SKIN);
+      /* 셔츠 V + 수수한 타이 */
+      ctx.fillStyle = PAPER;
+      ctx.beginPath(); ctx.moveTo(-6, -14); ctx.lineTo(1.5, -14); ctx.lineTo(-2.2, -6.5);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = TROUS;
+      ctx.beginPath(); ctx.moveTo(-3.6, -12.5); ctx.lineTo(-0.8, -12.5);
+      ctx.lineTo(-1.6, 1); ctx.lineTo(-2.8, 1); ctx.closePath(); ctx.fill();
+      /* 머리 — 단정, 직립 */
+      disc(ctx, 0, -25, 11, SKIN);
+      hairCap(ctx, 0, -26, 11, 2.5);
+      /* 지친 무표정: 점눈 + 눈그늘 + 일자 입 */
+      dot(ctx, -6, -24, 1.6, INKD); dot(ctx, 0, -24, 1.6, INKD);
+      stroke(ctx, "rgba(93,106,127,0.75)", 1.4, function (c) {  // 다크서클
+        c.moveTo(-7.4, -21.4); c.lineTo(-4.6, -21.4);
+        c.moveTo(-1.4, -21.4); c.lineTo(1.4, -21.4);
+      });
+      stroke(ctx, INKD, 1.5, function (c) {            // 일자 입
+        c.moveTo(-6, -17.5); c.lineTo(-1.5, -17.5);
+      });
+    });
+  }
+
+  /* ══════════ 대리 — 앞으로 기울어 서두름 + 가슴의 서류 더미 ══════════ */
+  function senior(ctx, cx, cy, s) {
+    unit(ctx, cx, cy, s, function (ctx) {
+      /* 보폭 큰 다리 — 급한 걸음. 발은 지면선 고정 */
+      limb(ctx, -3, 12, -12, 29, 5, TROUS);            // 앞다리 내딛음
+      limb(ctx, 3, 12, 8.5, 29, 5, TROUS);             // 뒷다리 밀어냄
+      shoe(ctx, -17.5, 9); shoe(ctx, 5, 9);
+      /* 상체 전체를 앞으로 기울임 */
+      ctx.save();
+      ctx.translate(0, 13); ctx.rotate(-0.15); ctx.translate(0, -13);
+      box(ctx, -12, -17, 24, 30, 5, C_SENIOR);
+      /* 셔츠 한쪽 삐져나옴 (untucked) */
+      box(ctx, 2.5, 9.5, 9, 5.5, 2, PAPER2);
+      /* 뒷팔 — 재킷 소매 */
+      limb(ctx, 11, -12, 13.5, 5, 5, C_SENIOR2);
+      /* 셔츠 V + 느슨하게 비뚤어진 타이 */
+      ctx.fillStyle = PAPER;
+      ctx.beginPath(); ctx.moveTo(-6.5, -17); ctx.lineTo(1.5, -17); ctx.lineTo(-2.5, -9);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#31405c";
+      ctx.beginPath(); ctx.moveTo(-3.8, -15); ctx.lineTo(-0.6, -14.4);
+      ctx.lineTo(1.8, -2.5); ctx.lineTo(-1.2, -2.5); ctx.closePath(); ctx.fill();
+      /* 서류 더미 — 가슴 앞에 안고 있다 */
+      box(ctx, -26, -8.5, 17, 5, 1.5, YEL);
+      box(ctx, -25, -4, 17, 5, 1.5, PAPER2);
+      box(ctx, -26.5, 0.5, 18, 6, 1.5, YEL2);
+      /* 앞팔 — 걷어붙인 소매: 재킷 위팔 + 맨 팔뚝이 더미를 받침 */
+      limb(ctx, -10, -11, -13, -2, 5, C_SENIOR2);
+      limb(ctx, -13, -2, -22, 5, 3.8, SKIN);
+      /* 머리 — 기울어진 축 위에 */
+      disc(ctx, -4, -29, 11, SKIN);
+      hairCap(ctx, -4, -30, 11, 3);
+      /* 다급한 얼굴: 몰린 눈썹 + 벌어진 입 */
+      dot(ctx, -10, -28, 1.6, INKD); dot(ctx, -4, -28, 1.6, INKD);
+      stroke(ctx, INKD, 1.4, function (c) {            // 찌푸린 눈썹
+        c.moveTo(-12, -31.5); c.lineTo(-8.3, -30.6);
+        c.moveTo(-5.8, -30.6); c.lineTo(-2.2, -31.5);
+      });
+      ctx.fillStyle = INKD;                            // 헉헉대는 입
+      ctx.beginPath(); ctx.ellipse(-8, -21.5, 2.2, 2.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  /* ══════════ 과장 — 가슴 펴고 손가락질. "이거 오늘 안에 되죠?" ══════════ */
+  function manager(ctx, cx, cy, s) {
+    unit(ctx, cx, cy, s, function (ctx) {
+      limb(ctx, -6.5, 13, -7.5, 29, 5.4, TROUS);
+      limb(ctx, 6.5, 13, 7.5, 29, 5.4, TROUS);
+      shoe(ctx, -13.5, 9.5); shoe(ctx, 3, 9.5);
+      /* 가슴 내민 넓은 몸통 — 위가 넓고 아래로 좁아진다 */
+      ctx.beginPath();
+      ctx.moveTo(-15, -17);
+      ctx.quadraticCurveTo(-17.5, -4, -12.5, 13);
+      ctx.lineTo(12, 13);
+      ctx.quadraticCurveTo(15.5, -4, 14, -17);
+      ctx.quadraticCurveTo(0, -20.5, -15, -17);
+      ctx.closePath();
+      ctx.fillStyle = C_MGR; ctx.fill();
+      ctx.strokeStyle = OUT; ctx.lineWidth = 1.7; ctx.stroke();
+      /* 라펠 + 셔츠 + 주황 타이 (단추 채운 재킷) */
+      ctx.fillStyle = PAPER;
+      ctx.beginPath(); ctx.moveTo(-6.5, -17.5); ctx.lineTo(2, -17.5); ctx.lineTo(-2.2, -8.5);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = TIE_MGR;
+      ctx.beginPath(); ctx.moveTo(-4, -16); ctx.lineTo(-0.6, -16);
+      ctx.lineTo(-1.2, 0.5); ctx.lineTo(-3.4, 0.5); ctx.closePath(); ctx.fill();
+      stroke(ctx, C_MGR2, 1.6, function (c) {          // 라펠 선
+        c.moveTo(-8.5, -17.5); c.lineTo(-4, -8);  c.lineTo(-4.5, 5);
+        c.moveTo(4, -17.5);    c.lineTo(0.6, -8); c.lineTo(1.2, 5);
+      });
+      /* 뒷팔 — 뒷짐 느낌으로 몸에 붙임 */
+      limb(ctx, 13, -11, 15, 6, 5, C_MGR2);
+      /* 앞팔 — 어깨높이로 들어 플레이어를 손가락질 */
+      limb(ctx, -12.5, -12, -24, -15.5, 5.6, C_MGR2);
+      dot(ctx, -25.5, -16, 3, SKIN);                    // 주먹
+      limb(ctx, -26.5, -16.5, -33.5, -18, 2.3, SKIN);   // 검지
+      /* 머리 — 턱을 들었다 */
+      disc(ctx, 1, -30, 11, SKIN);
+      hairCap(ctx, 1.5, -31.5, 10.8, 1.5);
+      /* 거만한 얼굴: 반쯤 감은 눈 + 삐딱한 미소 */
+      stroke(ctx, INKD, 1.9, function (c) {            // 반쯤 감은 눈 (평평한 윗선)
+        c.moveTo(-6.8, -29.5); c.lineTo(-3.4, -29.5);
+        c.moveTo(-0.4, -29.5); c.lineTo(3, -29.5);
+      });
+      stroke(ctx, INKD, 1.4, function (c) {            // 능글 미소 — 한쪽만 올라감
+        c.moveTo(-6.5, -22.6); c.quadraticCurveTo(-3.5, -21.2, -0.5, -23.4);
+      });
+    });
+  }
+
+  /* ══════════ 부장 — 제일 크고, 무겁고, 꿈쩍 안 함 ══════════ */
+  function gm(ctx, cx, cy, s) {
+    unit(ctx, cx, cy, s, function (ctx) {
+      /* 떡 벌린 두 다리 — 박스 폭을 가득 씀 */
+      limb(ctx, -9, 14, -13, 29, 6.4, TROUS);
+      limb(ctx, 9, 14, 13, 29, 6.4, TROUS);
+      shoe(ctx, -19.5, 11); shoe(ctx, 7.5, 11);
+      /* 거대한 몸통 — 어깨 넓고 배가 나옴 */
+      ctx.beginPath();
+      ctx.moveTo(-20, -26);
+      ctx.bezierCurveTo(-25.5, -14, -25.5, 4, -19, 16);
+      ctx.lineTo(19, 16);
+      ctx.bezierCurveTo(25.5, 4, 25.5, -14, 20, -26);
+      ctx.quadraticCurveTo(0, -30, -20, -26);
+      ctx.closePath();
+      ctx.fillStyle = C_GM; ctx.fill();
+      ctx.strokeStyle = OUT; ctx.lineWidth = 1.8; ctx.stroke();
+      /* 단추가 버티는 재킷 — 배에서 벌어진 흰 셔츠 틈 */
+      ctx.fillStyle = PAPER2;
+      ctx.beginPath(); ctx.moveTo(-3.5, -24);
+      ctx.quadraticCurveTo(-8, -8, -5.5, 12);
+      ctx.lineTo(0.5, 12);
+      ctx.quadraticCurveTo(-2, -8, 2.5, -24);
+      ctx.closePath(); ctx.fill();
+      stroke(ctx, C_GM2, 1.8, function (c) {           // 당겨진 재킷 앞선
+        c.moveTo(-4.5, -22); c.quadraticCurveTo(-9.5, -6, -6.5, 13);
+        c.moveTo(3.5, -22);  c.quadraticCurveTo(-1, -6, 1.5, 13);
+      });
+      dot(ctx, -2.5, 2, 1.5, INKD);                    // 사투 중인 단추
+      /* 굵은 팔 — 몸통 옆에 붙음 */
+      limb(ctx, -21, -18, -24, 6, 7, C_GM2);
+      limb(ctx, 21, -18, 24, 6, 7, C_GM2);
+      dot(ctx, -24, 8.5, 2.6, SKIN);
+      dot(ctx, 24, 8.5, 2.6, SKIN);
+      /* 목 없는 머리 — 어깨에 파묻힘. 정수리는 벗어진 맨살 */
+      disc(ctx, 0, -33, 10, SKIN);
+      /* 뒤통수(+x)에만 남은 옆머리 한 조각 */
+      ctx.fillStyle = HAIR;
+      ctx.beginPath();
+      ctx.moveTo(9.9, -34.5); ctx.arc(0, -33, 10, -0.15, 0.75, false);
+      ctx.quadraticCurveTo(11, -32, 9.9, -34.5);
+      ctx.closePath(); ctx.fill();
+      stroke(ctx, HAIR, 1.4, function (c) {            // 정수리 컴오버 세 가닥
+        c.moveTo(8, -38.5); c.quadraticCurveTo(0, -44.2, -7.5, -39.8);
+        c.moveTo(8.4, -36.6); c.quadraticCurveTo(0.5, -41.4, -6.8, -37.6);
+        c.moveTo(8.6, -34.8); c.quadraticCurveTo(1, -38.6, -5.8, -35.4);
+      });
+      /* 감정 없는 얼굴: 짓누르는 눈썹 + 실눈 + 처진 입 */
+      stroke(ctx, INKD, 2.1, function (c) {            // 무거운 눈썹
+        c.moveTo(-8.2, -32.6); c.lineTo(-3.8, -31.9);
+        c.moveTo(-0.8, -31.9); c.lineTo(3.6, -32.6);
+      });
+      stroke(ctx, INKD, 1.3, function (c) {            // 거의 감긴 눈
+        c.moveTo(-7.4, -29.4); c.lineTo(-4.4, -29.4);
+        c.moveTo(-1.4, -29.4); c.lineTo(1.6, -29.4);
+      });
+      stroke(ctx, INKD, 1.6, function (c) {            // 처진 입
+        c.moveTo(-6.5, -24.8); c.quadraticCurveTo(-3.5, -26.4, -0.8, -25.1);
+      });
+    });
+  }
+
+  /* ══════════ 점검단(보스) — 곧고, 뻣뻣하고, 표정이 없다 ══════════ */
+  function audit(ctx, cx, cy, s) {
+    unit(ctx, cx, cy, s, function (ctx) {
+      /* 모은 다리 — 기둥처럼 */
+      limb(ctx, -4, 15, -4, 29, 5.6, C_AUDIT2);
+      limb(ctx, 4, 15, 4, 29, 5.6, C_AUDIT2);
+      shoe(ctx, -9.5, 8.5); shoe(ctx, 0.5, 8.5);
+      /* 좁고 긴 직사각 몸통 — 테이퍼 없음, 완벽한 직립 */
+      box(ctx, -12.5, -26, 25, 42, 3.5, C_AUDIT);
+      /* 뒷팔 — 옆에 곧게 */
+      limb(ctx, 12, -19, 13, 4, 5, C_AUDIT2);
+      /* 셔츠 V + 검은 타이 */
+      ctx.fillStyle = PAPER;
+      ctx.beginPath(); ctx.moveTo(-5.5, -26); ctx.lineTo(2, -26); ctx.lineTo(-1.8, -19);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#171b24";
+      ctx.beginPath(); ctx.moveTo(-3.2, -24.5); ctx.lineTo(-0.4, -24.5);
+      ctx.lineTo(-1, -11); ctx.lineTo(-2.6, -11); ctx.closePath(); ctx.fill();
+      /* 목걸이 사원증 */
+      stroke(ctx, "#8b97ab", 1.1, function (c) {
+        c.moveTo(-5, -25); c.lineTo(-4.2, -12);
+        c.moveTo(1.5, -25); c.lineTo(-0.6, -12);
+      });
+      box(ctx, -5.5, -12, 6.5, 9, 1.5, PAPER);
+      ctx.fillStyle = BLUE; ctx.fillRect(-5.5, -12, 6.5, 2.6);
+      /* 클립보드 — 이 캐릭터에서 제일 밝은 것. 앞으로 치켜듦 */
+      limb(ctx, -11.5, -18, -20, -12, 5.2, C_AUDIT2);  // 앞팔이 보드를 받침
+      box(ctx, -31, -31, 15.5, 21, 1.5, PAPER);
+      box(ctx, -27.5, -32.5, 8.5, 4, 1.5, "#98a4b8");  // 클립
+      ctx.fillStyle = "#98a4b8";
+      ctx.fillRect(-28, -25, 10, 1.8);
+      ctx.fillRect(-28, -21, 10, 1.8);
+      ctx.fillRect(-28, -17, 6.5, 1.8);
+      dot(ctx, -20.5, -13, 2.4, SKIN);                 // 보드 쥔 손
+      /* 머리 — 한 치 기울지 않음 */
+      disc(ctx, 0, -36.5, 9.5, SKIN);
+      hairCap(ctx, 0, -37.5, 9.5, 2);
+      /* 무표정: 일자 눈 두 개. 입 없음 — 공백이 위협 */
+      stroke(ctx, INKD, 1.7, function (c) {
+        c.moveTo(-6.8, -35.8); c.lineTo(-3.6, -35.8);
+        c.moveTo(-0.8, -35.8); c.lineTo(2.4, -35.8);
+      });
+    });
+  }
+
+  /* ══════════ 회식조 — 기울어진 축, 머리띠 넥타이, 치켜든 소주잔 ══════════ */
+  function drunk(ctx, cx, cy, s) {
+    unit(ctx, cx, cy, s, function (ctx) {
+      /* 갈지자 다리 — 발은 그래도 땅에 붙어 있다 */
+      limb(ctx, -2, 13, -13, 29, 5, TROUS);            // 앞다리 휘청
+      limb(ctx, 4, 13, 5.5, 29, 5, TROUS);
+      shoe(ctx, -18.5, 9); shoe(ctx, 2, 9);
+      /* 상체 통째로 뒤(+x)로 기울음 */
+      ctx.save();
+      ctx.translate(0, 13); ctx.rotate(0.18); ctx.translate(0, -13);
+      box(ctx, -11, -15, 22, 28, 5, C_DRUNK);
+      /* 재킷이 한쪽 어깨에서 흘러내림 — 앞어깨는 흰 셔츠 */
+      ctx.fillStyle = PAPER2;
+      ctx.beginPath();
+      ctx.moveTo(-11, -12); ctx.quadraticCurveTo(-12, -16.5, -6, -15);
+      ctx.lineTo(-1, -15); ctx.lineTo(-4, -4); ctx.lineTo(-11, -6);
+      ctx.closePath(); ctx.fill();
+      stroke(ctx, C_DRUNK2, 1.6, function (c) {        // 흘러내린 재킷 가장자리
+        c.moveTo(-1, -15); c.quadraticCurveTo(-6.5, -9, -4.5, 4);
+      });
+      /* 뒷팔 — 축 처짐 */
+      limb(ctx, 10.5, -10, 14, 7, 5, C_DRUNK2);
+      /* 앞팔 — 셔츠 바람으로 번쩍 들어올림 */
+      limb(ctx, -9, -11, -15, -25, 4.8, PAPER2);
+      dot(ctx, -15.5, -27, 2.6, SKIN);
+      /* 소주잔 — 손 위 작은 잔, 앰버 술이 찰랑 */
+      ctx.beginPath();
+      ctx.moveTo(-19.5, -37); ctx.lineTo(-13.5, -37);
+      ctx.lineTo(-14.5, -30.5); ctx.lineTo(-18.5, -30.5);
+      ctx.closePath();
+      ctx.fillStyle = PAPER; ctx.fill();
+      ctx.strokeStyle = OUT; ctx.lineWidth = 1.4; ctx.stroke();
+      ctx.fillStyle = AMBER;
+      ctx.beginPath();
+      ctx.moveTo(-19, -35); ctx.lineTo(-14, -35);
+      ctx.lineTo(-14.7, -31.3); ctx.lineTo(-18.3, -31.3);
+      ctx.closePath(); ctx.fill();
+      /* 머리 — 기운 축의 끝, 발그레 */
+      disc(ctx, 2, -28, 11, SKIN);
+      hairCap(ctx, 2, -29.5, 11, 0.5);
+      /* 이마에 동여맨 넥타이 + 날리는 꼬리 — 눈은 가리지 않는다 */
+      box(ctx, -9.4, -33.8, 22.8, 4.6, 2, "#c04a4a");
+      ctx.fillStyle = "#c04a4a";
+      ctx.beginPath();
+      ctx.moveTo(13, -32.6); ctx.lineTo(20, -36.2);
+      ctx.lineTo(17.4, -30.4); ctx.closePath(); ctx.fill();
+      /* 발그레한 볼 */
+      ctx.save();
+      ctx.globalAlpha = 0.65; ctx.fillStyle = RED;
+      ctx.beginPath(); ctx.arc(-6.5, -21.5, 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(6, -21.5, 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      /* 질끈 감은 행복한 눈 (∩∩) + 노래 부르는 입 */
+      stroke(ctx, INKD, 1.6, function (c) {
+        c.moveTo(-6.6, -22.8); c.quadraticCurveTo(-4.4, -25.8, -2.2, -22.8);
+        c.moveTo(2, -22.8);    c.quadraticCurveTo(4.2, -25.8, 6.4, -22.8);
+      });
+      ctx.fillStyle = INKD;                            // 열창 중
+      ctx.beginPath(); ctx.ellipse(-2, -18.4, 2.6, 3.1, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  /* ══════════ 나 — 셔츠 차림, 파란 타이, 사원증. 오늘도 버틴다 ══════════ */
+  function hero(ctx, cx, cy, s) {
+    unit(ctx, cx, cy, s, function (ctx) {
+      /* 달리는 다리 — 사원과 실루엣이 갈리는 지점 1 */
+      limb(ctx, -3, 13, -11, 29, 5, TROUS);
+      limb(ctx, 3, 13, 8, 29, 5, TROUS);
+      shoe(ctx, -16.5, 9); shoe(ctx, 4.5, 9);
+      /* 흰 셔츠 몸통 — 재킷 없음: 군중 속에서 제일 밝은 몸 */
+      box(ctx, -11.5, -14, 23, 27, 5, PAPER);
+      /* 걷어붙인 소매 + 굽힌 팔 — 실루엣이 갈리는 지점 2:
+         앞주먹은 위로, 뒷팔은 뒤로 젓는다 */
+      limb(ctx, -10.5, -9, -14.5, -2.5, 5, PAPER2);    // 앞 위팔
+      limb(ctx, -14.5, -2.5, -19, -9.5, 3.8, SKIN);    // 앞 팔뚝 (올려침)
+      dot(ctx, -20, -10.8, 2.4, SKIN);                 // 주먹
+      limb(ctx, 10.5, -9, 14, -1, 5, PAPER2);          // 뒤 위팔
+      limb(ctx, 14, -1, 18.5, 4.5, 3.8, SKIN);         // 뒤 팔뚝 (뒤로 젓기)
+      /* 파란 타이 */
+      ctx.fillStyle = BLUE;
+      ctx.beginPath(); ctx.moveTo(-3.8, -13.5); ctx.lineTo(-0.6, -13.5);
+      ctx.lineTo(-1.2, 3); ctx.lineTo(-3.2, 3); ctx.closePath(); ctx.fill();
+      /* 사원증 목끈 + 노란 명찰 */
+      stroke(ctx, "#4c5769", 1.2, function (c) {
+        c.moveTo(-6.5, -13.5); c.lineTo(3.2, -3);
+        c.moveTo(6, -13.5); c.lineTo(3.8, -3);
+      });
+      box(ctx, 1.2, -3.5, 5.5, 8, 1.5, PAPER2);
+      ctx.fillStyle = YEL; ctx.fillRect(1.2, -3.5, 5.5, 2.6);
+      /* 머리 — 살짝 뻗친 앞머리 (약간 너덜너덜한 하루) */
+      disc(ctx, 0, -25, 11, SKIN);
+      hairCap(ctx, 0, -26, 11, 2.5);
+      ctx.fillStyle = HAIR;                            // 삐친 머리 두 가닥
+      ctx.beginPath(); ctx.moveTo(-3, -36.5); ctx.lineTo(-1, -41.5); ctx.lineTo(0.6, -36.8);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(3.5, -36.2); ctx.lineTo(6.5, -40); ctx.lineTo(6.6, -35.4);
+      ctx.closePath(); ctx.fill();
+      /* 결연한 얼굴: 또렷한 눈 + 내려 모은 눈썹 + 앙다문 입 */
+      dot(ctx, -6, -24, 1.8, INKD); dot(ctx, 0.2, -24, 1.8, INKD);
+      stroke(ctx, INKD, 1.5, function (c) {            // 결의의 눈썹
+        c.moveTo(-8.4, -26.6); c.lineTo(-4.6, -27.8);
+        c.moveTo(-1.4, -27.8); c.lineTo(2.4, -26.6);
+      });
+      stroke(ctx, INKD, 1.5, function (c) {            // 꾹 다문 입
+        c.moveTo(-5.8, -17.6); c.lineTo(-2, -17.2);
+      });
+    });
+  }
+
+  window.SPRITES_RANK = {
+    intern: intern, staff: staff, senior: senior, manager: manager,
+    gm: gm, audit: audit, drunk: drunk, hero: hero
+  };
+})();
+</script>
+
+<script>
 "use strict";
 /* ════════════════════════════════════════════════════════════════
    정시 퇴근 — 오늘도 6시에 나간다
@@ -868,7 +1365,14 @@ function damage(g,f,dmg,sx,sy,kb){
 function killFoe(g,f,i){
   g.foes.splice(i,1); g.kills++;
   g.orbs.push({x:f.x,y:f.y,xp:f.xp,t:0,boss:f.boss});
-  g.fx.push({type:"burst",x:f.x,y:f.y,t:0,boss:f.boss,r:f.r});
+  const bits=[];
+  const bn=f.boss?18:8;
+  for(let k=0;k<bn;k++){
+    bits.push({a:Math.random()*6.283, d:(f.boss?70:34)*(.55+Math.random()*.95),
+               sp:Math.random()*10-5, w:3+Math.random()*4, h:2+Math.random()*4,
+               c:Math.random()<.3?"#6f9fd8":(Math.random()<.5?"#dfe6f2":"#f2f5fa")});
+  }
+  g.fx.push({type:"burst",x:f.x,y:f.y,t:0,boss:f.boss,r:f.r,bits});
   // 히트스톱 + 화면 흔들림 — 때리는 맛의 90%가 여기서 나온다
   g.hitstop=Math.max(g.hitstop, f.boss?.14:.035);
   g.shake  =Math.max(g.shake,   f.boss?14:3.2);
@@ -1020,14 +1524,17 @@ function drawFoe(g,f,sx,sy){
   ctx.rotate(Math.sin(ph)*0.045);                 // 좌우로 기우뚱 — 걷는 느낌
   if(f.kb>0) ctx.rotate(-.12);
   ctx.scale(-1,1);                       // 스프라이트는 왼쪽을 보므로 뒤집어 플레이어를 향하게
+  if(f.hit>0){                           // 맞는 순간 살짝 커진다 — 캐릭터를 덮지 않는 타격 표현
+    const k=1+clamp(f.hit/.12,0,1)*0.16;
+    ctx.scale(k,k);
+  }
   if(fn) fn(ctx,0,0,size);
   ctx.restore();
-  // 피격 플래시
-  if(f.hit>0){
-    ctx.save(); ctx.globalCompositeOperation="lighter";
-    ctx.globalAlpha=clamp(f.hit/.12,0,1)*.85;
-    ctx.fillStyle="#ffffff";
-    ctx.beginPath(); ctx.arc(sx,sy,f.r+6,0,7); ctx.fill();
+  if(f.hit>0){                           // 얇은 링만 — 흰 덩어리로 얼굴을 지우지 않는다
+    const a=clamp(f.hit/.12,0,1);
+    ctx.save();
+    ctx.strokeStyle="rgba(255,255,255,"+(a*.75)+")"; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(sx,sy,f.r*0.9+(1-a)*10,0,7); ctx.stroke();
     ctx.restore();
   }
   // 체력바 — 보스와 다친 적만
@@ -1040,12 +1547,32 @@ function drawFoe(g,f,sx,sy){
 
 function drawPlayer(g,sx,sy){
   const P=g.P;
+  // 바닥 그림자 — 회전/반전 밖에서 그린다
+  ctx.save();
+  ctx.fillStyle="rgba(0,0,0,.45)";
+  ctx.beginPath(); ctx.ellipse(sx,sy+19,14,5,0,0,7); ctx.fill();
+  ctx.restore();
+  const R=window.SPRITES_RANK;
+  if(R && R.hero){
+    ctx.save(); ctx.translate(sx,sy);
+    ctx.rotate(Math.sin(P.walk)*0.05);
+    if(P.face>0) ctx.scale(-1,1);
+    R.hero(ctx,0,0,56);
+    ctx.restore();
+    if(P.hurt>0){                       // 피격 플래시
+      ctx.save(); ctx.globalCompositeOperation="lighter";
+      ctx.globalAlpha=clamp(P.hurt/.3,0,1)*.6; ctx.fillStyle="#ff6b6b";
+      ctx.beginPath(); ctx.arc(sx,sy,P.r+9,0,7); ctx.fill(); ctx.restore();
+    }
+    if(P.inv>0 && ((g.t*18)|0)%2===0){
+      ctx.save(); ctx.globalAlpha=.28; ctx.fillStyle="#ff6b6b";
+      ctx.beginPath(); ctx.arc(sx,sy,P.r+8,0,7); ctx.fill(); ctx.restore();
+    }
+    return;
+  }
   ctx.save(); ctx.translate(sx,sy);
   ctx.translate(0,Math.sin(P.walk)*2.0);
   if(P.face>0) ctx.scale(-1,1);
-  // 그림자
-  ctx.fillStyle="rgba(0,0,0,.35)";
-  ctx.beginPath(); ctx.ellipse(0,17,13,5,0,0,7); ctx.fill();
   const hurt=P.hurt>0;
   // 다리
   const sw=Math.sin(P.walk)*4;
@@ -1135,23 +1662,24 @@ function drawWorld(g){
       ctx.beginPath(); ctx.arc(X(e.x),Y(e.y),3+(1-a)*7,0,7); ctx.fill(); }
     else if(e.type==="stamp"){
       ctx.save(); ctx.translate(X(e.x),Y(e.y)); ctx.rotate(-.2);
-      ctx.globalAlpha=a; ctx.strokeStyle="#ff6b6b"; ctx.lineWidth=3;
-      const r=8+(1-a)*14; ctx.beginPath(); ctx.arc(0,0,r,0,7); ctx.stroke();
+      ctx.globalAlpha=a*.85; ctx.strokeStyle="#ff6b6b"; ctx.lineWidth=2.2;
+      const r=6+(1-a)*13; ctx.beginPath(); ctx.arc(0,0,r,0,7); ctx.stroke();
       ctx.restore(); }
     else if(e.type==="burst"){
-      // 처치 — 서류가 흩날린다
-      const n=e.boss?16:7;
-      for(let i=0;i<n;i++){
-        const ang=i*(6.283/n)+e.x*.01, dist=(1-a)*(e.boss?90:46);
+      // 처치 — 서류가 흩날린다. 개체마다 방향·거리·회전이 다르다.
+      const p=1-a;                       // 진행도
+      for(const b of (e.bits||[])){
+        const dist=b.d*(1-(1-p)*(1-p));  // 처음에 빠르게 튀고 감속
         ctx.save();
-        ctx.translate(X(e.x)+Math.cos(ang)*dist, Y(e.y)+Math.sin(ang)*dist);
-        ctx.rotate(ang+e.t*7); ctx.globalAlpha=a;
-        ctx.fillStyle= i%3===0?"#6f9fd8":"#f2f5fa";
-        ctx.fillRect(-4,-3,8,6);
+        ctx.translate(X(e.x)+Math.cos(b.a)*dist,
+                      Y(e.y)+Math.sin(b.a)*dist + p*p*14);   // 살짝 떨어진다
+        ctx.rotate(b.a+e.t*b.sp); ctx.globalAlpha=a;
+        ctx.fillStyle=b.c;
+        ctx.fillRect(-b.w/2,-b.h/2,b.w,b.h);
         ctx.restore();
       }
-      ctx.globalAlpha=a*.5; ctx.fillStyle="#ff6b6b";
-      ctx.beginPath(); ctx.arc(X(e.x),Y(e.y),(e.r||16)*(1+(1-a)*1.6),0,7); ctx.fill();
+      ctx.globalAlpha=a*.42; ctx.strokeStyle="#ff6b6b"; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(X(e.x),Y(e.y),(e.r||16)*(.7+(1-a)*1.5),0,7); ctx.stroke();
       ctx.globalAlpha=1; }
     else if(e.type==="quit"){
       ctx.fillStyle="rgba(245,196,81,"+(a*.5)+")"; ctx.fillRect(0,0,VWz,VHz); }
