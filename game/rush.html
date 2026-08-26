@@ -1669,8 +1669,8 @@ function newGame(grudge){
         inv:0, hurt:0 },
     lv:1, xp:0, next:6, kills:0, dmgDealt:0,
     weapons:{ stamp:1 }, perks:{},
-    cds:{}, foes:[], shots:[], orbs:[], pools:[], fx:[], floats:[],
-    spawnAcc:0, bossIdx:0, shake:0, hitstop:0,
+    cds:{}, foes:[], shots:[], orbs:[], pools:[], fx:[], floats:[], bodies:[],
+    spawnAcc:0, bossIdx:0, shake:0, shakeX:0, shakeY:0, hitstop:0,
     toast:"", toastT:0, paused:false, best:0,
   };
 }
@@ -1698,7 +1698,8 @@ function schedFor(h){
 function spawnAt(g,kind,x,y){
   const d=E[kind];
   g.foes.push({kind, x, y, hp:d.hp, maxhp:d.hp, spd:d.spd, dmg:d.dmg,
-               r:d.r, xp:d.xp, boss:!!d.boss, hit:0, slow:1, kb:0, kbx:0, kby:0});
+               r:d.r, xp:d.xp, boss:!!d.boss, hit:0, slow:1, kb:0, kbx:0, kby:0,
+               walk:Math.random(), face:-1});
 }
 function spawnRing(g,kind,n){
   const P=g.P, R=Math.max(VW,VH)/ZOOM*0.62+90;
@@ -1786,6 +1787,12 @@ function fireWeapons(g,dt){
 }
 
 /* ── 피해 / 처치 ─────────────────────────────────────────────── */
+/* 타격 방향으로 카메라를 민다 — 무작위 진동보다 "어디서 맞았는지"가 읽힌다 */
+function kick(g,dx,dy,power){
+  const d=Math.hypot(dx,dy)||1;
+  g.shakeX+=dx/d*power; g.shakeY+=dy/d*power;
+  g.shake=Math.max(g.shake,power*0.55);
+}
 function damage(g,f,dmg,sx,sy,kb){
   f.hp-=dmg; g.dmgDealt+=dmg; f.hit=.12;
   if(kb){ const dx=f.x-sx, dy=f.y-sy, d=Math.hypot(dx,dy)||1;
@@ -1795,17 +1802,24 @@ function damage(g,f,dmg,sx,sy,kb){
 function killFoe(g,f,i){
   g.foes.splice(i,1); g.kills++;
   g.orbs.push({x:f.x,y:f.y,xp:f.xp,t:0,boss:f.boss});
+  // 시체 — 쓰러지는 동작을 재생하고 바닥에 잠시 남는다.
+  // 죽은 게 그냥 사라지면 "갈아버렸다"는 감각이 남지 않는다.
+  g.bodies.push({kind:f.kind, x:f.x, y:f.y, face:f.face, boss:f.boss, t:0,
+                 fall:f.boss?.55:.4, life:f.boss?5:3.5});
+  if(g.bodies.length>48) g.bodies.splice(0, g.bodies.length-48);
   const bits=[];
   const bn=f.boss?18:8;
+  // 타격이 온 방향(플레이어 → 적)으로 치우쳐 흩어진다. 방향이 읽히면 충격이 커진다.
+  const away=Math.atan2(f.y-g.P.y, f.x-g.P.x);
   for(let k=0;k<bn;k++){
-    bits.push({a:Math.random()*6.283, d:(f.boss?70:34)*(.55+Math.random()*.95),
+    bits.push({a:away+(Math.random()-.5)*2.4, d:(f.boss?70:34)*(.55+Math.random()*.95),
                sp:Math.random()*10-5, w:3+Math.random()*4, h:2+Math.random()*4,
                c:Math.random()<.3?"#6f9fd8":(Math.random()<.5?"#dfe6f2":"#f2f5fa")});
   }
   g.fx.push({type:"burst",x:f.x,y:f.y,t:0,boss:f.boss,r:f.r,bits});
-  // 히트스톱 + 화면 흔들림 — 때리는 맛의 90%가 여기서 나온다
-  g.hitstop=Math.max(g.hitstop, f.boss?.14:.035);
-  g.shake  =Math.max(g.shake,   f.boss?14:3.2);
+  // 히트스톱 3~5프레임이 정석 — 그 사이 뇌가 타격을 등록한다
+  g.hitstop=Math.max(g.hitstop, f.boss?.16:.05);
+  kick(g, f.x-g.P.x, f.y-g.P.y, f.boss?9:2.2);
   S("kill",!!f.boss);
 }
 
@@ -1816,6 +1830,7 @@ function step(g,dt){
   if(g.t>=DAY){ finish(g,"win"); return; }
   if(g.toastT>0){ g.toastT-=dt; if(g.toastT<=0) g.toast=""; }
   if(g.shake>0) g.shake=Math.max(0,g.shake-dt*34);
+  g.shakeX*=Math.max(0,1-dt*11); g.shakeY*=Math.max(0,1-dt*11);
 
   // 이동
   let ix=(keys.d||keys.ArrowRight?1:0)-(keys.a||keys.ArrowLeft?1:0);
@@ -1846,7 +1861,7 @@ function step(g,dt){
     // 접촉
     if(d < f.r+P.r && P.inv<=0){
       P.hp-=f.dmg; P.inv=.62; P.hurt=.3;
-      g.shake=Math.max(g.shake,6); S("chew");
+      kick(g, P.x-f.x, P.y-f.y, 7); S("chew");
       if(P.hp<=0){ finish(g,"lose"); return; }
     }
   }
@@ -1937,6 +1952,11 @@ function drawFloor(g,camX,camY,VW,VH){
   ctx.stroke();
 }
 
+/* 적의 현재 동작을 고른다 — 맞는 중이면 피격, 아니면 걷기 */
+function poseOf(f,g){
+  if(f.hit>0) return {a:"hit", p:clamp(1-f.hit/.15,0,1), t:g.t};
+  return {a:"walk", p:(f.walk||0)%1, t:g.t};
+}
 function drawFoe(g,f,sx,sy){
   const SP=window.SPRITES, R=window.SPRITES_RANK;
   const fn=(R&&R[f.kind])||(SP&&SP.foes&&SP.foes[f.kind]);
@@ -1948,17 +1968,9 @@ function drawFoe(g,f,sx,sy){
   ctx.restore();
   ctx.save();
   ctx.translate(sx,sy);
-  // 걷는 흔들림 — 미끄러지지 않게
-  const ph=g.t*10+f.x*.05;
-  ctx.translate(0,Math.abs(Math.sin(ph))*-1.1);   // 발을 딛는 쪽으로만 살짝
-  ctx.rotate(Math.sin(ph)*0.045);                 // 좌우로 기우뚱 — 걷는 느낌
-  if(f.kb>0) ctx.rotate(-.12);
-  ctx.scale(-1,1);                       // 스프라이트는 왼쪽을 보므로 뒤집어 플레이어를 향하게
-  if(f.hit>0){                           // 맞는 순간 살짝 커진다 — 캐릭터를 덮지 않는 타격 표현
-    const k=1+clamp(f.hit/.12,0,1)*0.16;
-    ctx.scale(k,k);
-  }
-  if(fn) fn(ctx,0,0,size);
+  // 스프라이트는 왼쪽을 본다. 오른쪽으로 갈 때만 뒤집는다.
+  if(f.face>0) ctx.scale(-1,1);
+  if(fn) fn(ctx,0,0,size,poseOf(f,g));
   ctx.restore();
   if(f.hit>0){                           // 얇은 링만 — 흰 덩어리로 얼굴을 지우지 않는다
     const a=clamp(f.hit/.12,0,1);
@@ -2037,7 +2049,8 @@ function drawWorld(g){
   const P=g.P;
   const VWz=VW/ZOOM, VHz=VH/ZOOM;
   let camX=P.x-VWz/2, camY=P.y-VHz/2;
-  if(g.shake>0){ camX+=(Math.random()-.5)*g.shake; camY+=(Math.random()-.5)*g.shake; }
+  camX+=g.shakeX; camY+=g.shakeY;
+  if(g.shake>0){ camX+=(Math.random()-.5)*g.shake*.7; camY+=(Math.random()-.5)*g.shake*.7; }
   const X=v=>v-camX, Y=v=>v-camY;
 
   drawFloor(g,camX,camY,VWz,VHz);
