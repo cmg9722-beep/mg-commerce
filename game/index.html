@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>출근 저지 — MVP 프로토타입</title>
+<style>
+  :root{
+    --bg:#12141a; --panel:#1c1f28; --line:#2c3140; --ink:#e8eaf0;
+    --dim:#8d94a6; --accent:#ffcf5c; --good:#4ade80; --bad:#f87171; --blue:#60a5fa;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    display:flex; justify-content:center; padding:16px;
+  }
+  #app{width:100%; max-width:860px}
+  h1{font-size:20px; margin:0 0 4px}
+  .sub{color:var(--dim); font-size:13px; margin-bottom:16px}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:12px}
+  label{display:block; font-size:13px; color:var(--dim); margin:12px 0 6px}
+  input,select{
+    width:100%; padding:10px; border-radius:6px; border:1px solid var(--line);
+    background:#0e1015; color:var(--ink); font-size:14px; font-family:inherit;
+  }
+  .row{display:flex; gap:10px}
+  .row>*{flex:1}
+  button{
+    font-family:inherit; cursor:pointer; border-radius:6px; border:1px solid var(--line);
+    background:#262b36; color:var(--ink); padding:10px 14px; font-size:14px;
+  }
+  button:hover:not(:disabled){border-color:var(--accent)}
+  button:disabled{opacity:.35; cursor:not-allowed}
+  .primary{background:var(--accent); color:#1a1a1a; border-color:var(--accent); font-weight:bold; width:100%; margin-top:16px; padding:12px}
+
+  /* HUD */
+  .hud{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+  .clock{font-size:34px; font-weight:bold; letter-spacing:1px; font-variant-numeric:tabular-nums}
+  .eta{font-size:13px; color:var(--dim)}
+  .eta b{font-size:17px; font-variant-numeric:tabular-nums}
+  .safe{color:var(--good)} .danger{color:var(--bad)}
+  .who{font-size:14px}
+  .who b{color:var(--accent)}
+
+  /* 경로 */
+  .track{display:flex; align-items:flex-start; margin:18px 0 6px}
+  .node{flex:1; text-align:center; position:relative}
+  .node::before{
+    content:""; position:absolute; top:15px; left:-50%; width:100%; height:2px;
+    background:var(--line);
+  }
+  .node:first-child::before{display:none}
+  .dot{
+    width:32px; height:32px; line-height:30px; border-radius:50%; margin:0 auto 6px;
+    border:2px solid var(--line); background:var(--panel); position:relative; z-index:1; font-size:15px;
+  }
+  .node.done .dot{border-color:var(--good)}
+  .node.here .dot{border-color:var(--accent); box-shadow:0 0 0 4px rgba(255,207,92,.15)}
+  .nlabel{font-size:11px; color:var(--dim)}
+  .node.here .nlabel{color:var(--accent)}
+  .bar{height:5px; background:#0e1015; border-radius:3px; overflow:hidden; margin-top:8px}
+  .bar>i{display:block; height:100%; background:var(--accent); width:0; transition:width .12s linear}
+
+  /* 말풍선 */
+  .bubble{
+    margin:14px 0 0; padding:11px 14px; background:#0e1015; border:1px solid var(--line);
+    border-radius:10px; font-size:14px; position:relative; min-height:20px;
+  }
+  .bubble.pop{animation:pop .45s ease forwards}
+  @keyframes pop{
+    0%{transform:scale(1)} 40%{transform:scale(1.06); border-color:var(--bad)}
+    100%{transform:scale(.6); opacity:0}
+  }
+
+  /* 카드 */
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px}
+  .card{
+    text-align:left; padding:12px; line-height:1.45; background:#232833;
+    display:flex; flex-direction:column; gap:4px; min-height:96px;
+  }
+  .card .t{font-weight:bold; font-size:14px}
+  .card .d{font-size:11px; color:var(--dim)}
+  .card .n{font-size:11px; color:var(--accent)}
+
+  /* 로그 */
+  .log{height:120px; overflow-y:auto; font-size:12px; line-height:1.7; color:var(--dim)}
+  .log .hit{color:var(--good)} .log .miss{color:var(--bad)}
+
+  /* 결과 */
+  .result{text-align:center; padding:28px 16px}
+  .result h2{font-size:30px; margin:0 0 10px}
+  .result p{color:var(--dim); font-size:14px; margin:6px 0}
+
+  /* 보스키 */
+  #boss{
+    display:none; position:fixed; inset:0; z-index:99; background:#fff; color:#000;
+    font-family:"Malgun Gothic",sans-serif; font-size:12px; overflow:auto;
+  }
+  #boss.on{display:block}
+  #boss .ribbon{background:#217346; color:#fff; padding:6px 12px; font-size:13px}
+  #boss .tabs{background:#f3f2f1; border-bottom:1px solid #d0cece; padding:5px 12px; font-size:12px}
+  #boss table{border-collapse:collapse; width:100%; font-size:12px}
+  #boss td,#boss th{border:1px solid #d0cece; padding:4px 8px; text-align:left}
+  #boss th{background:#f3f2f1; font-weight:normal; color:#555}
+  .hint{font-size:11px; color:var(--dim); text-align:center; margin-top:14px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="boss">
+  <div class="ribbon">Excel — 2026년_생산실적_집계.xlsx</div>
+  <div class="tabs">파일 &nbsp; 홈 &nbsp; 삽입 &nbsp; 페이지 레이아웃 &nbsp; 수식 &nbsp; 데이터 &nbsp; 검토 &nbsp; 보기</div>
+  <table id="bossSheet"></table>
+</div>
+
+<script>
+"use strict";
+
+/* ─────────── 데이터 ─────────── */
+
+const RANKS = {
+  daeri: { key:"daeri", name:"대리", depart:460, car:false,
+           note:"성실해서 지하철 지연에 강함 (지하철 방해 ×0.5)" },
+  gwajang:{ key:"gwajang", name:"과장", depart:460, car:true,
+           note:"차를 몰고 옴 — 지하철 방해 무효, 도로 방해만 통함" },
+  bujang: { key:"bujang", name:"부장", depart:430, car:false,
+           note:"30분 일찍 출발 — 막을 시간이 그만큼 줄어듦" },
+};
+
+const DEPTS = {
+  sales:{ key:"sales", name:"영업부", mult:1,
+          note:"외근 지시 한 장이면 그대로 이탈" },
+  prod: { key:"prod",  name:"생산부", mult:0.7,
+          note:"현장이라 웬만하면 옴 — 모든 지연 ×0.7, 외근 무효" },
+};
+
+// 이동 경로. need = 기본 소요(분)
+const SEGS = [
+  { id:"home",     icon:"🏠", label:"집",       need:10 },
+  { id:"commute",  icon:"🚇", label:"이동",     need:35 },  // 차량이면 30
+  { id:"lobby",    icon:"🏢", label:"로비",     need:5  },
+  { id:"elevator", icon:"🛗", label:"엘리베이터", need:5  },
+  { id:"desk",     icon:"💺", label:"자리",     need:0  },
+];
+
+const CARDS = [
+  { id:"signal", name:"지하철 신호 고장", uses:1, delay:25, target:"commute",
+    desc:"지하철 구간 지연", onlyTransit:"subway" },
+  { id:"jam",    name:"교통 체증",       uses:1, delay:25, target:"commute",
+    desc:"도로 구간 지연", onlyTransit:"car" },
+  { id:"elev",   name:"엘리베이터 점검중", uses:1, delay:22, target:"elevator",
+    desc:"엘리베이터 앞에서 발 묶기" },
+  { id:"katok",  name:"카톡 폭탄",       uses:3, delay:12, target:"any",
+    desc:"어느 구간에서든 이동 속도 저하" },
+  { id:"field",  name:"외근 지시",       uses:1, delay:15, target:"any",
+    desc:"영업부면 그대로 이탈 / 생산부는 무효" },
+];
+
+const DEADLINE = 540; // 09:00
+const START    = 420; // 07:00
+const TICK_MS  = 300; // 게임 내 1분
+
+/* ─────────── 유틸 ─────────── */
+
+const $ = (sel, root) => (root || document).querySelector(sel);
+const clock = m => String(Math.floor(m/60)).padStart(2,"0") + ":" + String(m%60).padStart(2,"0");
+const esc = s => String(s).replace(/[&<>"']/g, c =>
+  ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+
+/* ─────────── 상태 ─────────── */
+
+let S = null;
+let timer = null;
+
+function newGame(cfg){
+  const rank = RANKS[cfg.rank], dept = DEPTS[cfg.dept];
+  const segs = SEGS.map(s => {
+    const need = (s.id === "commute" && rank.car) ? 30 : s.need;
+    return { ...s, need, delay:0, done:0,
+             icon:(s.id === "commute" && rank.car) ? "🚗" : s.icon };
+  });
+  return {
+    cfg, rank, dept, segs,
+    grudge: cfg.grudge,
+    now: START,
+    seg: 0,
+    progress: 0,
+    started: false,      // 출발했는가
+    over: null,          // "win" | "lose"
+    uses: Object.fromEntries(CARDS.map(c => [c.id, c.uses])),
+    log: [],
+  };
+}
+
+// 남은 총 소요(분) — 예상 도착 계산용
+function remaining(s){
+  let r = 0;
+  for (let i = s.seg; i < s.segs.length; i++){
+    const g = s.segs[i];
+    r += (g.need + g.delay) - (i === s.seg ? s.progress : 0);
+  }
+  return Math.max(0, r);
+}
+
+function eta(s){
+  const waiting = Math.max(0, s.rank.depart - s.now);
+  return s.now + waiting + remaining(s);
+}
+
+function say(s, text, cls){
+  s.log.unshift({ text, cls });
+  if (s.log.length > 40) s.log.pop();
+}
+
+/* ─────────── 카드 사용 ─────────── */
+
+function playCard(cardId){
+  const s = S;
+  if (!s || s.over) return;
+  const card = CARDS.find(c => c.id === cardId);
+  if (!card || s.uses[cardId] <= 0) return;
+
+  s.uses[cardId]--;
+
+  // 외근 지시 — 영업부는 즉시 이탈
+  if (card.id === "field"){
+    if (s.dept.key === "sales"){
+      say(s, "외근 지시 → " + s.dept.name + " " + s.rank.name + ", 그대로 현장으로 빠짐. 오늘 회사 안 옴.", "hit");
+      finish(s, "win");
+      render();
+      return;
+    }
+    if (s.dept.key === "prod"){
+      say(s, "외근 지시 → 생산부는 현장이 회사임. 무효.", "miss");
+      render();
+      return;
+    }
+  }
+
+  // 이동수단 불일치 → 무효
+  if (card.onlyTransit){
+    const transit = s.rank.car ? "car" : "subway";
+    if (card.onlyTransit !== transit){
+      say(s, card.name + " → " + (s.rank.car ? "차로 오는 중이라 무효." : "지하철로 오는 중이라 무효."), "miss");
+      render();
+      return;
+    }
+  }
+
+  // 구간 지정
+  let idx;
+  if (card.target === "any") idx = s.seg;
+  else {
+    idx = s.segs.findIndex(g => g.id === card.target);
+    if (idx < s.seg){
+      say(s, card.name + " → 이미 지나간 구간. 무효.", "miss");
+      render();
+      return;
+    }
+  }
+
+  // 배율 계산
+  let mult = s.dept.mult;
+  if (s.rank.key === "daeri" && card.target === "commute" && !s.rank.car) mult *= 0.5;
+
+  const gain = Math.round(card.delay * mult);
+  if (gain <= 0){
+    say(s, card.name + " → 효과 없음.", "miss");
+    render();
+    return;
+  }
+
+  s.segs[idx].delay += gain;
+  const tail = mult < 1 ? " (저항 적용, 원래 " + card.delay + "분)" : "";
+  say(s, card.name + " → [" + s.segs[idx].label + "] +" + gain + "분 지연" + tail, "hit");
+  render();
+}
+
+/* ─────────── 진행 ─────────── */
+
+function tick(){
+  const s = S;
+  if (!s || s.over) return;
+
+  s.now++;
+
+  if (s.now >= s.rank.depart) s.started = true;
+
+  if (s.started){
+    s.progress++;
+    const g = s.segs[s.seg];
+    if (s.progress >= g.need + g.delay){
+      s.progress = 0;
+      s.seg++;
+      if (s.seg >= s.segs.length - 1){
+        // 자리 도착
+        say(s, clock(s.now) + " — 자리에 앉았습니다.", "miss");
+        finish(s, "lose");
+        render();
+        return;
+      }
+      say(s, clock(s.now) + " — " + s.segs[s.seg].label + " 도착", null);
+    }
+  }
+
+  if (s.now >= DEADLINE){
+    finish(s, "win");
+    render();
+    return;
+  }
+
+  render();
+}
+
+function finish(s, outcome){
+  s.over = outcome;
+  clearInterval(timer);
+  timer = null;
+}
+
+/* ─────────── 화면 ─────────── */
+
+function renderStart(){
+  $("#app").innerHTML = `
+    <h1>출근 저지</h1>
+    <div class="sub">상사를 09:00까지 자리에 못 앉히면 당신의 승리입니다. · MVP 프로토타입</div>
+    <div class="panel">
+      <label>오늘 누구 때문에 힘드셨나요?</label>
+      <input id="grudge" maxlength="40" placeholder="예: 이거 오늘 안에 되죠?" autocomplete="off">
+      <div class="row">
+        <div>
+          <label>직급</label>
+          <select id="rank">
+            <option value="daeri">대리</option>
+            <option value="gwajang">과장</option>
+            <option value="bujang">부장 (어려움)</option>
+          </select>
+        </div>
+        <div>
+          <label>부서</label>
+          <select id="dept">
+            <option value="sales">영업부</option>
+            <option value="prod">생산부 (어려움)</option>
+          </select>
+        </div>
+      </div>
+      <div class="sub" id="combo" style="margin:14px 0 0"></div>
+      <button class="primary" id="go">출근 저지 시작</button>
+    </div>
+    <div class="hint">ESC — 보스키 (즉시 엑셀 화면으로 전환)</div>
+  `;
+  const upd = () => {
+    const r = RANKS[$("#rank").value], d = DEPTS[$("#dept").value];
+    $("#combo").innerHTML = "· " + esc(r.note) + "<br>· " + esc(d.note);
+  };
+  $("#rank").onchange = upd;
+  $("#dept").onchange = upd;
+  upd();
+  $("#go").onclick = () => {
+    const g = $("#grudge").value.trim();
+    S = newGame({
+      rank: $("#rank").value,
+      dept: $("#dept").value,
+      grudge: g || "이거 오늘 안에 되죠?",
+    });
+    say(S, "07:00 — 저지 작전 시작.", null);
+    render();
+    timer = setInterval(tick, TICK_MS);
+  };
+}
+
+function renderGame(){
+  const s = S;
+  const arrive = eta(s);
+  const safe = arrive > DEADLINE;
+  const g = s.segs[s.seg];
+  const pct = s.started ? Math.min(100, (s.progress / Math.max(1, g.need + g.delay)) * 100) : 0;
+
+  const nodes = s.segs.map((seg, i) => {
+    const cls = i < s.seg ? "done" : (i === s.seg && s.started ? "here" : "");
+    return `<div class="node ${cls}">
+      <div class="dot">${seg.icon}</div>
+      <div class="nlabel">${esc(seg.label)}${seg.delay ? " +" + seg.delay : ""}</div>
+    </div>`;
+  }).join("");
+
+  const cards = CARDS.map(c => {
+    const left = s.uses[c.id];
+    return `<button class="card" data-card="${c.id}" ${left <= 0 ? "disabled" : ""}>
+      <span class="t">${esc(c.name)}</span>
+      <span class="d">${esc(c.desc)}</span>
+      <span class="n">남은 횟수 ${left} · 기본 ${c.delay}분</span>
+    </button>`;
+  }).join("");
+
+  const logs = s.log.map(l =>
+    `<div class="${l.cls || ""}">${esc(l.text)}</div>`).join("");
+
+  $("#app").innerHTML = `
+    <h1>출근 저지</h1>
+    <div class="sub">09:00까지 자리에 못 앉히면 승리</div>
+    <div class="panel">
+      <div class="hud">
+        <div>
+          <div class="clock">${clock(s.now)}</div>
+          <div class="who"><b>${esc(s.dept.name)} ${esc(s.rank.name)}</b> ·
+            ${s.started ? esc(g.label) + " 통과 중" : "출발 전 (" + clock(s.rank.depart) + " 출발 예정)"}</div>
+        </div>
+        <div class="eta" style="text-align:right">
+          예상 도착<br>
+          <b class="${safe ? "safe" : "danger"}">${clock(Math.min(arrive, 1439))}</b>
+          <div>${safe ? "✅ 09시 넘김 — 저지 성공권" : "⚠️ 정시 출근 — 더 막아야 함"}</div>
+        </div>
+      </div>
+      <div class="track">${nodes}</div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <div class="bubble" id="bubble">💬 ${esc(s.grudge)}</div>
+    </div>
+    <div class="panel"><div class="cards">${cards}</div></div>
+    <div class="panel"><div class="log">${logs}</div></div>
+    <div class="hint">ESC — 보스키</div>
+  `;
+
+  $("#app").querySelectorAll("[data-card]").forEach(b => {
+    b.onclick = () => playCard(b.dataset.card);
+  });
+}
+
+function renderEnd(){
+  const s = S;
+  const win = s.over === "win";
+  $("#app").innerHTML = `
+    <h1>출근 저지</h1>
+    <div class="sub">${clock(s.now)} 종료</div>
+    <div class="panel result">
+      <h2 class="${win ? "safe" : "danger"}">${win ? "저지 성공" : "저지 실패"}</h2>
+      <div class="bubble ${win ? "pop" : ""}" style="text-align:left">💬 ${esc(s.grudge)}</div>
+      <p style="margin-top:18px">${esc(s.dept.name)} ${esc(s.rank.name)} —
+        ${win ? "09:00까지 자리에 앉지 못했습니다." : clock(s.now) + "에 자리에 앉았습니다."}</p>
+      <p>${win ? "오늘 하루는 조용합니다." : "하루가 시작됩니다."}</p>
+      <button class="primary" id="again">다시 하기</button>
+    </div>
+    <div class="hint">ESC — 보스키</div>
+  `;
+  $("#again").onclick = () => { S = null; renderStart(); };
+}
+
+function render(){
+  if (!S) renderStart();
+  else if (S.over) renderEnd();
+  else renderGame();
+}
+
+/* ─────────── 보스키 ─────────── */
+
+function buildBossSheet(){
+  const cols = ["","A","B","C","D","E","F"];
+  const head = "<tr>" + cols.map(c => "<th>" + c + "</th>").join("") + "</tr>";
+  const items = ["전처리","노광","에칭","전해","검사","출하"];
+  let rows = "";
+  for (let r = 1; r <= 22; r++){
+    let tds = "<th>" + r + "</th>";
+    if (r === 1){
+      tds += "<td>공정</td><td>계획</td><td>실적</td><td>달성률</td><td>불량</td><td>비고</td>";
+    } else if (r <= 7){
+      const i = r - 2;
+      const plan = 1200 + i * 130;
+      const act  = plan - (i * 37 + 11);
+      tds += "<td>" + items[i] + "</td><td>" + plan + "</td><td>" + act + "</td><td>" +
+             ((act / plan) * 100).toFixed(1) + "%</td><td>" + (3 + i) + "</td><td></td>";
+    } else {
+      tds += "<td></td><td></td><td></td><td></td><td></td><td></td>";
+    }
+    rows += "<tr>" + tds + "</tr>";
+  }
+  $("#bossSheet").innerHTML = head + rows;
+}
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape"){
+    e.preventDefault();
+    $("#boss").classList.toggle("on");
+  }
+});
+
+/* ─────────── 시작 ─────────── */
+buildBossSheet();
+render();
+</script>
+</body>
+</html>
