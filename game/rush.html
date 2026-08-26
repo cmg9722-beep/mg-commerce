@@ -1671,6 +1671,7 @@ function newGame(grudge){
     weapons:{ stamp:1 }, perks:{},
     cds:{}, foes:[], shots:[], orbs:[], pools:[], fx:[], floats:[], bodies:[],
     spawnAcc:0, bossIdx:0, shake:0, shakeX:0, shakeY:0, hitstop:0,
+    combo:0, comboT:0, comboBest:0, comboPop:0, flash:0,
     toast:"", toastT:0, paused:false, best:0,
   };
 }
@@ -1820,6 +1821,10 @@ function killFoe(g,f,i){
   // 히트스톱 3~5프레임이 정석 — 그 사이 뇌가 타격을 등록한다
   g.hitstop=Math.max(g.hitstop, f.boss?.16:.05);
   kick(g, f.x-g.P.x, f.y-g.P.y, f.boss?9:2.2);
+  // 콤보 — 연속 처치가 쌓이는 게 눈에 보여야 계속 몰아치게 된다
+  g.combo++; g.comboT=1.6; g.comboPop=1;
+  if(g.combo>g.comboBest) g.comboBest=g.combo;
+  if(g.combo%10===0){ g.flash=Math.max(g.flash,.5); S("coin"); }
   S("kill",!!f.boss);
 }
 
@@ -1831,6 +1836,9 @@ function step(g,dt){
   if(g.toastT>0){ g.toastT-=dt; if(g.toastT<=0) g.toast=""; }
   if(g.shake>0) g.shake=Math.max(0,g.shake-dt*34);
   g.shakeX*=Math.max(0,1-dt*11); g.shakeY*=Math.max(0,1-dt*11);
+  if(g.comboT>0){ g.comboT-=dt; if(g.comboT<=0) g.combo=0; }
+  if(g.comboPop>0) g.comboPop=Math.max(0,g.comboPop-dt*4.5);
+  if(g.flash>0) g.flash=Math.max(0,g.flash-dt*2.2);
 
   // 이동
   let ix=(keys.d||keys.ArrowRight?1:0)-(keys.a||keys.ArrowLeft?1:0);
@@ -2044,6 +2052,32 @@ function drawPlayer(g,sx,sy){
 function draw(g){
   ctx.setTransform(DPR*ZOOM,0,0,DPR*ZOOM,0,0);
   try{ drawWorld(g); } finally { ctx.setTransform(DPR,0,0,DPR,0,0); }
+  drawCombo(g);
+}
+/* 콤보 — 10단위마다 화면이 번쩍인다 */
+function drawCombo(g){
+  if(g.flash>0){
+    ctx.save(); ctx.globalCompositeOperation="lighter";
+    ctx.fillStyle="rgba(245,196,81,"+(g.flash*.13)+")";
+    ctx.fillRect(0,0,VW,VH); ctx.restore();
+  }
+  if(g.combo<3) return;
+  const a=clamp(g.comboT/1.6,0,1);
+  const pop=1+g.comboPop*0.30;
+  const tier=g.combo>=40?"#ff6b6b":g.combo>=20?"#f5c451":"#9ec8ff";
+  ctx.save();
+  ctx.translate(VW*0.5, VH*0.30);
+  ctx.scale(pop,pop);
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.font="400 "+(38+Math.min(26,g.combo*0.5))+"px 'Black Han Sans','Malgun Gothic',sans-serif";
+  ctx.fillStyle="rgba(11,14,20,"+(a*.8)+")";
+  ctx.fillText(g.combo,2,3);
+  ctx.globalAlpha=a; ctx.fillStyle=tier;
+  ctx.fillText(g.combo,0,0);
+  ctx.font="800 14px 'Gothic A1','Malgun Gothic',sans-serif";
+  ctx.fillStyle="rgba(232,236,244,"+(a*.75)+")";
+  ctx.fillText("연속 처리",0,34);
+  ctx.restore();
 }
 function drawWorld(g){
   const P=g.P;
@@ -2268,6 +2302,7 @@ function renderEnd(g){
       <div><b class="num">${g.kills}</b><span>처리</span></div>
       <div><b class="num">${clockStr(g.t)}</b><span>도달 시각</span></div>
       <div><b class="num">${g.lv}</b><span>레벨</span></div>
+      <div><b class="num">${g.comboBest}</b><span>최고 연속</span></div>
       <div><b class="num">${Math.round(g.dmgDealt).toLocaleString()}</b><span>누적 피해</span></div>
     </div>
     <div class="hint" style="margin-top:6px">${esc(g.grudge)} — ${win?"이제 안 들립니다.":"내일 또 듣습니다."}</div>
