@@ -350,7 +350,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 
 /* ══════════════ 유닛 ══════════════ */
-const UNITS={
+const U_OFFICE={
   water:{id:"water",e:"💧",name:"정수기",cost:50,hp:60,
          desc:"5초마다 커피 +25",gen:5},
   wall :{id:"wall", e:"🧱",name:"파티션",cost:50,hp:520,
@@ -362,10 +362,10 @@ const UNITS={
   quit :{id:"quit", e:"📄",name:"사직서",cost:125,hp:1,
          desc:"설치 즉시 그 줄 전체 소각",nuke:420},
 };
-const PAL=["water","wall","copy","stap","quit"];
+const PAL_OFFICE=["water","wall","copy","stap","quit"];
 
 /* ══════════════ 적 ══════════════ */
-const FOES={
+const F_OFFICE={
   intern :{e:"🧑‍💼",name:"인턴",  hp:70,  spd:26,dmg:8 ,color:"#9aa4bb"},
   staff  :{e:"👔",  name:"사원",  hp:140, spd:20,dmg:11,color:"#c3cbe0"},
   senior :{e:"🗂️",  name:"대리",  hp:230, spd:17,dmg:13,color:"#8fb4ff"},
@@ -379,7 +379,7 @@ const FOES={
 // [초, 레인(0~4), 적]
 function wave(list){ return list.map(([t,l,k])=>({t,l,k,done:false})); }
 
-const STAGES={
+const S_OFFICE={
   commute:{
     id:"commute",icon:"🚇",name:"출근 저지",
     tagline:"복도로 밀려오는 상사들을 내 자리 앞에서 막아라",
@@ -436,6 +436,81 @@ const STAGES={
   },
 };
 
+
+/* ══════════════ 학생 팩 ══════════════ */
+const U_SCHOOL={
+  vend  :{id:"vend",  name:"자판기", cost:50, hp:60,  desc:"5초마다 포인트 +25", gen:5},
+  locker:{id:"locker",name:"사물함", cost:50, hp:520, desc:"때리는 동안 시간을 번다"},
+  book  :{id:"book",  name:"자습서", cost:100,hp:110, desc:"문제 발사 (1.4초/22)", rate:1.4, dmg:22},
+  pencil:{id:"pencil",name:"필통",   cost:175,hp:110, desc:"연사 (0.55초/14)", rate:.55, dmg:14},
+  leave :{id:"leave", name:"조퇴증", cost:125,hp:1,   desc:"설치 즉시 그 줄 전체 소각", nuke:420},
+};
+const PAL_SCHOOL=["vend","locker","book","pencil","leave"];
+
+const F_SCHOOL={
+  hw    :{name:"숙제",     hp:70,  spd:26,dmg:8 ,color:"#9aa4bb"},
+  quiz  :{name:"쪽지시험", hp:140, spd:20,dmg:11,color:"#c3cbe0"},
+  task  :{name:"수행평가", hp:230, spd:17,dmg:13,color:"#8fb4ff"},
+  group :{name:"조별과제", hp:280, spd:27,dmg:15,color:"#ffb26b"},
+  roll  :{name:"출석부",   hp:620, spd:12,dmg:22,color:"#ff8f8f"},
+  night :{name:"야자",     hp:180, spd:30,dmg:12,color:"#ffd166"},
+  final :{name:"기말고사", hp:1500,spd:10,dmg:34,color:"#f87171",boss:true},
+};
+
+// 오피스 팩의 검증된 웨이브 테이블을 학생 팩 적으로 치환 (밸런스 동일)
+const KMAP={staff:"quiz",intern:"hw",senior:"task",manager:"group",
+            gm:"roll",drunk:"night",audit:"final"};
+function reskin(st, over){
+  return Object.assign({}, st, over, {
+    waves: st.waves.map(w=>({t:w.t, l:w.l, k:KMAP[w.k], done:false}))
+  });
+}
+const S_SCHOOL={
+  commute: reskin(S_OFFICE.commute,{
+    id:"commute", icon:"🎒", name:"등교 저지",
+    tagline:"복도로 밀려오는 숙제를 내 책상 앞에서 막아라",
+    brief:"월요일 아침. 안 한 숙제가 복도 끝에서 걸어옵니다. 왼쪽 끝 내 책상이 뚫리면 하루가 시작됩니다.",
+    winMsg:"복도가 조용해졌습니다. 아무것도 책상에 도달하지 못했습니다.",
+    loseMsg:"책상에 도달했습니다. 하루가 시작됩니다."}),
+  dinner: reskin(S_OFFICE.dinner,{
+    id:"dinner", icon:"🌙", name:"야자 저지",
+    tagline:"몰려오는 야자를 전부 돌려보내라",
+    brief:"저녁 6시. 야자가 몰려옵니다. 수가 많고 빠릅니다. 화력을 빨리 세우세요.",
+    winMsg:"야자 인원 미달. 오늘은 집에 갑니다.",
+    loseMsg:"야자가 책상까지 왔습니다. 10시까지입니다."}),
+  audit: reskin(S_OFFICE.audit,{
+    id:"audit", icon:"📕", name:"기말고사", boss:true,
+    tagline:"기말고사 3과목을 책상 앞에서 저지하라",
+    brief:"시험 주간입니다. 수행평가와 출석부가 먼저 들어오고, 기말고사 본체가 뒤따릅니다.",
+    winMsg:"기말고사 전원 저지. 시험은 무기한 연기되었습니다.",
+    loseMsg:"기말고사가 책상에 도달했습니다. 시험이 시작됩니다."}),
+};
+
+/* ══════════════ 팩 ══════════════ */
+const ICO_COFFEE='<svg viewBox="0 0 24 24" width="22" height="22" style="vertical-align:-4px">'
+ +'<path d="M4 8h13v6a6 6 0 0 1-6 6H10a6 6 0 0 1-6-6z" fill="#f5c451"/>'
+ +'<path d="M17 10h2a3 3 0 0 1 0 6h-2" fill="none" stroke="#f5c451" stroke-width="2"/></svg>';
+const ICO_POINT='<svg viewBox="0 0 24 24" width="22" height="22" style="vertical-align:-4px">'
+ +'<path d="M7 9h10v11a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1z" fill="#f5c451"/>'
+ +'<path d="M7 9l2.5-4h5L17 9z" fill="#d9a94e"/>'
+ +'<rect x="10" y="13" width="4" height="4" rx="1" fill="#0b0e14" opacity=".35"/></svg>';
+
+const PACKS={
+  office:{ id:"office", name:"직장인 팩", tagline:"복도로 걸어오는 상사를 내 자리 앞에서 막는다",
+    home:"내 자리", res:{name:"커피", ico:ICO_COFFEE}, sprites:"SPRITES",
+    units:U_OFFICE, pal:PAL_OFFICE, foes:F_OFFICE, stages:S_OFFICE },
+  school:{ id:"school", name:"학생 팩", tagline:"복도로 걸어오는 숙제를 내 책상 앞에서 막는다",
+    home:"내 책상", res:{name:"매점 포인트", ico:ICO_POINT}, sprites:"SPRITES_SCHOOL",
+    units:U_SCHOOL, pal:PAL_SCHOOL, foes:F_SCHOOL, stages:S_SCHOOL },
+};
+
+let PACK=null, UNITS=null, PAL=null, FOES=null, STAGES=null, RES=null;
+function usePack(id){
+  PACK=PACKS[id]; UNITS=PACK.units; PAL=PACK.pal; FOES=PACK.foes;
+  STAGES=PACK.stages; RES=PACK.res;
+}
+usePack("office");
+
 /* ══════════════ 상태 ══════════════ */
 let G=null, raf=null, ctx=null, cvs=null;
 
@@ -455,9 +530,9 @@ function newGame(stageId,grudge){
 /* ══════════════ 배치 ══════════════ */
 function place(r,c){
   const g=G; if(!g||g.over) return;
-  if(r<0||r>=ROWS||c<1||c>=COLS) { flash(g,"내 자리 열에는 설치할 수 없습니다."); return; }
+  if(r<0||r>=ROWS||c<1||c>=COLS) { flash(g,PACK.home+" 열에는 설치할 수 없습니다."); return; }
   const def=UNITS[g.sel];
-  if(g.coffee<def.cost){ flash(g,"커피가 부족합니다 ("+def.cost+" 필요)"); return; }
+  if(g.coffee<def.cost){ flash(g,RES.name+"이(가) 부족합니다 ("+def.cost+" 필요)"); return; }
 
   if(def.nuke){
     const hitFoes=g.foes.filter(f=>f.lane===r);
@@ -561,7 +636,7 @@ function finish(o){
 /* ══════════════ 그리기 ══════════════ */
 function draw(){
   const g=G; if(!g||!ctx) return;
-  const SP=window.SPRITES;
+  const SP=window[PACK.sprites];
   ctx.clearRect(0,0,FW,FH);
   ctx.textAlign="center"; ctx.textBaseline="middle";
 
@@ -577,7 +652,7 @@ function draw(){
   ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(CW,0); ctx.lineTo(CW,FH); ctx.stroke();
   for(let r=0;r<ROWS;r++){
     if(SP&&SP.seat) SP.seat(ctx,CW/2,r*CH+CH/2,34);
-    else { ctx.font="20px sans-serif"; ctx.fillText("💺",CW/2,r*CH+CH/2+2); }
+    else { ctx.fillStyle="#6f9fd8"; ctx.fillRect(CW/2-11,r*CH+CH/2-8,22,16); }
   }
 
   // 유닛
@@ -587,7 +662,7 @@ function draw(){
     const x=c*CW+CW/2, y=r*CH+CH/2;
     const su=SP&&SP.units&&SP.units[u.type];
     if(su) su(ctx,x,y-4,54);
-    else { ctx.font="30px sans-serif"; ctx.fillText(UNITS[u.type].e,x,y-4); }
+    else if(UNITS[u.type].e){ ctx.font="30px sans-serif"; ctx.fillText(UNITS[u.type].e,x,y-4); }
     const ratio=u.hp/u.maxhp;
     if(ratio<1){
       ctx.fillStyle="#0b0e14"; ctx.fillRect(x-22,y+22,44,4);
@@ -607,7 +682,7 @@ function draw(){
     const d=FOES[f.kind], y=f.lane*CH+CH/2;
     const sf=SP&&SP.foes&&SP.foes[f.kind];
     if(sf) sf(ctx,f.x,y-4,d.boss?68:52);
-    else { ctx.font=(d.boss?"36px":"28px")+" sans-serif"; ctx.fillText(d.e,f.x,y-4); }
+    else if(d.e){ ctx.font=(d.boss?"36px":"28px")+" sans-serif"; ctx.fillText(d.e,f.x,y-4); }
     const ratio=clamp(f.hp/f.maxhp,0,1), w=d.boss?52:38;
     ctx.fillStyle="#0b0e14"; ctx.fillRect(f.x-w/2,y+20,w,5);
     ctx.fillStyle=d.color; ctx.fillRect(f.x-w/2,y+20,w*ratio,5);
@@ -632,16 +707,10 @@ function draw(){
 }
 
 /* ══════════════ 화면 ══════════════ */
-function renderStageSelect(){
-  const items=Object.values(STAGES).map(s=>`
-    <button class="stage" data-stage="${s.id}">
-      <span class="ico">${s.icon}</span>
-      <span><span class="t">${esc(s.name)}${s.boss?'<span class="tag boss">BOSS</span>':
-        (s.id==="commute"?'<span class="tag">기본</span>':'')}</span>
-      <span class="d">${esc(s.tagline)}</span></span>
-    </button>`).join("");
-  $("#app").innerHTML=`
-    <div class="hero">
+let SCREEN="pack";
+
+function heroHTML(){
+  return `<div class="hero">
       <div class="lamps"></div><div class="bars"><i></i><i></i><i></i></div>
       <svg class="silh" viewBox="0 0 260 190" width="260" height="190">
         <g fill="#39424f">
@@ -660,10 +729,46 @@ function renderStageSelect(){
         <div class="rule"></div>
         <div class="lede">복도 끝에서 걸어옵니다.<br>내 자리 앞에서 막으세요.</div>
       </div>
+    </div>`;
+}
+
+function renderPackSelect(){
+  SCREEN="pack";
+  const cards=Object.values(PACKS).map(pk=>`
+    <button class="stage" data-pack="${pk.id}">
+      <span class="ico">${pk.id==="office"?"🏢":"🎒"}</span>
+      <span><span class="t">${esc(pk.name)}</span>
+      <span class="d">${esc(pk.tagline)}</span>
+      <span class="d" style="color:#59627a">${Object.values(pk.stages).map(x=>esc(x.name)).join(" · ")}</span></span>
+    </button>`).join("");
+  $("#app").innerHTML=heroHTML()+`
+    <div class="panel">
+      <div class="kicker" style="margin-bottom:10px">누구를 막을 건가요</div>
+      <div class="stages">${cards}</div>
     </div>
-    <div class="panel"><div class="stages">${items}</div></div>
+    <div class="hint">ESC — 보스키 (즉시 엑셀 화면)</div>`;
+  $("#app").querySelectorAll("[data-pack]").forEach(b=>b.onclick=()=>{
+    usePack(b.dataset.pack); renderStageSelect();
+  });
+}
+
+function renderStageSelect(){
+  SCREEN="stage";
+  const items=Object.values(STAGES).map(s=>`
+    <button class="stage" data-stage="${s.id}">
+      <span class="ico">${s.icon}</span>
+      <span><span class="t">${esc(s.name)}${s.boss?'<span class="tag boss">BOSS</span>':
+        (s.id==="commute"?'<span class="tag">기본</span>':'')}</span>
+      <span class="d">${esc(s.tagline)}</span></span>
+    </button>`).join("");
+  $("#app").innerHTML=`
+    <h1>${esc(PACK.name)}</h1>
+    <div class="sub">${esc(PACK.tagline)}</div>
+    <div class="panel"><div class="stages">${items}</div>
+      <button class="ghost" id="toPack">← 팩 선택</button></div>
     <div class="hint">ESC — 보스키 (즉시 엑셀 화면)</div>`;
   $("#app").querySelectorAll("[data-stage]").forEach(b=>b.onclick=()=>renderSetup(b.dataset.stage));
+  $("#toPack").onclick=renderPackSelect;
 }
 
 function renderSetup(id){
@@ -686,10 +791,7 @@ function renderSetup(id){
   };
 }
 
-const COFFEE_ICO='<svg viewBox="0 0 24 24" width="22" height="22" style="vertical-align:-4px">'
-  +'<path d="M4 8h13v6a6 6 0 0 1-6 6H10a6 6 0 0 1-6-6z" fill="#f5c451"/>'
-  +'<path d="M17 10h2a3 3 0 0 1 0 6h-2" fill="none" stroke="#f5c451" stroke-width="2"/></svg>';
-const coffeeMark=n=>COFFEE_ICO+' <span class="num">'+n+'</span> <small>커피</small>';
+const coffeeMark=n=>RES.ico+' <span class="num">'+n+'</span> <small>'+RES.name+'</small>';
 
 function renderGame(){
   const g=G;
@@ -697,7 +799,7 @@ function renderGame(){
     const u=UNITS[k];
     return `<button class="u ${g.sel===k?"sel":""} ${g.coffee<u.cost?"poor":""}" data-u="${k}">
       <canvas class="uico" width="72" height="72" data-ico="${k}"></canvas><span class="n">${esc(u.name)}</span>
-      <span class="c">${'커피 '+u.cost}</span><span class="d">${esc(u.desc)}</span></button>`;
+      <span class="c">${RES.name+' '+u.cost}</span><span class="d">${esc(u.desc)}</span></button>`;
   }).join("");
   const total=g.waves.length, done=g.waves.filter(w=>w.done).length;
 
@@ -714,7 +816,7 @@ function renderGame(){
       <canvas id="cv" width="${FW}" height="${FH}"></canvas>
       <div class="toast" id="toast"></div>
     </div>
-    <div class="hint">사물 선택 → 복도 칸 클릭 · 파란 칸(내 자리)에는 설치 불가 · ESC — 보스키</div>`;
+    <div class="hint">사물 선택 → 복도 칸 클릭 · 파란 칸(${PACK.home})에는 설치 불가 · ESC — 보스키</div>`;
 
   cvs=$("#cv"); ctx=cvs.getContext("2d");
   $("#pal").querySelectorAll("[data-u]").forEach(b=>{
@@ -730,7 +832,7 @@ function renderGame(){
 }
 
 function drawPalIcons(){
-  const S=window.SPRITES; if(!S) return;
+  const S=window[PACK.sprites]; if(!S) return;
   document.querySelectorAll("canvas[data-ico]").forEach(c=>{
     const fn=S.units[c.dataset.ico]; if(!fn) return;
     const x=c.getContext("2d"); x.clearRect(0,0,72,72); fn(x,36,36,64);
@@ -781,7 +883,7 @@ function renderEnd(){
 }
 
 function render(){
-  if(!G) renderStageSelect();
+  if(!G) (SCREEN==="pack"?renderPackSelect():renderStageSelect());
   else if(G.over) renderEnd();
   else renderGame();
 }
@@ -822,7 +924,7 @@ document.addEventListener("keydown",e=>{
 
 window.__g=()=>G;   // 테스트 훅
 buildBossSheet();
-render();
+renderPackSelect();
 </script>
 </body>
 </html>
