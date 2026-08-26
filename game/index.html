@@ -1518,6 +1518,289 @@ canvas{width:100%;display:block;border-radius:8px;background:#111721;
 </script>
 
 <script>
+/* _dept_props.js — 부서(과목) 오버레이 소품 스프라이트
+   이미 그려진 직급/사물 스프라이트 '위에' 덧그리는 작은 소품 10종.
+   규격은 다른 스프라이트 팩과 동일: (ctx, cx, cy, s) — cx,cy 중심, s = 정사각 박스 한 변(px).
+   72×72 디자인 좌표계. 순수 Canvas2D 패스만 사용. 이모지/텍스트/이미지 없음.
+   사람은 절대 그리지 않는다 — 소품(물건)만 그린다.
+
+   좌표 참고 (72-공간 환산):
+   · 직장인 적(76×96 공간, ×0.75 환산): 머리 중심 (36,16.5) r10.5, 머리카락 꼭대기 y=6,
+     눈 y≈18.75, 몸통 x24..48 / y27..60. 다섯 직급 모두 동일 체형(makeFoe wide=false).
+   · 학생 적(72×72 공간): 다섯 사물의 공통 점유 영역 대략 x20..45 / y20..47.
+   · 배지가 위(y≈2..17 @72px 기준), HP바가 아래(y≥60)에 그려지므로
+     소품은 위로는 머리카락 선(y≈5) 이상 올라가지 않고 아래로는 y≤54 안에 머문다. */
+(function () {
+  "use strict";
+
+  /* ── 부서 컬러 (배지/HP바와 일치) + 구조용 그레이 ── */
+  var SALES = "#ffb26b", SALES2 = "#d1854a";   // 영업 / 체육
+  var PROD  = "#8fb4ff", PROD2  = "#5f83c9";   // 생산 / 수학
+  var QA    = "#57d98a", QA2    = "#2f9c62";   // 품질 / 과학
+  var FIN   = "#f5c451", FIN2   = "#d9a94e";   // 재무 / 영어
+  var HR    = "#c58fff", HR2    = "#9a63d6";   // 인사 / 음악
+  var PAPER = "#f2f5fa", PAPER2 = "#dfe6f2";
+  var G1 = "#98a4b8", G2 = "#74829a", G3 = "#5d6a7f", G4 = "#4c5769", INK = "#2f3542";
+
+  /* 둥근 사각형 패스 (다른 팩과 동일) */
+  function rr(ctx, x, y, w, h, r) {
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function frr(ctx, x, y, w, h, r, fill) {
+    ctx.fillStyle = fill;
+    rr(ctx, x, y, w, h, r);
+    ctx.fill();
+  }
+
+  /* 72×72 디자인 좌표계로 진입 (다른 팩과 동일) */
+  function in72(ctx, cx, cy, s) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    var k = s / 72;
+    ctx.scale(k, k);
+    ctx.translate(-36, -36);
+  }
+
+  /* ══════════ 직장인 팩 — 몸에 걸치거나 손에 든 소품 ══════════ */
+
+  /* 영업 — 서류가방: 진행 방향(왼쪽) 손에 낮게 든 슬림 가방, 손잡이 보임 */
+  function oSales(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    ctx.strokeStyle = SALES2; ctx.lineWidth = 2.6; // 손잡이 (가방 위 고리)
+    rr(ctx, 17, 37.5, 7, 6, 3);
+    ctx.stroke();
+    frr(ctx, 12, 41, 17, 11, 2, SALES);            // 몸체
+    frr(ctx, 12, 41, 17, 3.2, 2, SALES2);          // 덮개 띠
+    frr(ctx, 19, 45, 3.2, 3, 1, PAPER2);           // 잠금쇠
+    ctx.restore();
+  }
+
+  /* 생산 — 안전모: 머리에 딱 붙는 돔 + 챙 + 정수리 능선 (눈은 가리지 않음) */
+  function oProd(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    ctx.fillStyle = PROD;                          // 돔 (머리 윗반원을 덮음)
+    ctx.beginPath();
+    ctx.arc(36, 17.5, 11.4, Math.PI, 0, false);
+    ctx.closePath(); ctx.fill();
+    frr(ctx, 33.2, 5, 5.6, 9, 2.8, PROD2);         // 정수리 능선
+    frr(ctx, 23.6, 15.4, 24.8, 3.6, 1.8, PROD2);   // 챙 (눈 y≈18.75 바로 위)
+    ctx.restore();
+  }
+
+  /* 품질 — 클립보드: 가슴 높이(왼쪽)로 든 초록 보드, 위 클립 + 줄 + 체크 */
+  function oQa(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 13, 28.5, 16, 20, 2, QA);             // 보드
+    frr(ctx, 15, 32, 12, 14.5, 1.2, PAPER);        // 종이
+    frr(ctx, 17.5, 26.6, 7, 4, 1.5, G3);           // 클립
+    frr(ctx, 19.5, 25.4, 3, 2.6, 1.2, G2);         // 클립 머리
+    ctx.fillStyle = G1;                            // 글줄
+    ctx.fillRect(17, 35, 8, 1.8);
+    ctx.fillRect(17, 38.6, 8, 1.8);
+    ctx.fillRect(17, 42.2, 5, 1.8);
+    ctx.strokeStyle = QA2; ctx.lineWidth = 1.8;    // 체크
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(23.2, 42.4); ctx.lineTo(24.8, 44.2); ctx.lineTo(27.4, 40.8);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* 재무 — 계산기: 가슴 높이의 어두운 몸체, 노란 표시창 + 3×3 키 */
+  function oFin(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 14, 30, 14, 18, 2, INK);              // 몸체
+    ctx.strokeStyle = FIN2; ctx.lineWidth = 1.2;   // 노란 테
+    rr(ctx, 14, 30, 14, 18, 2);
+    ctx.stroke();
+    frr(ctx, 16, 32.4, 10, 4.2, 1, FIN);           // 표시창
+    var kx, ky, i, j;                              // 3×3 키
+    for (i = 0; i < 3; i++) {
+      for (j = 0; j < 3; j++) {
+        kx = 16 + j * 3.7; ky = 38.6 + i * 3.1;
+        frr(ctx, kx, ky, 2.6, 2.2, 0.7,
+            (i === 2 && j === 2) ? FIN : PAPER2);  // 우하단 = 노란 키
+      }
+    }
+    ctx.restore();
+  }
+
+  /* 인사 — 서류철: 진행 방향 옆구리에 낀 링바인더, 링 + 삐져나온 탭 */
+  function oHr(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 8.8, 36.5, 3.6, 6, 1.5, "#e6d6ff");   // 탭 (왼쪽으로 삐져나옴)
+    frr(ctx, 11, 33, 14, 17, 2, HR);               // 표지
+    frr(ctx, 21.5, 33, 3.8, 17, 1.5, HR2);         // 등(몸 쪽)
+    ctx.strokeStyle = PAPER; ctx.lineWidth = 1.4;  // 링 2개
+    ctx.beginPath(); ctx.arc(23.4, 37.5, 1.6, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(23.4, 45.5, 1.6, 0, Math.PI * 2); ctx.stroke();
+    frr(ctx, 13, 36, 7.5, 4.5, 1, PAPER2);         // 라벨
+    ctx.restore();
+  }
+
+  /* ══════════ 학생 팩 — 사물의 진행 방향(왼쪽) 앞면 중앙에 크게 붙는 소품 ══════════
+     사무 팩 소품(클립보드 16×20)과 같은 시각적 무게. 바탕 사물이 밝은 회색/파랑이므로
+     모든 소품에 INK 외곽선을 둘러 분리한다. */
+
+  function outline(ctx) {                          // 공통 외곽선 스타일
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.8;
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+  }
+
+  /* 체육 — 호루라기: 큰 소리통 + 각진 물부리 + 위로 걸린 끈 */
+  function sSales(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    ctx.strokeStyle = INK; ctx.lineWidth = 2.2;    // 끈
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(19, 32);
+    ctx.quadraticCurveTo(21, 24, 28, 23);
+    ctx.quadraticCurveTo(34.5, 22.5, 35, 28);
+    ctx.stroke();
+    ctx.fillStyle = SALES;                         // 소리통 (크게)
+    ctx.beginPath(); ctx.arc(27, 44.5, 8.2, 0, Math.PI * 2); ctx.fill();
+    outline(ctx);
+    ctx.beginPath(); ctx.arc(27, 44.5, 8.2, 0, Math.PI * 2); ctx.stroke();
+    frr(ctx, 11, 31.5, 17.5, 9.5, 4, SALES);       // 몸통(배럴)
+    outline(ctx); rr(ctx, 11, 31.5, 17.5, 9.5, 4); ctx.stroke();
+    ctx.fillStyle = SALES2;                        // 비스듬한 물부리
+    ctx.beginPath();
+    ctx.moveTo(11, 32.5); ctx.lineTo(6.5, 34.5); ctx.lineTo(6.5, 38.5); ctx.lineTo(11, 40);
+    ctx.closePath(); ctx.fill();
+    outline(ctx);
+    ctx.beginPath();
+    ctx.moveTo(11, 32.5); ctx.lineTo(6.5, 34.5); ctx.lineTo(6.5, 38.5); ctx.lineTo(11, 40);
+    ctx.stroke();
+    frr(ctx, 15, 33.6, 9, 2.6, 1.3, SALES2);       // 윗면 홈
+    ctx.fillStyle = INK;                           // 소리통 구멍
+    ctx.beginPath(); ctx.arc(27, 44.5, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  /* 수학 — 삼각자: 화면을 가로지르는 큰 직각삼각형, 가운데 구멍 + 눈금 */
+  function sProd(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    ctx.fillStyle = PROD;
+    ctx.beginPath();                               // 바깥 직각삼각형
+    ctx.moveTo(11, 54); ctx.lineTo(11, 27); ctx.lineTo(36, 54);
+    ctx.closePath();
+    ctx.moveTo(16.5, 48.5); ctx.lineTo(16.5, 38); ctx.lineTo(27.5, 48.5); // 구멍
+    ctx.closePath();
+    ctx.fill("evenodd");
+    outline(ctx);                                  // 외곽선 (바깥 + 구멍)
+    ctx.beginPath();
+    ctx.moveTo(11, 54); ctx.lineTo(11, 27); ctx.lineTo(36, 54); ctx.closePath();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(16.5, 48.5); ctx.lineTo(16.5, 38); ctx.lineTo(27.5, 48.5); ctx.closePath();
+    ctx.stroke();
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.6;    // 세로변 눈금
+    ctx.beginPath();
+    ctx.moveTo(11.8, 32);   ctx.lineTo(15.2, 32);
+    ctx.moveTo(11.8, 36.5); ctx.lineTo(15.2, 36.5);
+    ctx.moveTo(11.8, 41);   ctx.lineTo(15.2, 41);
+    ctx.moveTo(11.8, 45.5); ctx.lineTo(15.2, 45.5);
+    ctx.moveTo(11.8, 50);   ctx.lineTo(15.2, 50);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* 과학 — 비커: 넓은 입 + 왼쪽 주둥이 + 초록 액체 수면 + 기포 */
+  function sQa(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 10.5, 30, 23, 20.5, 2.5, PAPER2);     // 유리 몸체 (넓게)
+    ctx.fillStyle = PAPER2;                        // 주둥이 (왼쪽 위)
+    ctx.beginPath();
+    ctx.moveTo(10.5, 30); ctx.lineTo(7, 32.2); ctx.lineTo(10.5, 34.4);
+    ctx.closePath(); ctx.fill();
+    frr(ctx, 12, 39.5, 20, 9.5, 1.8, QA);          // 액체
+    frr(ctx, 12, 39.5, 20, 2.6, 1.3, QA2);         // 수면 띠
+    ctx.fillStyle = PAPER;                         // 기포
+    ctx.beginPath(); ctx.arc(18, 45, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(24, 43.6, 1.5, 0, Math.PI * 2); ctx.fill();
+    outline(ctx);                                  // 외곽선 + 입 라인
+    rr(ctx, 10.5, 30, 23, 20.5, 2.5); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(10.5, 30); ctx.lineTo(7, 32.2); ctx.lineTo(10.5, 34.4);
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(11, 33.2); ctx.lineTo(33, 33.2); ctx.stroke(); // 입선
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.6;    // 눈금
+    ctx.beginPath();
+    ctx.moveTo(29.5, 37); ctx.lineTo(32.5, 37);
+    ctx.moveTo(29.5, 41.5); ctx.lineTo(32.5, 41.5);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* 영어 — 단어장: 두툼한 노란 수첩, 위 링 제본 + 크게 젖혀진 모서리 */
+  function sFin(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 11.5, 32.5, 4, 19, 1.5, PAPER);       // 페이지 두께 (왼쪽)
+    frr(ctx, 13.5, 30.5, 19, 21.5, 2.5, FIN);      // 표지
+    frr(ctx, 13.5, 30.5, 19, 5, 2.5, FIN2);        // 제본 띠
+    ctx.fillStyle = "#b98f3a";                     // 단어 줄
+    ctx.fillRect(16.5, 39, 12, 2);
+    ctx.fillRect(16.5, 43.5, 12, 2);
+    ctx.fillRect(16.5, 48, 8, 2);
+    ctx.fillStyle = "#fbe7b0";                     // 크게 젖혀진 모서리
+    ctx.beginPath();
+    ctx.moveTo(32.5, 52); ctx.lineTo(32.5, 44.5); ctx.lineTo(25, 52);
+    ctx.closePath(); ctx.fill();
+    outline(ctx);                                  // 외곽선 + 접힘선
+    rr(ctx, 13.5, 30.5, 19, 21.5, 2.5); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(32.5, 44.5); ctx.lineTo(25, 52);
+    ctx.stroke();
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.6;    // 링 2개 (제본 위)
+    ctx.beginPath(); ctx.arc(18.5, 30.5, 2, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(27.5, 30.5, 2, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  /* 음악 — 리코더: 사물 앞면을 가로지르는 긴 관, 어두운 취구 + 지공 5개 */
+  function sHr(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    ctx.translate(33, 26.5);                       // 취구(오른쪽 위)에서 시작
+    ctx.rotate(2.27);                              // 왼쪽 아래로
+    frr(ctx, 0, -3.6, 34, 7.2, 3.6, HR);           // 관 (길고 두껍게)
+    outline(ctx); rr(ctx, 0, -3.6, 34, 7.2, 3.6); ctx.stroke();
+    ctx.fillStyle = HR2;                           // 취구(비크) — 어두운 끝
+    ctx.beginPath();
+    ctx.moveTo(8, -3.6); ctx.lineTo(0.6, -3.4); ctx.lineTo(-1.8, 0);
+    ctx.lineTo(0.6, 3.4); ctx.lineTo(8, 3.6);
+    ctx.closePath(); ctx.fill();
+    outline(ctx);
+    ctx.beginPath();
+    ctx.moveTo(8, -3.6); ctx.lineTo(0.6, -3.4); ctx.lineTo(-1.8, 0);
+    ctx.lineTo(0.6, 3.4); ctx.lineTo(8, 3.6);
+    ctx.closePath(); ctx.stroke();
+    ctx.fillStyle = INK;                           // 바람길
+    ctx.fillRect(1.6, -1, 4.2, 2);
+    ctx.beginPath(); ctx.arc(12.5, 0, 1.6, 0, Math.PI * 2); ctx.fill(); // 지공 5개
+    ctx.beginPath(); ctx.arc(16.5, 0, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(20.5, 0, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(24.5, 0, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(28.5, 0, 1.6, 0, Math.PI * 2); ctx.fill();
+    frr(ctx, 30, -3.6, 3.4, 7.2, 1.7, HR2);        // 발관 띠
+    ctx.restore();
+  }
+
+  window.SPRITES_DEPT = {
+    office: { sales: oSales, prod: oProd, qa: oQa, fin: oFin, hr: oHr },
+    school: { sales: sSales, prod: sProd, qa: sQa, fin: sFin, hr: sHr }
+  };
+})();
+</script>
+
+<script>
 "use strict";
 
 /* ══════════════ 상수 ══════════════ */
@@ -2104,7 +2387,12 @@ function draw(){
   g.foes.forEach(f=>{
     const d=FOES[f.kind], y=f.lane*CH+CH/2;
     const sf=SP&&SP.foes&&SP.foes[f.kind];
-    if(sf) sf(ctx,f.x,y-4,d.boss?68:52);
+    const size=d.boss?68:52;
+    if(sf) sf(ctx,f.x,y-4,size);
+    if(f.dept){                        // 부서 소품 — 직급 위에 덧그린다 (5개로 25종 커버)
+      const DPS=window.SPRITES_DEPT, set=DPS&&DPS[PACK.id];
+      const pf=set&&set[f.dept]; if(pf) pf(ctx,f.x,y-4,size);
+    }
     else if(d.e){ ctx.font=(d.boss?"36px":"28px")+" sans-serif"; ctx.fillText(d.e,f.x,y-4); }
     const dp=f.dept?DEPTS[f.dept]:null;
     const ratio=clamp(f.hp/f.maxhp,0,1), w=d.boss?52:38;
