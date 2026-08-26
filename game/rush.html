@@ -1592,19 +1592,19 @@ function clockStr(t){
 const WEAPONS = {
   stamp:{ id:"stamp", name:"반려 도장", max:8, base:"start",
     desc:"가장 가까운 적을 찍는다",
-    lv:l=>({cd:.72-l*.05, dmg:16+l*7, count:1+Math.floor(l/3), range:150+l*10}),
-    up:l=>l===2?"동시에 2명":l===5?"동시에 3명":"피해 +7, 간격 −0.05초" },
+    lv:l=>({cd:.60-l*.05, dmg:26+l*10, count:2+Math.floor(l/2), range:170+l*14}),
+    up:l=>l%2===0?("동시에 "+(2+Math.floor(l/2))+"명"):"피해 +10, 간격 −0.05초" },
   copy:{ id:"copy", name:"복사기", max:8,
     desc:"사방으로 서류를 뿌린다",
-    lv:l=>({cd:2.2-l*.11, dmg:12+l*4, n:5+l, spd:250}),
+    lv:l=>({cd:2.1-l*.13, dmg:13+l*5, n:6+l*2, spd:260}),
     up:l=>"장수 +1, 피해 +4" },
   mail:{ id:"mail", name:"참조 메일", max:8,
     desc:"적을 쫓아가는 유도 메일",
-    lv:l=>({cd:1.5-l*.08, dmg:20+l*8, n:1+Math.floor(l/2), turn:3.4}),
+    lv:l=>({cd:1.45-l*.10, dmg:22+l*10, n:1+Math.floor(l/1.6), turn:3.6}),
     up:l=>l%2===0?"동시 발송 +1":"피해 +8" },
   coffee:{ id:"coffee", name:"쏟은 커피", max:8,
     desc:"발밑에 장판. 밟는 적이 계속 닳는다",
-    lv:l=>({cd:3.4-l*.15, dps:14+l*6, r:58+l*7, life:3.4}),
+    lv:l=>({cd:3.2-l*.18, dps:16+l*8, r:62+l*9, life:3.6}),
     up:l=>"범위 +7, 초당 피해 +6" },
   clock:{ id:"clock", name:"퇴근 시계", max:6,
     desc:"주변 적을 느리게 만든다",
@@ -1612,7 +1612,7 @@ const WEAPONS = {
     up:l=>"범위 +14, 감속 강화" },
   quit:{ id:"quit", name:"사직서", max:5,
     desc:"화면 전체를 쓸어버린다",
-    lv:l=>({cd:26-l*2.6, dmg:150+l*90}),
+    lv:l=>({cd:25-l*2.8, dmg:180+l*120}),
     up:l=>"피해 +90, 재사용 −2.6초" },
 };
 /* ── 강화(패시브) ─────────────────────────────────────────────── */
@@ -1627,8 +1627,8 @@ const PERKS = {
 
 /* ── 적 ──────────────────────────────────────────────────────── */
 const E = {
-  intern :{name:"인턴", hp:26,  spd:78, dmg:5,  xp:1, r:15},
-  staff  :{name:"사원", hp:52,  spd:62, dmg:8,  xp:2, r:16},
+  intern :{name:"인턴", hp:22,  spd:78, dmg:5,  xp:1, r:15},
+  staff  :{name:"사원", hp:44,  spd:62, dmg:8,  xp:2, r:16},
   senior :{name:"대리", hp:96,  spd:55, dmg:11, xp:3, r:17},
   manager:{name:"과장", hp:130, spd:70, dmg:14, xp:5, r:18},
   drunk  :{name:"회식조",hp:74, spd:92, dmg:11, xp:4, r:17},
@@ -1637,15 +1637,15 @@ const E = {
 };
 /* 시간대별 스폰 구성 — 시(hour) 기준 */
 const SCHED = [
-  {h:9,  kinds:["intern"],                       rate:1.30, n:1},
-  {h:10, kinds:["intern","staff"],               rate:0.95, n:2},
-  {h:11, kinds:["staff","senior"],               rate:0.80, n:2},
-  {h:12, kinds:["staff","drunk"],                rate:0.62, n:3},
-  {h:13, kinds:["senior","manager"],             rate:0.58, n:3},
-  {h:14, kinds:["staff","senior","manager"],     rate:0.48, n:4},
-  {h:15, kinds:["manager","gm"],                 rate:0.44, n:4},
-  {h:16, kinds:["senior","manager","drunk"],     rate:0.36, n:5},
-  {h:17, kinds:["manager","gm","drunk"],         rate:0.30, n:6},
+  {h:9,  kinds:["intern"],                       rate:1.40, n:1},
+  {h:10, kinds:["intern","staff"],               rate:1.15, n:2},
+  {h:11, kinds:["staff","senior"],               rate:1.00, n:3},
+  {h:12, kinds:["staff","drunk"],                rate:0.85, n:4},
+  {h:13, kinds:["senior","manager"],             rate:0.72, n:6},
+  {h:14, kinds:["staff","senior","manager"],     rate:0.60, n:8},
+  {h:15, kinds:["manager","gm","staff"],         rate:0.50, n:10},
+  {h:16, kinds:["senior","manager","drunk"],     rate:0.42, n:13},
+  {h:17, kinds:["manager","gm","drunk","staff"], rate:0.34, n:16},
 ];
 /* 정각 보스 */
 const BOSSES = [
@@ -1669,7 +1669,7 @@ function newGame(grudge){
         inv:0, hurt:0 },
     lv:1, xp:0, next:6, kills:0, dmgDealt:0,
     weapons:{ stamp:1 }, perks:{},
-    cds:{}, foes:[], shots:[], orbs:[], pools:[], fx:[], floats:[], bodies:[],
+    cds:{}, foes:[], shots:[], orbs:[], pools:[], fx:[], floats:[], bodies:[], drops:[],
     spawnAcc:0, bossIdx:0, shake:0, shakeX:0, shakeY:0, hitstop:0,
     combo:0, comboT:0, comboBest:0, comboPop:0, flash:0,
     toast:"", toastT:0, paused:false, best:0,
@@ -1713,7 +1713,8 @@ function spawnRing(g,kind,n){
 function doSpawns(g,dt){
   const h=hourOf(g.t), s=schedFor(h);
   g.spawnAcc+=dt;
-  if(g.spawnAcc>=s.rate){
+  const CAP=420;                       // 폭주 방지 상한 (성능·가독성 둘 다)
+  if(g.foes.length<CAP && g.spawnAcc>=s.rate){
     g.spawnAcc=0;
     const k=s.kinds[(Math.random()*s.kinds.length)|0];
     spawnRing(g,k,s.n);
@@ -1798,7 +1799,41 @@ function damage(g,f,dmg,sx,sy,kb){
   f.hp-=dmg; g.dmgDealt+=dmg; f.hit=.12;
   if(kb){ const dx=f.x-sx, dy=f.y-sy, d=Math.hypot(dx,dy)||1;
           f.kbx=dx/d*kb; f.kby=dy/d*kb; f.kb=.14; }
-  g.floats.push({x:f.x,y:f.y-f.r-4,v:Math.round(dmg),t:0,big:dmg>=80});
+  // 숫자가 수십 개 뜨면 화면이 안 읽힌다. 큰 타격만, 최대 14개.
+  if(dmg>=25 && g.floats.length<14)
+    g.floats.push({x:f.x,y:f.y-f.r-4,v:Math.round(dmg),t:0,big:dmg>=120});
+}
+/* 드롭 — 처치 말고도 주울 게 있어야 계속 돌아다니게 된다 */
+const DROPS={
+  heal  :{id:"heal",  name:"믹스커피", color:"#57d98a"},
+  magnet:{id:"magnet",name:"텀블러",   color:"#9ec8ff"},
+  bomb  :{id:"bomb",  name:"사직서",   color:"#f5c451"},
+};
+function dropFrom(g,f){
+  let kind=null;
+  if(f.boss) kind = Math.random()<.5 ? "bomb" : "heal";
+  else {
+    const r=Math.random();
+    if(r<0.012) kind="heal";
+    else if(r<0.020) kind="magnet";
+    else if(r<0.025) kind="bomb";
+  }
+  if(kind) g.drops.push({kind, x:f.x, y:f.y, t:0});
+}
+function takeDrop(g,d){
+  const P=g.P;
+  if(d.kind==="heal"){
+    P.hp=Math.min(P.maxhp, P.hp+Math.round(P.maxhp*0.3));
+    flash(g,"믹스커피 — 체력 회복"); S("coin");
+  } else if(d.kind==="magnet"){
+    g.orbs.forEach(o=>{ o.x=P.x+(o.x-P.x)*0.06; o.y=P.y+(o.y-P.y)*0.06; });
+    flash(g,"텀블러 — 경험치 전부 수집"); S("coin");
+  } else {
+    let n=0; for(const f of g.foes){ damage(g,f,240,P.x,P.y,24); n++; }
+    g.fx.push({type:"quit",t:0});
+    kick(g,0,-1,14); g.hitstop=Math.max(g.hitstop,.12);
+    S("nuke"); flash(g,"사직서 — "+n+"명 정리");
+  }
 }
 function killFoe(g,f,i){
   g.foes.splice(i,1); g.kills++;
@@ -1822,6 +1857,7 @@ function killFoe(g,f,i){
   g.hitstop=Math.max(g.hitstop, f.boss?.16:.05);
   kick(g, f.x-g.P.x, f.y-g.P.y, f.boss?9:2.2);
   // 콤보 — 연속 처치가 쌓이는 게 눈에 보여야 계속 몰아치게 된다
+  dropFrom(g,f);
   g.combo++; g.comboT=1.6; g.comboPop=1;
   if(g.combo>g.comboBest) g.comboBest=g.combo;
   if(g.combo%10===0){ g.flash=Math.max(g.flash,.5); S("coin"); }
@@ -1917,6 +1953,13 @@ function step(g,dt){
   // 경험치 구슬 — 자석 범위는 무기 사거리보다 넓어야 한다.
   // 그렇지 않으면 멀리서 죽인 경험치가 영영 바닥에 남는다.
   const mag=140*P.magnet;
+  if(g.orbs.length>70){                 // 구슬이 너무 많으면 합친다
+    const keep=g.orbs.slice(0,40);
+    let rest=0; for(let i=40;i<g.orbs.length;i++) rest+=g.orbs[i].xp;
+    if(rest>0) keep.push({x:P.x+(Math.random()-.5)*90, y:P.y+(Math.random()-.5)*90,
+                          xp:rest, t:0, boss:true});
+    g.orbs=keep;
+  }
   for(let i=g.orbs.length-1;i>=0;i--){
     const o=g.orbs[i]; o.t+=dt;
     const dx=P.x-o.x, dy=P.y-o.y, d=Math.hypot(dx,dy)||1;
@@ -1925,9 +1968,22 @@ function step(g,dt){
     o.x+=dx/d*pull*dt; o.y+=dy/d*pull*dt;
     if(d<P.r+10){ g.orbs.splice(i,1); gainXp(g,o.xp); }
   }
+  // 드롭 아이템
+  for(let i=g.drops.length-1;i>=0;i--){
+    const d=g.drops[i]; d.t+=dt;
+    const dx=P.x-d.x, dy=P.y-d.y, dd=Math.hypot(dx,dy)||1;
+    if(dd<mag*0.8){ const pull=Math.min(500,140+(mag-dd)*5);
+      d.x+=dx/dd*pull*dt; d.y+=dy/dd*pull*dt; }
+    if(dd<P.r+14){ g.drops.splice(i,1); takeDrop(g,d); }
+  }
+  // 시체 — 쓰러지는 동작이 끝나면 서서히 사라진다
+  for(let i=g.bodies.length-1;i>=0;i--){
+    const bd=g.bodies[i]; bd.t+=dt;
+    if(bd.t>bd.life) g.bodies.splice(i,1);
+  }
   // 이펙트
   for(let i=g.fx.length-1;i>=0;i--){ g.fx[i].t+=dt; if(g.fx[i].t>.55) g.fx.splice(i,1); }
-  for(let i=g.floats.length-1;i>=0;i--){ g.floats[i].t+=dt; if(g.floats[i].t>.6) g.floats.splice(i,1); }
+  for(let i=g.floats.length-1;i>=0;i--){ g.floats[i].t+=dt; if(g.floats[i].t>.45) g.floats.splice(i,1); }
 }
 
 function gainXp(g,n){
@@ -1961,6 +2017,40 @@ function drawFloor(g,camX,camY,VW,VH){
 }
 
 /* 적의 현재 동작을 고른다 — 맞는 중이면 피격, 아니면 걷기 */
+/* ══════════════ 스프라이트 캐시 ══════════════
+   캐릭터는 Canvas2D 패스 수십 개로 그린다. 적이 수백 명이면 프레임마다
+   수천 번의 패스 연산이 된다(측정: 200명 25 FPS, 450명 13 FPS).
+   동작을 프레임 단위로 미리 구워두고 drawImage로 찍는다. */
+const FRAMES={ walk:8, hit:4, die:8, attack:4, idle:1 };
+const BAKE=2;
+const _cache=new Map();
+function baked(kind,size,action,fi){
+  const key=kind+"|"+size+"|"+action+"|"+fi;
+  if(_cache.has(key)) return _cache.get(key);
+  const R=window.SPRITES_RANK, SP=window.SPRITES;
+  const fn=(R&&R[kind])||(SP&&SP.foes&&SP.foes[kind]);
+  if(!fn){ _cache.set(key,null); return null; }
+  const pad=Math.ceil(size*0.62);
+  const c=document.createElement("canvas");
+  c.width=c.height=Math.ceil(pad*2*BAKE);
+  const x=c.getContext("2d");
+  x.scale(BAKE,BAKE);
+  const n=FRAMES[action]||1;
+  try{ fn(x,pad,pad,size,{a:action,p:n>1?fi/n:0,t:0}); }
+  catch(e){ _cache.set(key,null); return null; }
+  c._pad=pad;
+  _cache.set(key,c);
+  return c;
+}
+function blit(g2,kind,size,action,p,x,y){
+  const n=FRAMES[action]||1;
+  const fi=n>1 ? clamp(Math.floor(p*n),0,n-1) : 0;
+  const c=baked(kind,size,action,fi);
+  if(!c) return false;
+  g2.drawImage(c, x-c._pad, y-c._pad, c._pad*2, c._pad*2);
+  return true;
+}
+
 function poseOf(f,g){
   if(f.hit>0) return {a:"hit", p:clamp(1-f.hit/.15,0,1), t:g.t};
   return {a:"walk", p:(f.walk||0)%1, t:g.t};
@@ -1978,7 +2068,8 @@ function drawFoe(g,f,sx,sy){
   ctx.translate(sx,sy);
   // 스프라이트는 왼쪽을 본다. 오른쪽으로 갈 때만 뒤집는다.
   if(f.face>0) ctx.scale(-1,1);
-  if(fn) fn(ctx,0,0,size,poseOf(f,g));
+  const ps=poseOf(f,g);
+  if(!blit(ctx,f.kind,size,ps.a,ps.p,0,0) && fn) fn(ctx,0,0,size,ps);
   ctx.restore();
   if(f.hit>0){                           // 얇은 링만 — 흰 덩어리로 얼굴을 지우지 않는다
     const a=clamp(f.hit/.12,0,1);
@@ -2104,14 +2195,55 @@ function drawWorld(g){
     ctx.setLineDash([6,6]); ctx.lineDashOffset=-g.t*20;
     ctx.beginPath(); ctx.arc(X(P.x),Y(P.y),r,0,7); ctx.stroke(); ctx.restore();
   }
+  // 드롭 아이템 — 눈에 확 띄어야 주우러 간다
+  for(const d of g.drops){
+    const C=DROPS[d.kind], sx=X(d.x), sy=Y(d.y);
+    const bob=Math.sin(g.t*4+d.x*.05)*3;
+    ctx.save(); ctx.globalAlpha=.22; ctx.fillStyle=C.color;
+    ctx.beginPath(); ctx.arc(sx,sy+bob,17+Math.sin(g.t*5)*3,0,7); ctx.fill(); ctx.restore();
+    ctx.fillStyle="rgba(0,0,0,.35)";
+    ctx.beginPath(); ctx.ellipse(sx,sy+13,9,3,0,0,7); ctx.fill();
+    ctx.save(); ctx.translate(sx,sy+bob);
+    ctx.fillStyle="#0b0e14"; ctx.strokeStyle=C.color; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.arc(0,0,10,0,7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle=C.color;
+    if(d.kind==="heal"){ ctx.fillRect(-5,-1.6,10,3.2); ctx.fillRect(-1.6,-5,3.2,10); }
+    else if(d.kind==="magnet"){ ctx.beginPath(); ctx.arc(0,0,4.5,0,7); ctx.fill(); }
+    else { ctx.fillRect(-4,-5,8,10); ctx.fillStyle="#0b0e14";
+           ctx.fillRect(-2.5,-3,5,1.4); ctx.fillRect(-2.5,-.5,5,1.4); ctx.fillRect(-2.5,2,3,1.4); }
+    ctx.restore();
+  }
+
   // 경험치 구슬
   for(const o of g.orbs){
     const s=o.boss?5:3, pul=1+Math.sin(g.t*8+o.x)*0.18;
     ctx.fillStyle=o.boss?"#57d98a":"#f5c451";
     ctx.beginPath(); ctx.arc(X(o.x),Y(o.y),s*pul,0,7); ctx.fill();
-    ctx.save(); ctx.globalAlpha=.25;
-    ctx.beginPath(); ctx.arc(X(o.x),Y(o.y),s*3*pul,0,7); ctx.fill(); ctx.restore();
+    if(o.boss){ ctx.save(); ctx.globalAlpha=.22;
+      ctx.beginPath(); ctx.arc(X(o.x),Y(o.y),s*2.6*pul,0,7); ctx.fill(); ctx.restore(); }
   }
+  // 시체 — 바닥에 쌓인다. 갈아버린 게 사라지면 갈아버린 감각이 안 남는다.
+  for(const bd of g.bodies){
+    const sx=X(bd.x), sy=Y(bd.y);
+    if(sx<-90||sx>VWz+90||sy<-90||sy>VHz+90) continue;
+    const pr=clamp(bd.t/bd.fall,0,1);
+    const fade=clamp((bd.life-bd.t)/1.2,0,1);
+    ctx.save();
+    ctx.globalAlpha=fade*0.85;
+    ctx.fillStyle="rgba(0,0,0,.30)";
+    ctx.beginPath();
+    ctx.ellipse(sx,sy+(bd.boss?24:16),(bd.boss?26:19)*(.6+pr*.7),(bd.boss?7:5),0,0,7);
+    ctx.fill();
+    ctx.translate(sx,sy);
+    if(bd.face>0) ctx.scale(-1,1);
+    const sz=bd.boss?76:52;
+    if(!blit(ctx,bd.kind,sz,"die",pr,0,0)){
+      ctx.rotate(pr*1.35); ctx.globalAlpha*=0.75;
+      blit(ctx,bd.kind,sz,"idle",0,0,0);
+    }
+    ctx.restore();
+  }
+
   // 적 (아래쪽이 앞)
   const sorted=g.foes.slice().sort((a,b)=>a.y-b.y);
   for(const f of sorted){
@@ -2135,6 +2267,8 @@ function drawWorld(g){
   // 이펙트
   for(const e of g.fx){
     const a=1-e.t/.55;
+    const busy=g.fx.length>26;
+    if(busy && (e.type==="spark"||e.type==="stamp")) continue;
     if(e.type==="spark"){ ctx.fillStyle="rgba(255,255,255,"+a+")";
       ctx.beginPath(); ctx.arc(X(e.x),Y(e.y),3+(1-a)*7,0,7); ctx.fill(); }
     else if(e.type==="stamp"){
@@ -2164,8 +2298,8 @@ function drawWorld(g){
   // 데미지 숫자
   ctx.textAlign="center"; ctx.textBaseline="middle";
   for(const t of g.floats){
-    const a=1-t.t/.6;
-    ctx.font=(t.big?"800 20px":"800 14px")+" 'Gothic A1','Malgun Gothic',sans-serif";
+    const a=1-t.t/.45;
+    ctx.font=(t.big?"800 17px":"800 12px")+" 'Gothic A1','Malgun Gothic',sans-serif";
     ctx.fillStyle="rgba(11,14,20,"+a+")";
     ctx.fillText(t.v,X(t.x)+1,Y(t.y)-t.t*34+1);
     ctx.fillStyle=t.big?"rgba(245,196,81,"+a+")":"rgba(255,255,255,"+a+")";
