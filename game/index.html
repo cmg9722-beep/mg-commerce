@@ -3,16 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>사무실 방어 — 출근 저지</title>
+<title>출근 저지 — 사무실 레인 디펜스</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;600;800&display=swap">
 <style>
-:root{--bg:#0f1116;--panel:#191d26;--line:#2b3140;--ink:#e9ecf3;--dim:#8b93a6;
-      --accent:#ffcf5c;--good:#4ade80;--bad:#f87171;--blue:#60a5fa}
+:root{--bg:#0b0e14;--panel:#141922;--line:#232a36;--ink:#e8ecf4;--dim:#7d8699;
+      --accent:#f5c451;--good:#57d98a;--bad:#ff6b6b;--blue:#9ec8ff;--deep:#6f9fd8}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
-  font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  font-family:'Gothic A1',"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
   display:flex;justify-content:center;padding:14px}
+.ttl{font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
+.num{font-variant-numeric:tabular-nums}
 #app{width:100%;max-width:840px}
-h1{font-size:19px;margin:0 0 4px}
+h1{font-size:22px;margin:0 0 4px;font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
 .sub{color:var(--dim);font-size:13px;margin-bottom:14px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:10px}
 label{display:block;font-size:13px;color:var(--dim);margin:12px 0 6px}
@@ -26,6 +30,22 @@ button:disabled{opacity:.4;cursor:not-allowed}
   width:100%;margin-top:14px;padding:12px;text-align:center}
 .ghost{background:transparent;color:var(--dim);text-align:center;width:100%;margin-top:8px}
 
+.hero{position:relative;overflow:hidden;border-radius:12px;border:1px solid var(--line);
+  background:radial-gradient(120% 80% at 50% -10%, #1b2433 0%, #0b0e14 62%);
+  padding:34px 30px 30px;margin-bottom:12px}
+.hero .lamps{position:absolute;top:0;left:0;right:0;height:150px;
+  background:linear-gradient(180deg, rgba(158,200,255,.20), rgba(158,200,255,0))}
+.hero .bars{position:absolute;top:20px;left:50%;transform:translateX(-50%);display:flex;gap:22px}
+.hero .bars i{display:block;width:126px;height:8px;border-radius:2px;background:#cfe4ff;
+  box-shadow:0 0 30px 7px rgba(158,200,255,.42)}
+.hero .bars i:nth-child(2){background:#8fb4e6;box-shadow:0 0 20px 4px rgba(158,200,255,.24)}
+.hero .bars i:nth-child(3){background:#4d6280;box-shadow:none}
+.hero .in{position:relative}
+.kicker{font-size:11px;letter-spacing:.4em;color:var(--blue);font-weight:800}
+.big{font-size:60px;line-height:.95;margin-top:10px;text-shadow:0 0 40px rgba(158,200,255,.25)}
+.rule{width:78px;height:4px;background:var(--accent);margin:16px 0 14px}
+.lede{font-size:14px;color:#9aa4b8;line-height:1.75;max-width:340px}
+.silh{position:absolute;right:14px;top:34px;opacity:.9}
 .stages{display:grid;gap:10px}
 .stage{padding:15px;display:flex;gap:13px;align-items:flex-start;background:#232936}
 .stage .ico{font-size:26px;line-height:1}
@@ -54,19 +74,22 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .u .d{font-size:10px;color:var(--dim)}
 .u.poor{opacity:.42}
 
-canvas{width:100%;display:block;border-radius:8px;background:#141821;
+canvas{width:100%;display:block;border-radius:8px;background:#111721;
   border:1px solid var(--line);touch-action:none;cursor:crosshair}
 .toast{height:19px;font-size:12px;color:var(--accent);margin-top:8px}
 
 .result{text-align:center;padding:24px 14px}
-.result h2{font-size:29px;margin:0 0 8px}
+.result h2{font-size:40px;margin:8px 0 10px}
+.tally{display:flex;gap:28px;justify-content:center;margin:16px 0 4px}
+.tally div{display:flex;flex-direction:column;gap:2px}
+.tally b{font-size:24px}
+.tally span{font-size:11px;color:var(--dim)}
+.bubble.pop{opacity:.35;text-decoration:line-through}
 .result p{color:var(--dim);font-size:14px;margin:6px 0}
 .safe{color:var(--good)}.danger{color:var(--bad)}
 .bubble{margin-top:14px;padding:10px 13px;background:#0b0d12;border:1px solid var(--line);
   border-radius:9px;font-size:14px;text-align:left}
-.bubble.pop{animation:pop .5s ease forwards}
-@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.06);border-color:var(--bad)}
-  100%{transform:scale(.6);opacity:0}}
+
 
 #boss{display:none;position:fixed;inset:0;z-index:99;background:#fff;color:#000;
   font-family:"Malgun Gothic",sans-serif;font-size:12px;overflow:auto}
@@ -92,6 +115,7 @@ canvas{width:100%;display:block;border-radius:8px;background:#141821;
 
 /* ══════════════ 상수 ══════════════ */
 const COLS=9, ROWS=5, CW=86, CH=92;
+
 const FW=COLS*CW, FH=ROWS*CH;
 const HOME=0;                       // 좌측 경계 = 내 자리
 const $=(s,r)=>(r||document).querySelector(s);
@@ -310,23 +334,23 @@ function finish(o){
 /* ══════════════ 그리기 ══════════════ */
 function draw(){
   const g=G; if(!g||!ctx) return;
+  const SP=window.SPRITES;
   ctx.clearRect(0,0,FW,FH);
   ctx.textAlign="center"; ctx.textBaseline="middle";
 
   // 바닥
   for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
-    ctx.fillStyle=(r+c)%2 ? "#161b25" : "#131822";
+    ctx.fillStyle=(r+c)%2 ? "#141a24" : "#111721";
     ctx.fillRect(c*CW,r*CH,CW,CH);
   }
   // 내 자리 열
-  ctx.fillStyle="rgba(96,165,250,.10)";
+  ctx.fillStyle="rgba(158,200,255,.10)";
   ctx.fillRect(0,0,CW,FH);
-  ctx.strokeStyle="rgba(96,165,250,.5)";
+  ctx.strokeStyle="rgba(158,200,255,.55)";
   ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(CW,0); ctx.lineTo(CW,FH); ctx.stroke();
-  ctx.fillStyle="rgba(96,165,250,.75)";
-  ctx.font="11px 'Malgun Gothic',sans-serif"; ctx.textAlign="center";
   for(let r=0;r<ROWS;r++){
-    ctx.font="20px sans-serif"; ctx.fillText("💺",CW/2,r*CH+CH/2+2);
+    if(SP&&SP.seat) SP.seat(ctx,CW/2,r*CH+CH/2,34);
+    else { ctx.font="20px sans-serif"; ctx.fillText("💺",CW/2,r*CH+CH/2+2); }
   }
 
   // 유닛
@@ -334,18 +358,19 @@ function draw(){
   for(let r=0;r<ROWS;r++) for(let c=1;c<COLS;c++){
     const u=g.grid[r][c]; if(!u) continue;
     const x=c*CW+CW/2, y=r*CH+CH/2;
-    ctx.font="30px sans-serif";
-    ctx.fillText(UNITS[u.type].e,x,y-4);
+    const su=SP&&SP.units&&SP.units[u.type];
+    if(su) su(ctx,x,y-4,54);
+    else { ctx.font="30px sans-serif"; ctx.fillText(UNITS[u.type].e,x,y-4); }
     const ratio=u.hp/u.maxhp;
     if(ratio<1){
-      ctx.fillStyle="#0b0d12"; ctx.fillRect(x-22,y+22,44,4);
-      ctx.fillStyle=ratio>.5?"#4ade80":ratio>.25?"#ffcf5c":"#f87171";
+      ctx.fillStyle="#0b0e14"; ctx.fillRect(x-22,y+22,44,4);
+      ctx.fillStyle=ratio>.5?"#57d98a":ratio>.25?"#f5c451":"#ff6b6b";
       ctx.fillRect(x-22,y+22,44*ratio,4);
     }
   }
 
   // 탄
-  ctx.fillStyle="#e9ecf3";
+  ctx.fillStyle="#f2f5fa";
   g.shots.forEach(s=>{
     ctx.fillRect(s.x-7,s.lane*CH+CH/2-4,13,8);
   });
@@ -353,13 +378,14 @@ function draw(){
   // 적
   g.foes.forEach(f=>{
     const d=FOES[f.kind], y=f.lane*CH+CH/2;
-    ctx.font=(d.boss?"36px":"28px")+" sans-serif";
-    ctx.fillText(d.e,f.x,y-4);
+    const sf=SP&&SP.foes&&SP.foes[f.kind];
+    if(sf) sf(ctx,f.x,y-4,d.boss?68:52);
+    else { ctx.font=(d.boss?"36px":"28px")+" sans-serif"; ctx.fillText(d.e,f.x,y-4); }
     const ratio=clamp(f.hp/f.maxhp,0,1), w=d.boss?52:38;
-    ctx.fillStyle="#0b0d12"; ctx.fillRect(f.x-w/2,y+20,w,5);
+    ctx.fillStyle="#0b0e14"; ctx.fillRect(f.x-w/2,y+20,w,5);
     ctx.fillStyle=d.color; ctx.fillRect(f.x-w/2,y+20,w*ratio,5);
     if(d.boss){
-      ctx.fillStyle="#f87171"; ctx.font="10px 'Malgun Gothic',sans-serif";
+      ctx.fillStyle="#ff6b6b"; ctx.font="10px 'Gothic A1','Malgun Gothic',sans-serif";
       ctx.fillText("점검단",f.x,y+34);
     }
   });
@@ -369,11 +395,11 @@ function draw(){
     const a=1-e.t/.5;
     if(e.type==="hit"){ ctx.fillStyle="rgba(255,255,255,"+a+")";
       ctx.beginPath(); ctx.arc(e.x,e.y,7*(1-a)+3,0,7); ctx.fill(); }
-    else if(e.type==="pop"){ ctx.fillStyle="rgba(248,113,113,"+a+")";
+    else if(e.type==="pop"){ ctx.fillStyle="rgba(255,107,107,"+a+")";
       ctx.beginPath(); ctx.arc(e.x,e.y,20*(1-a)+6,0,7); ctx.fill(); }
-    else if(e.type==="coin"){ ctx.fillStyle="rgba(255,207,92,"+a+")";
+    else if(e.type==="coin"){ ctx.fillStyle="rgba(245,196,81,"+a+")";
       ctx.font="15px sans-serif"; ctx.fillText("+25",e.x,e.y-e.t*26); }
-    else if(e.type==="nuke"){ ctx.fillStyle="rgba(255,207,92,"+a*.55+")";
+    else if(e.type==="nuke"){ ctx.fillStyle="rgba(245,196,81,"+a*.55+")";
       ctx.fillRect(0,e.lane*CH,FW,CH); }
   });
 }
@@ -388,8 +414,26 @@ function renderStageSelect(){
       <span class="d">${esc(s.tagline)}</span></span>
     </button>`).join("");
   $("#app").innerHTML=`
-    <h1>사무실 방어</h1>
-    <div class="sub">복도로 걸어오는 상사를 내 자리 앞에서 막는 레인 디펜스</div>
+    <div class="hero">
+      <div class="lamps"></div><div class="bars"><i></i><i></i><i></i></div>
+      <svg class="silh" viewBox="0 0 260 190" width="260" height="190">
+        <g fill="#39424f">
+          <circle cx="60" cy="26" r="10"/><rect x="49" y="38" width="22" height="34" rx="6"/>
+          <circle cx="150" cy="86" r="10"/><rect x="139" y="98" width="22" height="34" rx="6"/>
+          <circle cx="86" cy="144" r="10"/><rect x="75" y="156" width="22" height="30" rx="6"/>
+        </g>
+        <g fill="#586477">
+          <circle cx="224" cy="34" r="12"/><rect x="211" y="48" width="26" height="40" rx="7"/>
+          <rect x="238" y="66" width="17" height="13" rx="2" fill="#f5c451"/>
+        </g>
+      </svg>
+      <div class="in">
+        <div class="kicker">OFFICE LANE DEFENSE</div>
+        <div class="ttl big">출근 저지</div>
+        <div class="rule"></div>
+        <div class="lede">복도 끝에서 걸어옵니다.<br>내 자리 앞에서 막으세요.</div>
+      </div>
+    </div>
     <div class="panel"><div class="stages">${items}</div></div>
     <div class="hint">ESC — 보스키 (즉시 엑셀 화면)</div>`;
   $("#app").querySelectorAll("[data-stage]").forEach(b=>b.onclick=()=>renderSetup(b.dataset.stage));
@@ -415,13 +459,18 @@ function renderSetup(id){
   };
 }
 
+const COFFEE_ICO='<svg viewBox="0 0 24 24" width="22" height="22" style="vertical-align:-4px">'
+  +'<path d="M4 8h13v6a6 6 0 0 1-6 6H10a6 6 0 0 1-6-6z" fill="#f5c451"/>'
+  +'<path d="M17 10h2a3 3 0 0 1 0 6h-2" fill="none" stroke="#f5c451" stroke-width="2"/></svg>';
+const coffeeMark=n=>COFFEE_ICO+' <span class="num">'+n+'</span> <small>커피</small>';
+
 function renderGame(){
   const g=G;
   const pal=PAL.map(k=>{
     const u=UNITS[k];
     return `<button class="u ${g.sel===k?"sel":""} ${g.coffee<u.cost?"poor":""}" data-u="${k}">
       <span class="e">${u.e}</span><span class="n">${esc(u.name)}</span>
-      <span class="c">☕ ${u.cost}</span><span class="d">${esc(u.desc)}</span></button>`;
+      <span class="c">${'커피 '+u.cost}</span><span class="d">${esc(u.desc)}</span></button>`;
   }).join("");
   const total=g.waves.length, done=g.waves.filter(w=>w.done).length;
 
@@ -430,7 +479,7 @@ function renderGame(){
     <div class="sub">${esc(g.st.tagline)}</div>
     <div class="panel">
       <div class="hud">
-        <div class="coffee" id="cf">☕ ${g.coffee} <small>커피</small></div>
+        <div class="coffee" id="cf">${coffeeMark(g.coffee)}</div>
         <div class="wavebar"><i id="wb" style="width:${(done/total*100).toFixed(1)}%"></i></div>
         <div class="hp" id="stat">복도 <b>${g.foes.length}</b>명 · 처리 <b>${g.killed}</b></div>
       </div>
@@ -465,7 +514,7 @@ function syncPal(){
 function syncHud(){
   const g=G; if(!g||g.over) return;
   const cf=$("#cf"); if(!cf) return;
-  cf.innerHTML="☕ "+g.coffee+" <small>커피</small>";
+  cf.innerHTML=coffeeMark(g.coffee);
   const total=g.waves.length, done=g.waves.filter(w=>w.done).length;
   $("#wb").style.width=(done/total*100).toFixed(1)+"%";
   $("#stat").innerHTML="복도 <b>"+g.foes.length+"</b>명 · 처리 <b>"+g.killed+"</b>";
@@ -474,15 +523,20 @@ function syncHud(){
 
 function renderEnd(){
   const g=G, win=g.over==="win";
+  const acc=win?"var(--good)":"var(--bad)";
   $("#app").innerHTML=`
     <h1>${g.st.icon} ${esc(g.st.name)}</h1>
     <div class="sub">${win?"클리어":"방어 실패"}</div>
-    <div class="panel result">
-      <h2 class="${win?"safe":"danger"}">${win?"저지 성공":"자리 함락"}</h2>
-      <div class="bubble ${win?"pop":""}">💬 ${esc(g.grudge)}</div>
+    <div class="panel result" style="border-color:${win?"#22402f":"#43242a"}">
+      <div class="kicker" style="color:var(--dim)">${win?"CLEAR":"FAILED"}</div>
+      <h2 class="ttl" style="color:${acc}">${win?"저지 성공":"자리 함락"}</h2>
+      <div class="bubble ${win?"pop":""}">${esc(g.grudge)}</div>
       <p style="margin-top:16px">${esc(win?g.st.winMsg:g.st.loseMsg)}</p>
-      <p>처리한 인원 <b style="color:var(--ink)">${g.killed}</b>명 · 생존 시간 ${g.t.toFixed(0)}초</p>
-      <button class="primary" id="again">다시 하기</button>
+      <div class="tally">
+        <div><b class="num">${g.killed}</b><span>처리</span></div>
+        <div><b class="num">${g.t.toFixed(0)}초</b><span>생존</span></div>
+      </div>
+      <button class="primary" id="again" style="background:${acc}">다시 하기</button>
       <button class="ghost" id="back">← 스테이지 선택</button>
     </div>
     <div class="hint">ESC — 보스키</div>`;

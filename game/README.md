@@ -85,4 +85,7 @@ MG Commerce Flask 앱과 완전히 분리되어 있어 배포에 영향 없음.
 ## 주의
 
 - 등장 인물·부서는 전부 가상. 실존 인물·거래처명 사용 금지.
-- 외부 리소스·네트워크 요청 0건. 에셋은 이모지 + Canvas 드로잉만.
+- 아트 디렉션은 `../design/` 참조 (채택 방향: 형광등 꺼진 사무실).
+- **외부 요청은 Google Fonts 한 건뿐**입니다 (Black Han Sans + Gothic A1).
+  네트워크가 없으면 Malgun Gothic / Apple SD Gothic Neo 로 자동 폴백되며 게임은 정상 동작합니다.
+  그 외 이미지·스크립트·API 요청은 0건입니다.
