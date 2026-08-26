@@ -29,6 +29,15 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .primary{background:var(--accent);color:#17191f;border-color:var(--accent);font-weight:bold;
   width:100%;margin-top:14px;padding:12px;text-align:center}
 .ghost{background:transparent;color:var(--dim);text-align:center;width:100%;margin-top:8px}
+#mute{position:fixed;top:12px;right:12px;z-index:60;width:34px;height:34px;padding:0;
+  display:flex;align-items:center;justify-content:center;background:rgba(20,25,34,.86);
+  border:1px solid var(--line);color:var(--dim)}
+#mute:hover{border-color:var(--accent);color:var(--ink)}
+#mute svg{display:block}
+#mute .x{display:none}
+#mute[aria-pressed="true"]{color:var(--bad)}
+#mute[aria-pressed="true"] .wave{display:none}
+#mute[aria-pressed="true"] .x{display:block}
 
 .hero{position:relative;overflow:hidden;border-radius:12px;border:1px solid var(--line);
   background:radial-gradient(120% 80% at 50% -10%, #1b2433 0%, #0b0e14 62%);
@@ -103,6 +112,14 @@ canvas{width:100%;display:block;border-radius:8px;background:#111721;
 </style>
 </head>
 <body>
+<button id="mute" type="button" aria-pressed="false" title="소리 켜기/끄기 (M)" aria-label="소리 끄기">
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 9h3l5-4v14l-5-4H4z" fill="currentColor" stroke="none"/>
+    <g class="wave"><path d="M16 9.2a4 4 0 0 1 0 5.6"/><path d="M18.7 6.5a8 8 0 0 1 0 11"/></g>
+    <g class="x"><path d="M16.5 9.5l5 5"/><path d="M21.5 9.5l-5 5"/></g>
+  </svg>
+</button>
 <div id="app"></div>
 <div id="boss">
   <div class="ribbon" id="bossTitle">Excel — 2026년_생산실적_집계.xlsx</div>
@@ -656,6 +673,301 @@ canvas{width:100%;display:block;border-radius:8px;background:#111721;
 </script>
 
 <script>
+/* _audio.js — 「출근 저지」 사운드 엔진
+   Web Audio 런타임 합성 전용: 오실레이터 + 자체 생성 노이즈 버퍼만 사용.
+   오디오 파일·네트워크·base64 샘플 없음 (file:// 더블클릭 오프라인 동작).
+   전역은 window.SFX 하나만 노출한다.
+   사운드 방향: 「형광등 꺼진 사무실」 — 건조하고 작고 종이 같은 소리. */
+(function () {
+  "use strict";
+
+  var LS_KEY = "chulgeun.muted";
+  var MAX_VOICES = 16;      // 동시 보이스 상한 — 넘치면 새 소리를 그냥 버린다
+  var MASTER_LEVEL = 0.32;  // 마스터 헤드룸 (다중 동시 발음 시 클리핑 방지)
+
+  var ctx = null, master = null, noiseBuf = null;
+  var masterNow = 0;              // master.gain 목표값의 JS 그림자 (.value 게터는 입력이 끊기면 stale)
+  var live = 0, created = 0, dropped = 0;   // 보이스 수명 계측
+  var muted = readMuted();
+
+  function readMuted() {
+    try { return localStorage.getItem(LS_KEY) === "1"; } catch (e) { return false; }
+  }
+  function writeMuted(b) {
+    try { localStorage.setItem(LS_KEY, b ? "1" : "0"); } catch (e) {}
+  }
+
+  /* ── 고빈도 사운드 스로틀 (ms) ── */
+  var THROTTLE = { shoot: 30, hit: 25, chew: 200, select: 40 };
+  var lastAt = { shoot: -1e9, hit: -1e9, chew: -1e9, select: -1e9 };
+  function gate(name) {
+    var t = Date.now();
+    if (t - lastAt[name] < THROTTLE[name]) return false;
+    lastAt[name] = t;
+    return true;
+  }
+
+  /* ── 컨텍스트 지연 생성 (로드 시점엔 절대 만들지 않는다) ── */
+  function ensure() {
+    var A = window.AudioContext || window.webkitAudioContext;
+    if (!A) return null;
+    if (!ctx) {
+      try { ctx = new A(); } catch (e) { ctx = null; return null; }
+      master = ctx.createGain();
+      masterNow = muted ? 0 : MASTER_LEVEL;
+      master.gain.value = masterNow;
+      var tail = master;
+      try {                                  // 안전망 컴프레서
+        var comp = ctx.createDynamicsCompressor();
+        comp.threshold.value = -18; comp.knee.value = 20; comp.ratio.value = 12;
+        comp.attack.value = 0.002; comp.release.value = 0.15;
+        master.connect(comp); tail = comp;
+      } catch (e) {}
+      tail.connect(ctx.destination);
+      // 화이트 노이즈 버퍼 — 1초, 1회만 생성해서 전 사운드가 공유
+      var n = Math.max(1, Math.floor(ctx.sampleRate));
+      noiseBuf = ctx.createBuffer(1, n, ctx.sampleRate);
+      var d = noiseBuf.getChannelData(0);
+      for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    }
+    if (ctx.state === "suspended") {
+      try { var p = ctx.resume(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+    }
+    return ctx;
+  }
+
+  /* 사운드 공통 진입: 컨텍스트 확보 + 보이스 상한. 음수면 재생 불가 */
+  function ready() {
+    if (muted) return -1;                    // 음소거면 스케줄 자체를 생략
+    var c = ensure();
+    if (!c) return -1;
+    if (live >= MAX_VOICES) { dropped++; return -1; }
+    return c.currentTime;
+  }
+
+  /* ── 보이스: 소스 → (필터) → 게인 → 마스터. 끝나면 반드시 해제 ──
+     o: { a:어택초, flat:유지형 엔벌로프, filter:[type,f0,f1,Q], rate:재생속도 } */
+  function voice(src, t0, dur, peak, o) {
+    var nodes = [src], head = src;
+    if (o && o.filter) {
+      var f = ctx.createBiquadFilter();
+      f.type = o.filter[0];
+      f.frequency.setValueAtTime(o.filter[1], t0);
+      if (o.filter[2]) f.frequency.exponentialRampToValueAtTime(Math.max(20, o.filter[2]), t0 + dur);
+      if (o.filter[3]) f.Q.value = o.filter[3];
+      head.connect(f); head = f; nodes.push(f);
+    }
+    var g = ctx.createGain(), a = (o && o.a) || 0.004;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(peak, t0 + a);
+    if (o && o.flat) {                        // 버즈용: 어택-유지-릴리즈
+      g.gain.setValueAtTime(peak, t0 + Math.max(a, dur - 0.02));
+      g.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+    } else {                                  // 기본: 즉시 감쇠 (건조한 소리)
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    }
+    head.connect(g); g.connect(master); nodes.push(g);
+    live++; created++;
+    src.onended = function () {               // 누수 방지: 전 노드 disconnect
+      live--; src.onended = null;
+      for (var i = 0; i < nodes.length; i++) { try { nodes[i].disconnect(); } catch (e) {} }
+    };
+    src.start(t0);
+    src.stop(t0 + dur + 0.03);
+  }
+
+  function tone(t0, dur, peak, type, f0, f1, o) {
+    var osc = ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.setValueAtTime(f0, t0);
+    if (f1 && f1 !== f0) osc.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t0 + dur);
+    voice(osc, t0, dur, peak, o);
+  }
+
+  function noise(t0, dur, peak, o) {
+    var src = ctx.createBufferSource();
+    src.buffer = noiseBuf; src.loop = true;
+    if (o && o.rate) src.playbackRate.value = o.rate;
+    voice(src, t0, dur, peak, o);
+  }
+
+  /* ══════════ 사운드 정의 ══════════ */
+
+  /* 설치 — 책상에 사물을 내려놓는 "턱" 소리. 유닛별 재질 차이 */
+  var PLACE = {
+    water:  { f: 150, f1: 48,  dur: 0.20, tp: "sine",     tv: 0.20, bp: 240,  np: 0.09, q: 6 },   // 물통 — 공명하는 빈 통
+    wall:   { f: 100, f1: 40,  dur: 0.16, tp: "triangle", tv: 0.24, bp: 170,  np: 0.11, q: 1.5 }, // 파티션 — 묵직한 판
+    copy:   { f: 185, f1: 72,  dur: 0.12, tp: "triangle", tv: 0.20, bp: 850,  np: 0.09, q: 1 },   // 복사기 — 기계 몸통
+    stap:   { f: 330, f1: 140, dur: 0.06, tp: "square",   tv: 0.10, bp: 2600, np: 0.09, q: 2 },   // 스테이플러 — 금속 딸깍
+    quit:   { f: 520, f1: 300, dur: 0.05, tp: "triangle", tv: 0.05, bp: 3600, np: 0.13, q: 0.8, paper: true } // 사직서 — 종이 놓기
+  };
+  // 학생 팩은 같은 역할의 재질로 매핑
+  PLACE.vend = PLACE.water; PLACE.locker = PLACE.wall; PLACE.book = PLACE.copy;
+  PLACE.pencil = PLACE.stap; PLACE.leave = PLACE.quit;
+
+  function hashId(s) {
+    s = String(s); var h = 0;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
+  }
+
+  function place(unitId) {
+    var t0 = ready(); if (t0 < 0) return;
+    var p = PLACE[unitId];
+    if (!p) {                                 // 모르는 id — 해시로 재질을 변주
+      var h = hashId(unitId);
+      p = { f: 120 + h % 140, f1: 45 + h % 40, dur: 0.13, tp: "triangle",
+            tv: 0.18, bp: 300 + h % 900, np: 0.10, q: 1.2 };
+    }
+    tone(t0, p.dur, p.tv, p.tp, p.f, p.f1);
+    noise(t0, p.paper ? 0.09 : 0.05, p.np, { filter: ["bandpass", p.bp, p.bp * 0.6, p.q], a: 0.002 });
+  }
+
+  /* 발사 — 트레이에서 종이가 빠지는 "특". 초당 10회에도 거슬리지 않게 아주 짧고 작게 */
+  function shoot(unitId) {
+    if (!gate("shoot")) return;
+    var t0 = ready(); if (t0 < 0) return;
+    var hi = unitId === "stap" || unitId === "pencil";     // 스테이플러 계열은 더 딱딱하게
+    var f = (hi ? 5200 : 3000) * (0.92 + Math.random() * 0.16);
+    noise(t0, hi ? 0.028 : 0.042, hi ? 0.16 : 0.14,
+          { filter: ["bandpass", f, f * 0.45, hi ? 1.6 : 1.1], a: 0.002 });
+  }
+
+  /* 명중 — 아주 작은 틱 */
+  function hit() {
+    if (!gate("hit")) return;
+    var t0 = ready(); if (t0 < 0) return;
+    tone(t0, 0.03, 0.10, "sine", 1850, 1300, { a: 0.002 });
+  }
+
+  /* 처치 — 종이 구겨져 떨어지는 소리. 보스는 더 낮고 길게 */
+  function kill(boss) {
+    var t0 = ready(); if (t0 < 0) return;
+    if (boss) {
+      noise(t0, 0.30, 0.20, { filter: ["bandpass", 1500, 380, 0.9], a: 0.004, rate: 0.85 });
+      tone(t0 + 0.03, 0.34, 0.28, "sine", 120, 42, { a: 0.006 });
+    } else {
+      noise(t0, 0.15, 0.14, { filter: ["bandpass", 1700, 500, 0.9], a: 0.003 });
+      tone(t0 + 0.02, 0.10, 0.12, "sine", 210, 90, { a: 0.004 });
+    }
+  }
+
+  /* 갉아먹기 — 둔한 반복음. 아무리 많이 물어뜯어도 초당 5회 이하 */
+  function chew() {
+    if (!gate("chew")) return;
+    var t0 = ready(); if (t0 < 0) return;
+    noise(t0, 0.08, 0.12, { filter: ["lowpass", 420, 250, 1], a: 0.003, rate: 0.7 });
+    tone(t0, 0.07, 0.08, "triangle", 88, 60, { a: 0.003 });
+  }
+
+  /* 자원 획득 — 게임에서 유일하게 밝은 소리. 작은 보상 */
+  function coin() {
+    var t0 = ready(); if (t0 < 0) return;
+    tone(t0, 0.22, 0.14, "sine", 1245, 1245, { a: 0.002 });
+    tone(t0, 0.09, 0.05, "sine", 2530, 2530, { a: 0.002 });
+  }
+
+  /* 사직서/조퇴증 — 종이 찢기 → 낮은 둔중음. 게임에서 제일 큰 소리지만 여전히 건조하게 */
+  function nuke() {
+    var t0 = ready(); if (t0 < 0) return;
+    noise(t0, 0.32, 0.26, { filter: ["bandpass", 3400, 320, 0.8], a: 0.010 });          // 찢기
+    noise(t0 + 0.16, 0.50, 0.16, { filter: ["lowpass", 200, 90, 0.7], a: 0.010, rate: 0.6 }); // 저역 럼블
+    tone(t0 + 0.17, 0.55, 0.34, "sine", 92, 36, { a: 0.008 });                          // 둔중음
+  }
+
+  /* 보스 등장 — 낮은 드론이 부풀었다 멎는다 (~1.2초). 놀래키지 않는다 */
+  function bossIn() {
+    var t0 = ready(); if (t0 < 0) return;
+    tone(t0, 1.2, 0.15, "sawtooth", 52, 47, { a: 0.75, filter: ["lowpass", 270, 130, 4] });
+    tone(t0, 1.2, 0.15, "sawtooth", 55.5, 50, { a: 0.75, filter: ["lowpass", 270, 130, 4] });
+    tone(t0, 1.1, 0.03, "sine", 208, 197, { a: 0.7 });   // 형광등 험 같은 잔음
+  }
+
+  /* UI 클릭 — 아주 작은 클릭 */
+  function select() {
+    if (!gate("select")) return;
+    var t0 = ready(); if (t0 < 0) return;
+    noise(t0, 0.02, 0.10, { filter: ["highpass", 2500, 0, 0.7], a: 0.001 });
+  }
+
+  /* 설치 불가 / 자원 부족 — 짧고 밋밋한 버즈 */
+  function deny() {
+    var t0 = ready(); if (t0 < 0) return;
+    tone(t0, 0.14, 0.07, "square", 110, 106, { a: 0.005, flat: true, filter: ["lowpass", 900, 0, 0.8] });
+  }
+
+  /* 승리 — 짧게 올라가며 매듭. 팡파르 아님 */
+  function win() {
+    var t0 = ready(); if (t0 < 0) return;
+    var notes = [349.2, 440, 523.3, 698.5];
+    for (var i = 0; i < notes.length; i++) {
+      var last = i === notes.length - 1;
+      tone(t0 + i * 0.13, last ? 0.5 : 0.28, last ? 0.13 : 0.10, "triangle", notes[i], notes[i], { a: 0.006 });
+    }
+  }
+
+  /* 패배 — 미끄러지듯 내려가는 하강 */
+  function lose() {
+    var t0 = ready(); if (t0 < 0) return;
+    var notes = [392, 311.1, 261.6, 196];
+    for (var i = 0; i < notes.length; i++) {
+      tone(t0 + i * 0.18, 0.35, 0.10, "sine", notes[i], notes[i] * 0.93, { a: 0.008 });
+    }
+  }
+
+  /* ══════════ 제어 ══════════ */
+
+  function setMuted(b) {
+    b = !!b;
+    muted = b; api.muted = b;
+    writeMuted(b);
+    if (ctx && master) {                      // 즉시·완전 소거: 게인 자체를 램프
+      try {
+        var t = ctx.currentTime, g = master.gain;
+        var target = b ? 0 : MASTER_LEVEL;
+        g.cancelScheduledValues(t);
+        g.setValueAtTime(masterNow, t);       // .value 게터는 믿지 않는다 (stale 가능)
+        g.linearRampToValueAtTime(target, t + 0.03);
+        masterNow = target;
+      } catch (e) {}
+    }
+  }
+
+  function resume() { ensure(); }
+
+  /* 어떤 상황에서도 게임 루프에 예외를 던지지 않는다 */
+  function safe(fn) {
+    return function () { try { return fn.apply(null, arguments); } catch (e) {} };
+  }
+
+  var api = {
+    place: safe(place),
+    shoot: safe(shoot),
+    hit: safe(hit),
+    kill: safe(kill),
+    chew: safe(chew),
+    coin: safe(coin),
+    nuke: safe(nuke),
+    bossIn: safe(bossIn),
+    select: safe(select),
+    deny: safe(deny),
+    win: safe(win),
+    lose: safe(lose),
+    setMuted: safe(setMuted),
+    muted: muted,
+    resume: safe(resume),
+    /* 테스트/디버그 계측 — 게임 코드는 사용하지 않음 */
+    _debug: function () {
+      return { live: live, created: created, dropped: dropped,
+               masterGain: master ? master.gain.value : null, masterTarget: master ? masterNow : null,
+               state: ctx ? ctx.state : null };
+    }
+  };
+  window.SFX = api;
+})();
+</script>
+
+<script>
 "use strict";
 
 /* ══════════════ 상수 ══════════════ */
@@ -693,6 +1005,9 @@ const F_OFFICE={
   gm     :{e:"🧳",  name:"부장",  hp:620, spd:12,dmg:22,color:"#ff8f8f"},
   drunk  :{e:"🍻",  name:"회식조", hp:180, spd:30,dmg:12,color:"#ffd166"},
   audit  :{e:"📋",  name:"점검단", hp:1500,spd:10,dmg:34,color:"#f87171",boss:true},
+  pallet :{e:"📦",  name:"파렛트", hp:200, spd:22,dmg:10,color:"#b08968"},
+  defect :{e:"⚠️",  name:"불량품", hp:90,  spd:34,dmg:15,color:"#ff9f43"},
+  truck  :{e:"🚚",  name:"납품차", hp:1300,spd:11,dmg:30,color:"#e0704f",boss:true},
 };
 
 /* ══════════════ 스테이지 ══════════════ */
@@ -715,6 +1030,33 @@ const S_OFFICE={
     ]),
     winMsg:"복도가 조용해졌습니다. 아무도 자리에 도달하지 못했습니다.",
     loseMsg:"자리에 도달했습니다. 하루가 시작됩니다.",
+  },
+  lunch:{
+    id:"lunch",icon:"🚚",name:"점심시간 외주납품",
+    tagline:"점심 나가기 직전 들이닥친 납품 물량을 검수대 앞에서 막아라",
+    brief:"12시 정각. 협력사 5톤이 후문에 붙었습니다. 물량은 파도로 들어옵니다 \u2014 한 번에 몰리고, 잠깐 끊기고, 또 몰립니다. 사이 시간에 화력을 세우세요.",
+    coffee:250, trickle:4,
+    waves:wave([
+      /* 1차 입고 — 세 줄 동시 */
+      [12,1,"pallet"],[12,2,"pallet"],[12,3,"pallet"],
+      [20,0,"defect"],[20,4,"defect"],
+      /* 소강 — 라인 보강 */
+      [34,0,"pallet"],[34,1,"pallet"],[34,2,"pallet"],[34,3,"pallet"],[34,4,"pallet"],
+      [42,2,"defect"],[45,1,"defect"],[45,3,"defect"],
+      /* 2차 입고 + 납품차 1호 */
+      [56,2,"truck"],
+      [58,0,"pallet"],[58,4,"pallet"],[62,1,"pallet"],[62,3,"pallet"],
+      [70,0,"defect"],[70,2,"defect"],[70,4,"defect"],
+      /* 소강 */
+      [82,1,"senior"],[82,3,"senior"],[86,2,"manager"],
+      /* 전량 입고 + 납품차 2호 */
+      [96,0,"truck"],
+      [98,1,"pallet"],[98,2,"pallet"],[98,3,"pallet"],[98,4,"pallet"],
+      [106,0,"defect"],[106,1,"defect"],[106,3,"defect"],[106,4,"defect"],
+      [114,2,"gm"],[118,0,"manager"],[118,4,"manager"],
+    ]),
+    winMsg:"전량 반품 처리. 점심은 지켰습니다.",
+    loseMsg:"물량이 검수대를 넘었습니다. 점심은 없습니다.",
   },
   dinner:{
     id:"dinner",icon:"🍻",name:"회식 저지",
@@ -775,11 +1117,15 @@ const F_SCHOOL={
   roll  :{name:"출석부",   hp:620, spd:12,dmg:22,color:"#ff8f8f"},
   night :{name:"야자",     hp:180, spd:30,dmg:12,color:"#ffd166"},
   final :{name:"기말고사", hp:1500,spd:10,dmg:34,color:"#f87171",boss:true},
+  notice:{name:"가정통신문",hp:200, spd:22,dmg:10,color:"#b08968"},
+  errand:{name:"심부름",   hp:90,  spd:34,dmg:15,color:"#ff9f43"},
+  clean :{name:"대청소",   hp:1300,spd:11,dmg:30,color:"#e0704f",boss:true},
 };
 
 // 오피스 팩의 검증된 웨이브 테이블을 학생 팩 적으로 치환 (밸런스 동일)
 const KMAP={staff:"quiz",intern:"hw",senior:"task",manager:"group",
-            gm:"roll",drunk:"night",audit:"final"};
+            gm:"roll",drunk:"night",audit:"final",
+            pallet:"notice",defect:"errand",truck:"clean"};
 function reskin(st, over){
   return Object.assign({}, st, over, {
     waves: st.waves.map(w=>({t:w.t, l:w.l, k:KMAP[w.k], done:false}))
@@ -792,6 +1138,12 @@ const S_SCHOOL={
     brief:"월요일 아침. 안 한 숙제가 복도 끝에서 걸어옵니다. 왼쪽 끝 내 책상이 뚫리면 하루가 시작됩니다.",
     winMsg:"복도가 조용해졌습니다. 아무것도 책상에 도달하지 못했습니다.",
     loseMsg:"책상에 도달했습니다. 하루가 시작됩니다."}),
+  lunch: reskin(S_OFFICE.lunch,{
+    id:"lunch", icon:"🍱", name:"점심시간 사수",
+    tagline:"급식 뛰기 직전 밀려온 가정통신문을 책상 앞에서 막아라",
+    brief:"4교시 종. 급식 뛰려는데 가정통신문이 뭉치로 넘어옵니다. 한 번에 몰리고, 잠깐 끊기고, 또 몰립니다. 사이 시간에 화력을 세우세요.",
+    winMsg:"전부 처리 완료. 점심시간은 지켰습니다.",
+    loseMsg:"책상까지 넘어왔습니다. 급식은 물 건너갔습니다."}),
   dinner: reskin(S_OFFICE.dinner,{
     id:"dinner", icon:"🌙", name:"야자 저지",
     tagline:"몰려오는 야자를 전부 돌려보내라",
@@ -1257,6 +1609,24 @@ function start(){
 document.addEventListener("keydown",e=>{
   if(e.key==="Escape"){ e.preventDefault(); $("#boss").classList.toggle("on"); }
 });
+
+/* ── 음소거 토글 ── */
+(function(){
+  const b=$("#mute"); if(!b) return;
+  const sync=()=>{ const m=!!(window.SFX&&window.SFX.muted);
+    b.setAttribute("aria-pressed", m?"true":"false");
+    b.setAttribute("aria-label", m?"소리 켜기":"소리 끄기"); };
+  const toggle=()=>{ if(!window.SFX) return;
+    S("resume"); window.SFX.setMuted(!window.SFX.muted); sync();
+    if(!window.SFX.muted) S("select"); };
+  b.onclick=toggle;
+  document.addEventListener("keydown",e=>{
+    if((e.key==="m"||e.key==="M") && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)){
+      e.preventDefault(); toggle();
+    }
+  });
+  sync();
+})();
 
 window.__g=()=>G;   // 테스트 훅
 buildBossSheet(PACK.id);
