@@ -34,6 +34,9 @@ button:disabled{opacity:.4;cursor:not-allowed}
   border:1px solid var(--line);color:var(--dim)}
 #mute:hover{border-color:var(--accent);color:var(--ink)}
 #mute svg{display:block}
+/* 마감 D-crunch 구간 — 화면이 붉어진다 */
+#cvwrap.crunch{border-color:#5a2b2f;box-shadow:inset 0 0 0 9999px rgba(255,107,107,.05)}
+#cvwrap.crunch canvas{box-shadow:0 0 0 1px #5a2b2f}
 #mute .x{display:none}
 #mute[aria-pressed="true"]{color:var(--bad)}
 #mute[aria-pressed="true"] .wave{display:none}
@@ -1251,6 +1254,263 @@ canvas{width:100%;display:block;border-radius:8px;background:#111721;
 </script>
 
 <script>
+/* _closing_sprites.js — 마감 스테이지 벡터 스프라이트
+   직장인 팩 「월말 마감」 + 학생 팩 「개학 전날」 공용.
+   규격은 game/index.html의 SPRITES / SPRITES_SCHOOL / SPRITES_LUNCH 블록과 동일.
+   전 함수 시그니처: (ctx, cx, cy, s) — cx,cy 중심, s = 정사각 박스 한 변(px).
+   순수 Canvas2D 패스만 사용. 이모지/텍스트/이미지 없음.
+   적은 전부 '사물'이다 — 사람(직원·선생님·학생)은 절대 그리지 않는다.
+   이들은 공격대가 아니라 '처리 대기 항목'이다 — 건조하고 사무적으로.
+   두 팩은 같은 스테이지의 리스킨: stock↔pile(빈 칸 있는 잿빛 더미),
+   tax↔sheet(노란 도장·들린 모서리·돌진), ar↔book(빨간 연체 띠·원형 도장)이 짝.
+   점심 팩의 pallet/notice(따뜻한 갈색·가지런히 닫힌 더미)와 달리
+   마감 더미는 차가운 잿빛에 줄이 안 맞고 가운데가 빈다 — 안 맞는 장부다. */
+(function () {
+  "use strict";
+
+  /* ── 팔레트 (기존 팩과 공유 + 마감 팩 추가색) ── */
+  var PAPER = "#f2f5fa", PAPER2 = "#dfe6f2", PAPER3 = "#c3ccdb";
+  var G1 = "#98a4b8", G2 = "#74829a", G3 = "#5d6a7f", INK = "#2f3542";
+  var YEL = "#f5c451", YEL2 = "#d9a94e";
+  var RED = "#ff6b6b", DRED = "#b93b3b";
+  var STEEL = "#7f96b0", STEEL2 = "#54687f", STEEL3 = "#9db0c7"; // 잿빛 재고/일기장
+  var WARM = "#c49a6c", WARM2 = "#96703f";          // 색이 안 맞는 한 개 — 그게 '차이'
+
+  /* 둥근 사각형 패스 (roundRect 폴리필 불요) */
+  function rr(ctx, x, y, w, h, r) {
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function frr(ctx, x, y, w, h, r, fill) {
+    ctx.fillStyle = fill;
+    rr(ctx, x, y, w, h, r);
+    ctx.fill();
+  }
+
+  /* 72×72 디자인 좌표계로 진입 (기존 팩과 동일) */
+  function in72(ctx, cx, cy, s) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    var k = s / 72;
+    ctx.scale(k, k);
+    ctx.translate(-36, -36);
+  }
+
+  /* ══════════ 적 공통 틀 (왼쪽으로 밀려 쌓이는 사물들) ══════════ */
+  /* tilt: 왼쪽 기울기(라디안). 빠른 서류는 크게, 무거운 더미는 아주 조금.
+     shw: 발밑 그림자 반너비. 날아오는 종이는 좁게, 더미는 넓게. */
+  function makeFoe(tilt, shw, prop) {
+    return function (ctx, cx, cy, s) {
+      in72(ctx, cx, cy, s);
+      ctx.fillStyle = "rgba(0,0,0,.35)";            // 그림자
+      ctx.beginPath();
+      ctx.ellipse(36, 66, shw, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (tilt) {
+        ctx.translate(36, 40); ctx.rotate(tilt); ctx.translate(-36, -40);
+      }
+      prop(ctx);
+      ctx.restore();
+    };
+  }
+
+  /* 돌진조 공용 속도선 — 뒤쪽(오른쪽)에 흐릿하게 2줄 */
+  function dash(ctx, x1, y1, x2, y2) {
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    frr(ctx, x1, y1, 12, 3, 1.5, G2);
+    frr(ctx, x2, y2, 8, 3, 1.5, G2);
+    ctx.restore();
+  }
+
+  /* 들린 모서리 (tax↔sheet 공유) — 우하단이 말려 올라갔다 */
+  function curl(ctx) {
+    ctx.fillStyle = PAPER3;
+    ctx.beginPath();
+    ctx.moveTo(50, 52); ctx.lineTo(43, 52); ctx.lineTo(50, 45);
+    ctx.closePath(); ctx.fill();
+  }
+
+  /* 연체 띠 + 원형 도장 (ar↔book 공유) — 은근히 추궁하는 빨강 */
+  function overdue(ctx) {
+    ctx.save();                                     // 삐딱한 연체 띠
+    ctx.translate(36, 41); ctx.rotate(-0.1);
+    frr(ctx, -21, -4, 42, 8, 1, RED);
+    ctx.fillStyle = DRED;                           // 띠 양끝의 짙은 매듭
+    ctx.fillRect(-18, -4, 3, 8);
+    ctx.fillRect(15, -4, 3, 8);
+    ctx.restore();
+    ctx.save();                                     // 원형 확인 도장 — 이중 테
+    ctx.globalAlpha = 0.85;
+    ctx.strokeStyle = DRED; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(48, 44, 5.5, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(48, 44, 3, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ══════════ 직장인 팩 — 월말 마감 ══════════ */
+
+  /* 재고차이 — 창고 상자 더미. 가운데 줄 한 칸이 비어 맨 위가 삐딱하게 걸쳤고,
+     한 상자만 색이 다르다. 장부와 실물이 안 맞는다 — 마감의 최악. 제일 느리고 무겁다. */
+  var stock = makeFoe(-0.05, 25, function (ctx) {
+    frr(ctx, 8, 44, 20, 14, 1.5, STEEL);            // 아래 줄 상자 3개
+    frr(ctx, 8, 44, 20, 3, 1.5, STEEL2);
+    frr(ctx, 29, 44, 18, 14, 1.5, STEEL);
+    frr(ctx, 29, 44, 18, 3, 1.5, STEEL2);
+    frr(ctx, 48, 44, 16, 14, 1.5, STEEL);
+    frr(ctx, 48, 44, 16, 3, 1.5, STEEL2);
+    frr(ctx, 10, 29, 20, 15, 1.5, WARM);            // 가운데 줄 — 색 안 맞는 한 상자
+    frr(ctx, 10, 29, 20, 3, 1.5, WARM2);
+    ctx.fillStyle = "rgba(0,0,0,.4)";               // 비어 버린 한 칸
+    ctx.fillRect(30, 30.5, 16, 13.5);
+    frr(ctx, 46, 29, 16, 15, 1.5, STEEL);
+    frr(ctx, 46, 29, 16, 3, 1.5, STEEL2);
+    ctx.save();                                     // 맨 위 상자 — 빈 칸 위로 기울었다
+    ctx.translate(52, 29); ctx.rotate(-0.18);
+    frr(ctx, -22, -13, 24, 13, 1.5, STEEL);
+    frr(ctx, -22, -13, 24, 3, 1.5, STEEL2);
+    ctx.restore();
+    frr(ctx, 31, 47, 11, 9, 1, PAPER);              // 실사 태그 — 바를 정(正) 개수 표시
+    ctx.strokeStyle = G3; ctx.lineWidth = 1.2; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(33.4, 49.4); ctx.lineTo(33.4, 53.6);
+    ctx.moveTo(35.4, 49.4); ctx.lineTo(35.4, 53.6);
+    ctx.moveTo(37.4, 49.4); ctx.lineTo(37.4, 53.6);
+    ctx.moveTo(39.4, 49.4); ctx.lineTo(39.4, 53.6);
+    ctx.moveTo(32.4, 53.8); ctx.lineTo(40.4, 49.2); // 다섯 개째 — 세다 만 빗금
+    ctx.stroke();
+  });
+
+  /* 세금계산서 — 다음 달 10일 마감. 날아오는 계산서 한 장 — 머리글 띠 +
+     공급가액 괘선 + 합계 두 줄 + 노란 사각 인감. 제일 빠르다. */
+  var tax = makeFoe(-0.2, 14, function (ctx) {
+    dash(ctx, 54, 20, 57, 30);                      // 속도선 (뒤쪽)
+    frr(ctx, 20, 12, 30, 40, 1.5, PAPER);
+    frr(ctx, 20, 12, 30, 6, 1.5, G1);               // 머리글 띠
+    ctx.fillStyle = G1;                             // 금액 칸 괘선
+    ctx.fillRect(37, 22, 1.4, 21);
+    ctx.fillRect(24, 25, 22, 1.4);
+    ctx.fillRect(24, 30, 22, 1.4);
+    ctx.fillRect(24, 35, 22, 1.4);
+    ctx.fillRect(24, 40, 22, 1.4);
+    ctx.fillStyle = G3;                             // 합계 — 이중선
+    ctx.fillRect(24, 45, 22, 1.4);
+    ctx.fillRect(24, 47.6, 22, 1.4);
+    ctx.save();                                     // 토너 노랑 사각 인감
+    ctx.translate(43.5, 26.5); ctx.rotate(0.12);
+    frr(ctx, -4, -4, 8, 8, 1, YEL);
+    ctx.strokeStyle = YEL2; ctx.lineWidth = 1.4;
+    rr(ctx, -2.2, -2.2, 4.4, 4.4, 0.5);
+    ctx.stroke();
+    ctx.restore();
+    curl(ctx);                                      // 들린 모서리
+  });
+
+  /* 미수금 — 받을 돈을 못 받았다. 접힌 거래명세서에 빨간 연체 띠가 감기고
+     확인 도장이 찍혔다. 은근히 추궁하는 얼굴. 중간 속도. */
+  var ar = makeFoe(-0.12, 18, function (ctx) {
+    frr(ctx, 21, 13, 30, 11, 1.5, PAPER2);          // 펼쳐진 뒷장
+    ctx.fillStyle = PAPER3;                         // 접힌 금
+    ctx.fillRect(21, 22.5, 30, 1.5);
+    frr(ctx, 17, 24, 38, 26, 2, PAPER);             // 본문
+    ctx.fillStyle = G1;                             // 명세 괘선 + 세로 칸
+    ctx.fillRect(22, 29, 28, 1.4);
+    ctx.fillRect(22, 33.5, 22, 1.4);
+    ctx.fillRect(38, 29, 1.4, 6);
+    overdue(ctx);                                   // 연체 띠 + 원형 도장
+  });
+
+  /* ══════════ 학생 팩 — 개학 전날 ══════════ */
+
+  /* 밀린 일기 — 날짜 탭이 달린 일기장 더미. 가운데 며칠이 비어
+     위 권들이 구멍 쪽으로 기울었고, 한 권만 색이 다르다. 제일 느리고 무겁다. */
+  var pile = makeFoe(-0.05, 22, function (ctx) {
+    frr(ctx, 18, 51, 34, 6.5, 2, STEEL2);           // 아래 3권 — 자잘하게 어긋남
+    frr(ctx, 52, 52.5, 5, 3.5, 1, PAPER3);          // 날짜 탭 (오른쪽 옆면)
+    frr(ctx, 16, 44.5, 35, 6.5, 2, STEEL);
+    frr(ctx, 51, 46, 5, 3.5, 1, PAPER3);
+    frr(ctx, 19, 38, 33, 6.5, 2, STEEL3);
+    frr(ctx, 52, 39.5, 5, 3.5, 1, PAPER3);
+    ctx.fillStyle = "rgba(0,0,0,.5)";               // 빠진 날들 — 뻥 뚫린 자리
+    ctx.fillRect(18, 31.5, 17, 6.5);
+    frr(ctx, 35, 31.5, 17, 6.5, 2, WARM);           // 반 권만 남은 색 다른 하루
+    frr(ctx, 52, 33, 5, 3.5, 1, WARM2);
+    ctx.save();                                     // 위 2권 — 구멍 위로 기울어 얹힘
+    ctx.translate(52, 31.5); ctx.rotate(-0.12);
+    frr(ctx, -34, -6.5, 34, 6.5, 2, STEEL);
+    frr(ctx, 0, -5.4, 5, 3.5, 1, PAPER3);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(51, 25.7); ctx.rotate(-0.17);
+    frr(ctx, -33, -6.5, 33, 6.5, 2, STEEL2);
+    frr(ctx, 0, -5.4, 5, 3.5, 1, PAPER3);
+    ctx.restore();
+    ctx.fillStyle = G3;                             // 탭의 날짜 표시 점
+    ctx.fillRect(53.4, 53.5, 2.2, 1.4);
+    ctx.fillRect(52.4, 47, 2.2, 1.4);
+    ctx.fillRect(53.4, 40.5, 2.2, 1.4);
+  });
+
+  /* 문제집 — 풀다 만 낱장이 날아온다. 문항 동그라미 + 풀이 줄 +
+     모서리의 노란 회차 동그라미. 제일 빠르다. */
+  var sheet = makeFoe(-0.2, 14, function (ctx) {
+    dash(ctx, 54, 20, 57, 30);                      // 속도선 (뒤쪽)
+    frr(ctx, 20, 12, 30, 40, 1.5, PAPER);
+    ctx.strokeStyle = G2; ctx.lineWidth = 1.5;      // 문항 번호 동그라미 3개
+    ctx.beginPath(); ctx.arc(26, 23, 2, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(26, 32, 2, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(26, 41, 2, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = G1;                             // 문항 줄
+    ctx.fillRect(30.5, 22, 15, 1.4);
+    ctx.fillRect(30.5, 25.5, 11, 1.4);
+    ctx.fillRect(30.5, 31, 15, 1.4);
+    ctx.fillRect(30.5, 34.5, 11, 1.4);
+    ctx.fillRect(30.5, 40, 15, 1.4);
+    ctx.fillRect(30.5, 43.5, 11, 1.4);
+    ctx.strokeStyle = YEL; ctx.lineWidth = 2;       // 모서리의 노란 회차 동그라미
+    ctx.beginPath(); ctx.arc(43.5, 17.5, 4, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = YEL2;                           // 남은 회차 한 획
+    ctx.fillRect(42.8, 15.7, 1.4, 4);
+    curl(ctx);                                      // 들린 모서리
+  });
+
+  /* 독후감 — 밀린 감상문. 접힌 원고에 제목 칸만 채워졌고
+     빨간 연체 띠와 확인 도장이 찍혔다. 중간 속도. */
+  var book = makeFoe(-0.12, 18, function (ctx) {
+    frr(ctx, 21, 13, 30, 11, 1.5, PAPER2);          // 펼쳐진 뒷장
+    ctx.fillStyle = PAPER3;                         // 접힌 금
+    ctx.fillRect(21, 22.5, 30, 1.5);
+    frr(ctx, 17, 24, 38, 26, 2, PAPER);             // 본문
+    frr(ctx, 25, 27, 22, 4, 1, G3);                 // 제목 칸 — 여기까지만 썼다
+    ctx.fillStyle = G1;                             // 못 쓴 원고 줄
+    ctx.fillRect(22, 34.5, 28, 1.4);
+    overdue(ctx);                                   // 연체 띠 + 원형 도장
+  });
+
+  window.SPRITES_CLOSING = {
+    office: { stock: stock, tax: tax, ar: ar },
+    school: { pile: pile, sheet: sheet, book: book }
+  };
+})();
+
+/* 마감 스테이지 적을 각 팩의 foes 테이블에 병합 */
+(function(){
+  var C=window.SPRITES_CLOSING; if(!C) return;
+  function mix(target,add){ if(!target||!target.foes) return;
+    for(var k in add) if(Object.prototype.hasOwnProperty.call(add,k)) target.foes[k]=add[k]; }
+  mix(window.SPRITES, C.office);
+  mix(window.SPRITES_SCHOOL, C.school);
+})();
+</script>
+
+<script>
 "use strict";
 
 /* ══════════════ 상수 ══════════════ */
@@ -1291,6 +1551,9 @@ const F_OFFICE={
   pallet :{e:"📦",  name:"파렛트", hp:200, spd:22,dmg:10,color:"#b08968"},
   defect :{e:"⚠️",  name:"불량품", hp:90,  spd:34,dmg:15,color:"#ff9f43"},
   truck  :{e:"🚚",  name:"납품차", hp:1300,spd:11,dmg:30,color:"#e0704f",boss:true},
+  stock  :{e:"📊",  name:"재고차이", hp:260, spd:15,dmg:8 ,color:"#7f96b0"},
+  tax    :{e:"🧾",  name:"세금계산서",hp:110,spd:30,dmg:10,color:"#f5c451"},
+  ar     :{e:"💸",  name:"미수금",   hp:190, spd:20,dmg:12,color:"#ff6b6b"},
 };
 
 /* ══════════════ 스테이지 ══════════════ */
@@ -1359,6 +1622,47 @@ const S_OFFICE={
     winMsg:"정족수 미달. 회식은 다음 주로 미뤄졌습니다.",
     loseMsg:"회식조가 자리까지 왔습니다. 끌려갑니다.",
   },
+  closing:{
+    id:"closing",icon:"📊",name:"월말 마감",mode:"closing",
+    tagline:"막는 게 아니라 쳐내는 스테이지. 마감 시각까지 처리 건수를 채워라",
+    brief:"말일입니다. 여기서는 버티는 게 목표가 아닙니다 \u2014 마감 시각까지 정해진 건수를 처리해야 합니다. 놓친 건은 죽지 않고 미처리로 남습니다. 미처리가 한도를 넘으면 마감 실패입니다.",
+    coffee:250, trickle:4,
+    deadline:100,          // 마감 시각(초)
+    quota:40,              // 처리 목표 건수
+    allowLeak:6,           // 미처리 허용 건수 — 넘으면 즉시 실패
+    crunch:22,             // 마감 D-22초부터 가산세 압박 (적 속도 +40%)
+    waves:wave([
+      /* 초반 — 전표가 들어오기 시작한다 */
+      [8,2,"tax"],[11,1,"tax"],[11,3,"tax"],
+      [16,0,"ar"],[16,4,"ar"],[19,2,"tax"],
+      /* 재고가 붙는다 — 느리고 두껍다, 줄이 막히기 시작 */
+      [24,1,"stock"],[24,3,"stock"],
+      [28,0,"tax"],[28,2,"tax"],[28,4,"tax"],
+      [33,2,"stock"],
+      [36,1,"ar"],[36,3,"ar"],
+      /* 중반 — 전표와 재고가 동시에 */
+      [41,0,"stock"],[41,4,"stock"],
+      [44,1,"tax"],[44,2,"tax"],[44,3,"tax"],
+      [48,0,"ar"],[48,2,"ar"],[48,4,"ar"],
+      [53,1,"stock"],[53,3,"stock"],
+      [56,0,"tax"],[56,4,"tax"],
+      /* 후반 — 마감 직전 전량 유입 */
+      [61,2,"stock"],[63,0,"tax"],[63,1,"tax"],[63,3,"tax"],[63,4,"tax"],
+      [68,1,"ar"],[68,3,"ar"],[70,2,"ar"],
+      [73,0,"stock"],[73,2,"stock"],[73,4,"stock"],
+      [77,1,"tax"],[77,3,"tax"],
+      /* D-22 가산세 구간 */
+      [81,0,"tax"],[81,2,"tax"],[81,4,"tax"],
+      [84,1,"ar"],[84,3,"ar"],
+      [88,0,"stock"],[88,4,"stock"],
+      [91,1,"tax"],[91,2,"tax"],[91,3,"tax"],
+      [95,0,"ar"],[95,4,"ar"],
+      [86,2,"tax"],[89,0,"tax"],[89,4,"tax"],
+      [93,1,"stock"],[93,3,"stock"],[97,2,"tax"],
+    ]),
+    winMsg:"마감 완료. 전표는 넘어갔고 재고는 맞췄습니다.",
+    loseMsg:"마감 시각을 넘겼습니다. 미처리 건은 다음 달로 넘어갑니다.",
+  },
   audit:{
     id:"audit",icon:"📋",name:"고객사 점검",boss:true,
     tagline:"점검단 3명을 회의실 앞에서 저지하라",
@@ -1403,12 +1707,16 @@ const F_SCHOOL={
   notice:{name:"가정통신문",hp:200, spd:22,dmg:10,color:"#b08968"},
   errand:{name:"심부름",   hp:90,  spd:34,dmg:15,color:"#ff9f43"},
   clean :{name:"대청소",   hp:1300,spd:11,dmg:30,color:"#e0704f",boss:true},
+  pile  :{name:"밀린 일기", hp:260, spd:15,dmg:8 ,color:"#7f96b0"},
+  sheet :{name:"문제집",   hp:110, spd:30,dmg:10,color:"#f5c451"},
+  book  :{name:"독후감",   hp:190, spd:20,dmg:12,color:"#ff6b6b"},
 };
 
 // 오피스 팩의 검증된 웨이브 테이블을 학생 팩 적으로 치환 (밸런스 동일)
 const KMAP={staff:"quiz",intern:"hw",senior:"task",manager:"group",
             gm:"roll",drunk:"night",audit:"final",
-            pallet:"notice",defect:"errand",truck:"clean"};
+            pallet:"notice",defect:"errand",truck:"clean",
+            stock:"pile",tax:"sheet",ar:"book"};
 function reskin(st, over){
   return Object.assign({}, st, over, {
     waves: st.waves.map(w=>({t:w.t, l:w.l, k:KMAP[w.k], done:false}))
@@ -1433,6 +1741,12 @@ const S_SCHOOL={
     brief:"저녁 6시. 야자가 몰려옵니다. 수가 많고 빠릅니다. 화력을 빨리 세우세요.",
     winMsg:"야자 인원 미달. 오늘은 집에 갑니다.",
     loseMsg:"야자가 책상까지 왔습니다. 10시까지입니다."}),
+  closing: reskin(S_OFFICE.closing,{
+    id:"closing", icon:"📚", name:"개학 전날",
+    tagline:"막는 게 아니라 쳐내는 스테이지. 자정까지 밀린 숙제를 끝내라",
+    brief:"개학 전날 밤입니다. 여기서는 버티는 게 목표가 아닙니다 \u2014 자정까지 정해진 개수를 끝내야 합니다. 놓친 건 사라지지 않고 안 한 숙제로 남습니다. 한도를 넘으면 그대로 개학입니다.",
+    winMsg:"전부 끝냈습니다. 자고 일어나면 개학입니다.",
+    loseMsg:"자정을 넘겼습니다. 안 한 숙제는 그대로 들고 갑니다."}),
   audit: reskin(S_OFFICE.audit,{
     id:"audit", icon:"📕", name:"기말고사", boss:true,
     tagline:"기말고사 3과목을 책상 앞에서 저지하라",
@@ -1598,16 +1912,38 @@ function step(dt){
       if(front.hp<=0){ g.grid[f.lane][cc]=null;
         g.fx.push({type:"pop",x:cc*CW+CW/2,y:f.lane*CH+CH/2,t:0}); }
     } else {
-      f.x-=f.spd*dt;
+      f.x-=f.spd*crunchMul(g)*dt;
     }
-    if(f.x<=HOME){ g.leaked++; finish("lose"); return; }
+    if(f.x<=HOME){
+      g.leaked++;
+      if(g.st.mode==="closing"){
+        // 마감 모드 — 뚫려도 지지 않는다. 미처리로 남을 뿐이다.
+        g.foes.splice(i,1); S("deny");
+        g.fx.push({type:"leak",x:HOME+14,y:f.lane*CH+CH/2,t:0});
+        if(g.leaked>g.st.allowLeak){ finish("lose"); return; }
+        continue;
+      }
+      finish("lose"); return;
+    }
   }
 
   // 이펙트
   for(let i=g.fx.length-1;i>=0;i--){ g.fx[i].t+=dt; if(g.fx[i].t>.5) g.fx.splice(i,1); }
 
   // 승리 판정
+  if(g.st.mode==="closing"){
+    // 마감 모드 — 목표 건수를 채우면 그 즉시 마감, 시각을 넘기면 실패
+    if(g.killed>=g.st.quota){ finish("win"); return; }
+    if(g.t>=g.st.deadline){ finish("lose"); return; }
+    return;
+  }
   if(g.waves.every(w=>w.done) && g.foes.length===0) finish("win");
+}
+
+/* 마감 D-crunch초부터 가산세 압박 — 적 속도 +40% */
+function crunchMul(g){
+  if(g.st.mode!=="closing") return 1;
+  return (g.st.deadline-g.t)<=g.st.crunch ? 1.4 : 1;
 }
 
 function finish(o){
@@ -1688,6 +2024,9 @@ function draw(){
       ctx.font="15px sans-serif"; ctx.fillText("+25",e.x,e.y-e.t*26); }
     else if(e.type==="nuke"){ ctx.fillStyle="rgba(245,196,81,"+a*.55+")";
       ctx.fillRect(0,e.lane*CH,FW,CH); }
+    else if(e.type==="leak"){ ctx.fillStyle="rgba(255,107,107,"+a+")";
+      ctx.font="700 14px 'Gothic A1','Malgun Gothic',sans-serif";
+      ctx.fillText("미처리",e.x+18,e.y-e.t*20); }
   });
 }
 
@@ -1793,15 +2132,18 @@ function renderGame(){
       <span class="c">${RES.name+' '+u.cost}</span><span class="d">${esc(u.desc)}</span></button>`;
   }).join("");
   const total=g.waves.length, done=g.waves.filter(w=>w.done).length;
+  const closing=g.st.mode==="closing";
 
   $("#app").innerHTML=`
     <h1>${g.st.icon} ${esc(g.st.name)}</h1>
     <div class="sub">${esc(g.st.tagline)}</div>
-    <div class="panel">
+    <div class="panel" id="cvwrap">
       <div class="hud">
         <div class="coffee" id="cf">${coffeeMark(g.coffee)}</div>
-        <div class="wavebar"><i id="wb" style="width:${(done/total*100).toFixed(1)}%"></i></div>
-        <div class="hp" id="stat">복도 <b>${g.foes.length}</b>명 · 처리 <b>${g.killed}</b></div>
+        <div class="wavebar"><i id="wb" style="width:${closing?0:(done/total*100).toFixed(1)}%${closing?";background:var(--good)":""}"></i></div>
+        <div class="hp" id="stat">${closing
+          ?`마감 <b class="num">D-${g.st.deadline}</b> · 처리 <b>0/${g.st.quota}</b> · 미처리 <b>0/${g.st.allowLeak}</b>`
+          :`복도 <b>${g.foes.length}</b>명 · 처리 <b>${g.killed}</b>`}</div>
       </div>
       <div class="pal" id="pal">${pal}</div>
       <canvas id="cv" width="${FW}" height="${FH}"></canvas>
@@ -1844,9 +2186,20 @@ function syncHud(){
   const g=G; if(!g||g.over) return;
   const cf=$("#cf"); if(!cf) return;
   cf.innerHTML=coffeeMark(g.coffee);
-  const total=g.waves.length, done=g.waves.filter(w=>w.done).length;
-  $("#wb").style.width=(done/total*100).toFixed(1)+"%";
-  $("#stat").innerHTML="복도 <b>"+g.foes.length+"</b>명 · 처리 <b>"+g.killed+"</b>";
+  if(g.st.mode==="closing"){
+    const st=g.st, left=Math.max(0,st.deadline-g.t), crunch=left<=st.crunch;
+    $("#wb").style.width=(Math.min(1,g.killed/st.quota)*100).toFixed(1)+"%";
+    $("#wb").style.background=crunch?"var(--bad)":"var(--good)";
+    $("#stat").innerHTML="마감 <b class=num>D-"+left.toFixed(0)+"</b> · 처리 <b>"
+      +g.killed+"/"+st.quota+"</b> · 미처리 <b style=\"color:"
+      +(g.leaked>=st.allowLeak?"var(--bad)":g.leaked?"var(--accent)":"inherit")
+      +'">'+g.leaked+"/"+st.allowLeak+"</b>";
+    $("#cvwrap").classList.toggle("crunch",crunch);
+  } else {
+    const total=g.waves.length, done=g.waves.filter(w=>w.done).length;
+    $("#wb").style.width=(done/total*100).toFixed(1)+"%";
+    $("#stat").innerHTML="복도 <b>"+g.foes.length+"</b>명 · 처리 <b>"+g.killed+"</b>";
+  }
   $("#toast").textContent=g.toast;
 }
 
@@ -1855,15 +2208,18 @@ function renderEnd(){
   const acc=win?"var(--good)":"var(--bad)";
   $("#app").innerHTML=`
     <h1>${g.st.icon} ${esc(g.st.name)}</h1>
-    <div class="sub">${win?"클리어":"방어 실패"}</div>
+    <div class="sub">${g.st.mode==="closing"?(win?"클리어":"마감 실패"):(win?"클리어":"방어 실패")}</div>
     <div class="panel result" style="border-color:${win?"#22402f":"#43242a"}">
       <div class="kicker" style="color:var(--dim)">${win?"CLEAR":"FAILED"}</div>
-      <h2 class="ttl" style="color:${acc}">${win?"저지 성공":"자리 함락"}</h2>
+      <h2 class="ttl" style="color:${acc}">${g.st.mode==="closing"?(win?"마감 완료":"마감 실패"):(win?"저지 성공":"자리 함락")}</h2>
       <div class="bubble ${win?"pop":""}">${esc(g.grudge)}</div>
       <p style="margin-top:16px">${esc(win?g.st.winMsg:g.st.loseMsg)}</p>
-      <div class="tally">
+      <div class="tally">${g.st.mode==="closing"?`
+        <div><b class="num">${g.killed}/${g.st.quota}</b><span>처리</span></div>
+        <div><b class="num" style="color:${g.leaked>g.st.allowLeak?"var(--bad)":"inherit"}">${g.leaked}</b><span>미처리</span></div>
+        <div><b class="num">${g.t.toFixed(0)}초</b><span>소요</span></div>`:`
         <div><b class="num">${g.killed}</b><span>처리</span></div>
-        <div><b class="num">${g.t.toFixed(0)}초</b><span>생존</span></div>
+        <div><b class="num">${g.t.toFixed(0)}초</b><span>생존</span></div>`}
       </div>
       <button class="primary" id="again" style="background:${acc}">다시 하기</button>
       <button class="ghost" id="back">← 스테이지 선택</button>
