@@ -968,6 +968,289 @@ canvas{width:100%;display:block;border-radius:8px;background:#111721;
 </script>
 
 <script>
+/* _lunch_sprites.js — 점심시간 스테이지 벡터 스프라이트
+   직장인 팩 「점심시간 외주납품」 + 학생 팩 「점심시간 사수」 공용.
+   규격은 game/index.html의 SPRITES / SPRITES_SCHOOL 블록과 동일.
+   전 함수 시그니처: (ctx, cx, cy, s) — cx,cy 중심, s = 정사각 박스 한 변(px).
+   순수 Canvas2D 패스만 사용. 이모지/텍스트/이미지 없음.
+   적은 전부 '사물'이다 — 사람(직원·선생님·학생)은 절대 그리지 않는다.
+   두 팩은 같은 스테이지의 리스킨: pallet↔notice(갈색·물량), defect↔errand(주황·돌진),
+   truck↔clean(녹빛 적색·보스)이 서로 짝이다. */
+(function () {
+  "use strict";
+
+  /* ── 팔레트 (기존 팩과 공유 + 점심 팩 추가색) ── */
+  var PAPER = "#f2f5fa", PAPER2 = "#dfe6f2", PAPER3 = "#c3ccdb";
+  var G1 = "#98a4b8", G2 = "#74829a", G3 = "#5d6a7f", G4 = "#4c5769", INK = "#2f3542";
+  var YEL = "#f5c451";
+  var CREAM = "#f0e6d2", CREAM2 = "#d9caa8";
+  var LIT = "#cfe4ff";                              // 유리창 불빛 (자판기와 동일)
+  var WOOD = "#b08968", WOOD2 = "#8a6647";          // 파렛트 목재 · 고무줄 (팩 공유 갈색)
+  var CARD = "#cfa269", CARDL = "#ddb47f", CARDD = "#a97f4e"; // 골판지 상자
+  var TAPE = "#8a6134";                             // 박스 테이프
+  var ORG = "#ff9f43", ORG2 = "#d97f2a";            // 불량/심부름 태그 (돌진 주황)
+  var RUST = "#e0704f", RUST2 = "#b0553c";          // 납품차 · 대청소 (보스 적색)
+
+  /* 둥근 사각형 패스 (roundRect 폴리필 불요) */
+  function rr(ctx, x, y, w, h, r) {
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function frr(ctx, x, y, w, h, r, fill) {
+    ctx.fillStyle = fill;
+    rr(ctx, x, y, w, h, r);
+    ctx.fill();
+  }
+
+  /* 72×72 디자인 좌표계로 진입 (기존 팩과 동일) */
+  function in72(ctx, cx, cy, s) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    var k = s / 72;
+    ctx.scale(k, k);
+    ctx.translate(-36, -36);
+  }
+
+  /* ══════════ 적 공통 틀 (왼쪽을 향해 밀려오는 사물들) ══════════ */
+  /* tilt: 왼쪽 기울기(라디안). 빠른 적은 크게, 보스는 0 — 육중해서 흔들리지 않는다.
+     shw: 발밑 그림자 반너비. 날아오는 쪽지는 좁게(공중), 보스는 넓게. */
+  function makeFoe(tilt, shw, prop) {
+    return function (ctx, cx, cy, s) {
+      in72(ctx, cx, cy, s);
+      ctx.fillStyle = "rgba(0,0,0,.35)";            // 그림자
+      ctx.beginPath();
+      ctx.ellipse(36, 66, shw, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (tilt) {
+        ctx.translate(36, 40); ctx.rotate(tilt); ctx.translate(-36, -40);
+      }
+      prop(ctx);
+      ctx.restore();
+    };
+  }
+
+  /* 돌진조 공용 속도선 — 뒤쪽(오른쪽)에 흐릿하게 2줄 */
+  function dash(ctx, x1, y1, x2, y2) {
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    frr(ctx, x1, y1, 12, 3, 1.5, G2);
+    frr(ctx, x2, y2, 8, 3, 1.5, G2);
+    ctx.restore();
+  }
+
+  /* ══════════ 직장인 팩 — 점심시간 외주납품 ══════════ */
+
+  /* 파렛트 — 골판지 상자 2단을 얹은 목재 파렛트. 테이프 + 거래명세서 슬립.
+     따뜻한 갈색 목재가 '밖에서 들어온 물건'임을 말한다. */
+  var pallet = makeFoe(-0.09, 23, function (ctx) {
+    frr(ctx, 17, 11, 30, 19, 2, CARDL);             // 위 상자
+    ctx.fillStyle = CARDD;                          // 뚜껑 이음선
+    ctx.fillRect(17, 17, 30, 1.5);
+    frr(ctx, 29, 11, 7, 19, 0, TAPE);               // 박스 테이프 (세로)
+    frr(ctx, 12, 30, 46, 21, 2, CARD);              // 아래 상자
+    frr(ctx, 12, 30, 46, 4, 2, CARDD);              // 상자 윗단
+    frr(ctx, 17, 36, 12, 9, 1, PAPER);              // 거래명세서 슬립
+    ctx.fillStyle = G2;
+    ctx.fillRect(19, 38.5, 8, 1.4);
+    ctx.fillRect(19, 41.5, 6, 1.4);
+    frr(ctx, 8, 51, 56, 4.5, 1.5, WOOD);            // 파렛트 상판
+    frr(ctx, 10, 55.5, 9, 5.5, 1, WOOD2);           // 받침목 3개
+    frr(ctx, 31.5, 55.5, 9, 5.5, 1, WOOD2);
+    frr(ctx, 53, 55.5, 9, 5.5, 1, WOOD2);
+    frr(ctx, 8, 61, 56, 3, 1.5, WOOD2);             // 하판
+  });
+
+  /* 불량품 — 뚜껑이 뜯긴 채 내달리는 상자. 찌그러진 모서리 + 주황 반품 태그.
+     게임에서 제일 빠르다 — 앞으로 크게 기울고 뒤로 속도선이 남는다. */
+  var defect = makeFoe(-0.2, 19, function (ctx) {
+    dash(ctx, 54, 22, 57, 32);                      // 속도선 (뒤쪽)
+    ctx.fillStyle = CARD;                           // 몸통 — 좌하단이 찌그러짐
+    ctx.beginPath();
+    ctx.moveTo(18, 26); ctx.lineTo(48, 26); ctx.lineTo(48, 52);
+    ctx.lineTo(27, 52); ctx.lineTo(23, 46.5); ctx.lineTo(18, 49);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = CARDD; ctx.lineWidth = 2; ctx.lineCap = "round";
+    ctx.beginPath();                                // 찌그러진 자국
+    ctx.moveTo(23, 46.5); ctx.lineTo(28, 41);
+    ctx.stroke();
+    ctx.fillStyle = CARDL;                          // 젖혀진 왼쪽 뚜껑
+    ctx.beginPath();
+    ctx.moveTo(18, 26); ctx.lineTo(8, 15); ctx.lineTo(15, 11); ctx.lineTo(22, 25);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();                                // 뜯어진 오른쪽 뚜껑 (톱니)
+    ctx.moveTo(48, 26); ctx.lineTo(50, 17); ctx.lineTo(53, 21);
+    ctx.lineTo(56, 12); ctx.lineTo(60, 17); ctx.lineTo(53, 27);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = G1;                             // 잘못 든 내용물 (구겨진 뭉치)
+    ctx.beginPath();
+    ctx.moveTo(26, 26); ctx.lineTo(29, 17); ctx.lineTo(35, 20);
+    ctx.lineTo(38, 14); ctx.lineTo(43, 19); ctx.lineTo(44, 26);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = TAPE;                           // 끊어져 늘어진 테이프
+    ctx.beginPath();
+    ctx.moveTo(38, 26); ctx.lineTo(43, 26); ctx.lineTo(41, 34); ctx.lineTo(37, 33);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.5;     // 태그 끈
+    ctx.beginPath();
+    ctx.moveTo(48, 30); ctx.lineTo(54, 36);
+    ctx.stroke();
+    ctx.save();                                     // 삐뚤게 매달린 반품 태그
+    ctx.translate(54, 36); ctx.rotate(0.45);
+    frr(ctx, 0, 0, 10, 14, 2, ORG);
+    ctx.fillStyle = INK;                            // 끈 구멍
+    ctx.beginPath(); ctx.arc(3, 3, 1.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = ORG2;                           // 반품 표기 줄
+    ctx.fillRect(2.5, 7.5, 5, 2);
+    ctx.restore();
+  });
+
+  /* 납품차(보스) — 5톤 탑차의 앞머리, 왼쪽을 향한다. 캡오버 캡 + 빈 창 +
+     그릴 + 범퍼 + 큰 바퀴. 탑은 오른쪽 프레임에 잘린다. 기울지 않는다. */
+  var truck = makeFoe(0, 27, function (ctx) {
+    frr(ctx, 37, 10, 37, 42, 2, PAPER3);            // 탑 (오른쪽에서 잘림)
+    ctx.fillStyle = RUST2;                          // 탑 하단 띠
+    ctx.fillRect(37, 40, 37, 5);
+    frr(ctx, 58, 52, 12, 5, 1, G4);                 // 뒷바퀴 자리 (프레임 밖 암시)
+    frr(ctx, 6, 16, 30, 32, 3, RUST);               // 캡
+    frr(ctx, 9, 20, 9, 14, 2, LIT);                 // 앞유리 — 비어 있다
+    frr(ctx, 21, 20, 13, 12, 2, LIT);               // 옆창 — 운전자 없음
+    ctx.fillStyle = RUST2;                          // 문 이음선
+    ctx.fillRect(20, 34, 1.6, 13);
+    frr(ctx, 8, 37, 10, 7, 1, INK);                 // 그릴
+    ctx.fillStyle = G3;
+    ctx.fillRect(9.5, 39, 7, 1.2);
+    ctx.fillRect(9.5, 41.5, 7, 1.2);
+    frr(ctx, 7, 45, 6, 3.5, 1, YEL);                // 헤드라이트
+    frr(ctx, 4, 49, 36, 6, 2, G4);                  // 범퍼 (맨 앞)
+    ctx.fillStyle = INK;                            // 앞바퀴
+    ctx.beginPath(); ctx.arc(24, 56, 9, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = G2;
+    ctx.beginPath(); ctx.arc(24, 56, 3.5, 0, Math.PI * 2); ctx.fill();
+  });
+
+  /* ══════════ 학생 팩 — 점심시간 사수 ══════════ */
+
+  /* 가정통신문 — 스테이플러로 찍힌 A4 묶음. 부챗살로 벌어져 장수가 보이고
+     가운데를 갈색 고무줄이 감는다 (파렛트와 운을 맞추는 갈색). */
+  var notice = makeFoe(-0.09, 23, function (ctx) {
+    var a = [0.18, 0.1, 0.03, -0.04];               // 부챗살 각도 (아래→위)
+    var c = ["#7d8aa0", "#a5b1c4", "#c9d3e2", PAPER];
+    for (var i = 0; i < 4; i++) {
+      ctx.save();
+      ctx.translate(38, 58); ctx.rotate(a[i]);
+      frr(ctx, -18, -48, 36, 48, 2, c[i]);
+      if (i === 3) {                                // 맨 윗장에만 디테일
+        frr(ctx, -14, -42, 20, 4, 1, G3);           // 머리글 칸
+        ctx.fillStyle = G1;                         // 괘선
+        ctx.fillRect(-14, -34, 26, 2);
+        ctx.fillRect(-14, -29, 22, 2);
+        frr(ctx, -4, -48, 8, 48, 0, WOOD);          // 고무줄 (세로)
+        ctx.fillStyle = WOOD2;                      // 고무줄 가장자리
+        ctx.fillRect(-4, -48, 1.5, 48);
+        ctx.fillRect(2.5, -48, 1.5, 48);
+        ctx.save();                                 // 스테이플 심 (좌상단)
+        ctx.translate(-13, -44); ctx.rotate(-0.6);
+        ctx.fillStyle = INK; ctx.fillRect(-4.5, -1.4, 9, 2.8);
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+  });
+
+  /* 심부름 — 던져져 날아오는 접힌 쪽지. 모서리 하나가 들렸고 주황 인덱스 플래그.
+     제일 빠르다 — 공중에 떠서 왼쪽으로 크게 기운다. */
+  var errand = makeFoe(-0.18, 14, function (ctx) {
+    dash(ctx, 56, 24, 58, 34);                      // 속도선 (뒤쪽)
+    ctx.fillStyle = PAPER2;                         // 접힌 윗면
+    ctx.beginPath();
+    ctx.moveTo(14, 34); ctx.lineTo(54, 34); ctx.lineTo(50, 20); ctx.lineTo(10, 20);
+    ctx.closePath(); ctx.fill();
+    ctx.save();                                     // 주황 인덱스 플래그
+    ctx.translate(40, 20); ctx.rotate(-0.1);
+    frr(ctx, -2, -7, 12, 8, 1, ORG);
+    frr(ctx, -2, 0, 12, 4, 1, ORG2);                // 종이를 문 안쪽
+    ctx.restore();
+    frr(ctx, 14, 34, 40, 14, 1.5, PAPER);           // 앞면
+    ctx.fillStyle = PAPER3;                         // 접힌 금
+    ctx.fillRect(14, 33.2, 40, 1.6);
+    ctx.fillStyle = G1;                             // 급히 쓴 글줄
+    ctx.fillRect(20, 38, 22, 2);
+    ctx.fillRect(20, 42, 16, 2);
+    ctx.fillStyle = PAPER3;                         // 들린 모서리 (뒤쪽)
+    ctx.beginPath();
+    ctx.moveTo(54, 48); ctx.lineTo(46, 48); ctx.lineTo(54, 40);
+    ctx.closePath(); ctx.fill();
+  });
+
+  /* 대청소(보스) — 대걸레 + 양동이. 걸레머리는 좌하단, 자루는 오른쪽 위로.
+     녹빛 적색 양동이에 잿빛 물이 찰랑이고 짜놓은 걸레가 테에 걸렸다. 기울지 않는다. */
+  var clean = makeFoe(0, 27, function (ctx) {
+    ctx.strokeStyle = WOOD; ctx.lineWidth = 5; ctx.lineCap = "round";
+    ctx.beginPath();                                // 자루 (양동이 뒤로 지나감)
+    ctx.moveTo(18, 44); ctx.lineTo(60, 4);
+    ctx.stroke();
+    ctx.fillStyle = G4;                             // 자루 끝 마개
+    ctx.beginPath(); ctx.arc(60, 4, 2.8, 0, Math.PI * 2); ctx.fill();
+    frr(ctx, 15, 37, 6, 7, 1.5, G3);                // 자루-머리 연결부
+    frr(ctx, 4, 42, 28, 7, 3, G2);                  // 걸레 머리대
+    ctx.lineWidth = 5; ctx.lineCap = "round";       // 걸레 가닥 (아래로 늘어짐)
+    var sx = [8, 13, 18, 23, 28], tx = [4, 10, 16, 22, 27];
+    for (var i = 0; i < 5; i++) {
+      ctx.strokeStyle = (i % 2 === 0) ? CREAM : CREAM2;
+      ctx.beginPath();
+      ctx.moveTo(sx[i], 48); ctx.lineTo(tx[i], 56);
+      ctx.stroke();
+    }
+    ctx.fillStyle = RUST;                           // 양동이 몸통
+    ctx.beginPath();
+    ctx.moveTo(40, 30); ctx.lineTo(68, 30); ctx.lineTo(64, 56); ctx.lineTo(44, 56);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = RUST2;                          // 몸통 골 2줄
+    ctx.fillRect(41.5, 38, 25, 2);
+    ctx.fillRect(42.5, 46, 23, 2);
+    frr(ctx, 38, 26, 32, 6, 3, RUST2);              // 테
+    ctx.fillStyle = "#a7b6c6";                      // 잿빛 물
+    ctx.beginPath();
+    ctx.ellipse(54, 29, 12, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();                                // 왼쪽으로 찰랑 넘친 물
+    ctx.arc(39, 31, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(35, 38, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(37, 45, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.save();                                     // 짜놓은 걸레 (오른쪽 테)
+    ctx.translate(66, 26); ctx.rotate(0.25);
+    frr(ctx, -4, -4, 8, 16, 3, CREAM);
+    ctx.fillStyle = CREAM2;
+    ctx.fillRect(-4, 2, 8, 1.6);
+    ctx.restore();
+  });
+
+  window.SPRITES_LUNCH = {
+    office: { pallet: pallet, defect: defect, truck: truck },
+    school: { notice: notice, errand: errand, clean: clean }
+  };
+})();
+
+/* 점심 스테이지 적을 각 팩의 foes 테이블에 병합 (키는 FOES id와 동일) */
+(function(){
+  var L=window.SPRITES_LUNCH; if(!L) return;
+  function mix(target,add){ if(!target||!target.foes) return;
+    for(var k in add) if(Object.prototype.hasOwnProperty.call(add,k)) target.foes[k]=add[k]; }
+  mix(window.SPRITES, L.office);
+  mix(window.SPRITES_SCHOOL, L.school);
+})();
+</script>
+
+<script>
 "use strict";
 
 /* ══════════════ 상수 ══════════════ */
@@ -1364,7 +1647,7 @@ function draw(){
     const x=c*CW+CW/2, y=r*CH+CH/2;
     const su=SP&&SP.units&&SP.units[u.type];
     if(su) su(ctx,x,y-4,54);
-    else if(UNITS[u.type].e){ ctx.font="30px sans-serif"; ctx.fillText(UNITS[u.type].e,x,y-4); }
+    else if(UNITS[u.type]&&UNITS[u.type].e){ ctx.font="30px sans-serif"; ctx.fillText(UNITS[u.type].e,x,y-4); }
     const ratio=u.hp/u.maxhp;
     if(ratio<1){
       ctx.fillStyle="#0b0e14"; ctx.fillRect(x-22,y+22,44,4);
@@ -1409,6 +1692,8 @@ function draw(){
 }
 
 /* ══════════════ 화면 ══════════════ */
+/* 화면을 떠날 때 게임 루프를 반드시 끊는다 (팩을 바꾸면 UNITS/FOES 테이블이 통째로 갈린다) */
+function stopLoop(){ if(raf){ cancelAnimationFrame(raf); raf=null; } }
 let SCREEN="pack";
 
 function heroHTML(){
@@ -1436,6 +1721,7 @@ function heroHTML(){
 
 function renderPackSelect(){
   SCREEN="pack";
+  stopLoop(); G=null;
   const cards=Object.values(PACKS).map(pk=>`
     <button class="stage" data-pack="${pk.id}">
       <span class="ico">${pk.id==="office"?"🏢":"🎒"}</span>
@@ -1455,6 +1741,7 @@ function renderPackSelect(){
 }
 
 function renderStageSelect(){
+  stopLoop(); G=null;
   SCREEN="stage";
   const items=Object.values(STAGES).map(s=>`
     <button class="stage" data-stage="${s.id}">
@@ -1474,6 +1761,7 @@ function renderStageSelect(){
 }
 
 function renderSetup(id){
+  stopLoop(); G=null;
   const st=STAGES[id];
   $("#app").innerHTML=`
     <h1>${st.icon} ${esc(st.name)}</h1>
@@ -1496,6 +1784,7 @@ function renderSetup(id){
 const coffeeMark=n=>RES.ico+' <span class="num">'+n+'</span> <small>'+RES.name+'</small>';
 
 function renderGame(){
+  SCREEN="game";
   const g=G;
   const pal=PAL.map(k=>{
     const u=UNITS[k];
@@ -1594,11 +1883,11 @@ function render(){
 function start(){
   G.last=performance.now();
   const loop=now=>{
-    if(!G||G.over) return;
+    if(!G||G.over||SCREEN!=="game"){ raf=null; return; }
     let dt=(now-G.last)/1000; G.last=now;
     dt=Math.min(dt,0.05)*(window.__fast||1);
     step(dt);
-    if(!G||G.over) return;
+    if(!G||G.over||SCREEN!=="game"){ raf=null; return; }
     draw(); syncHud();
     raf=requestAnimationFrame(loop);
   };
