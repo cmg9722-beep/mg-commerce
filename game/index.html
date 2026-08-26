@@ -1558,7 +1558,7 @@ const F_OFFICE={
 
 /* ══════════════ 스테이지 ══════════════ */
 // [초, 레인(0~4), 적]
-function wave(list){ return list.map(([t,l,k])=>({t,l,k,done:false})); }
+function wave(list){ return list.map(([t,l,k,dp])=>({t,l,k,dp,done:false})); }
 
 const S_OFFICE={
   commute:{
@@ -1621,6 +1621,37 @@ const S_OFFICE={
     ]),
     winMsg:"정족수 미달. 회식은 다음 주로 미뤄졌습니다.",
     loseMsg:"회식조가 자리까지 왔습니다. 끌려갑니다.",
+  },
+  weekly:{
+    id:"weekly",icon:"🗂️",name:"주간 업무보고",
+    tagline:"부서가 돌아가며 들어온다. 직급이 아니라 부서를 보고 막아라",
+    brief:"금요일 오후. 다섯 부서가 차례로 보고를 받으러 옵니다. 같은 과장이라도 어느 부서에서 왔는지에 따라 하는 짓이 다릅니다 \u2014 배지를 보세요.",
+    coffee:275, trickle:5,
+    waves:wave([
+      /* 1교대 — 생산 (물량으로 민다) */
+      [10,2,"staff","prod"],[14,1,"staff","prod"],[14,3,"staff","prod"],
+      [20,0,"senior","prod"],[20,4,"senior","prod"],
+      /* 2교대 — 재무 (예산을 깎는다) */
+      [27,2,"staff","fin"],[30,1,"staff","fin"],[30,3,"staff","fin"],
+      [35,0,"senior","fin"],[35,4,"senior","fin"],
+      /* 3교대 — 품질 (발사를 멈춘다) */
+      [42,2,"senior","qa"],[45,1,"staff","qa"],[45,3,"staff","qa"],
+      [50,0,"manager","qa"],[50,4,"manager","qa"],
+      /* 4교대 — 영업 (복도 중간에서 튀어나온다) */
+      [57,1,"staff","sales"],[58,3,"staff","sales"],
+      [62,0,"senior","sales"],[62,2,"senior","sales"],[62,4,"senior","sales"],
+      /* 5교대 — 인사 (사물을 데려간다) */
+      [70,2,"manager","hr"],[73,1,"senior","hr"],[73,3,"senior","hr"],
+      [79,0,"manager","hr"],[79,4,"manager","hr"],
+      /* 전 부서 합동 */
+      [87,2,"gm","prod"],[90,0,"manager","fin"],[90,4,"manager","qa"],
+      [95,1,"senior","sales"],[95,3,"senior","hr"],
+      [101,2,"gm","qa"],[104,0,"gm","hr"],[104,4,"gm","fin"],
+      [111,1,"manager","sales"],[111,3,"manager","prod"],
+      [118,2,"gm","hr"],
+    ]),
+    winMsg:"다섯 부서 전부 돌려보냈습니다. 보고는 월요일로 밀렸습니다.",
+    loseMsg:"보고가 자리까지 왔습니다. 금요일 퇴근은 없습니다.",
   },
   closing:{
     id:"closing",icon:"📊",name:"월말 마감",mode:"closing",
@@ -1713,13 +1744,32 @@ const F_SCHOOL={
 };
 
 // 오피스 팩의 검증된 웨이브 테이블을 학생 팩 적으로 치환 (밸런스 동일)
+/* ══════════════ 부서 ══════════════
+   직급이 체격(HP·속도)이라면 부서는 능력이다.
+   같은 과장이라도 품질팀 과장과 재무팀 과장은 다른 방식으로 사람을 괴롭힌다.
+   좀비는 내 경제를 건드리지 않고 내 사물을 뺏어가지 않는다 — 부서는 그걸 한다. */
+const DEPTS={
+  sales:{key:"sales",tag:"영업",color:"#ffb26b",hp:.85,spd:1.30,
+         desc:"예고 없이 복도 중간에서 나타난다", ambush:.55},
+  prod :{key:"prod", tag:"생산",color:"#8fb4ff",hp:1.55,spd:.80,
+         desc:"물량으로 민다"},
+  qa   :{key:"qa",   tag:"품질",color:"#57d98a",hp:1.00,spd:.90,
+         desc:"앞의 사물을 점검한다 — 점검 중엔 발사 정지", silence:true},
+  fin  :{key:"fin",  tag:"재무",color:"#f5c451",hp:.90,spd:1.00,
+         desc:"전진하는 동안 예산을 깎는다", drain:9},
+  hr   :{key:"hr",   tag:"인사",color:"#c58fff",hp:1.15,spd:.95,
+         desc:"사물을 부수지 않고 차출한다 — 데려가며 회복", poach:1.9, heal:.3},
+};
+/* 학생 팩에서는 부서가 과목이 된다 (능력은 그대로) */
+const DEPT_TAG_SCHOOL={sales:"체육",prod:"수학",qa:"과학",fin:"영어",hr:"음악"};
+
 const KMAP={staff:"quiz",intern:"hw",senior:"task",manager:"group",
             gm:"roll",drunk:"night",audit:"final",
             pallet:"notice",defect:"errand",truck:"clean",
             stock:"pile",tax:"sheet",ar:"book"};
 function reskin(st, over){
   return Object.assign({}, st, over, {
-    waves: st.waves.map(w=>({t:w.t, l:w.l, k:KMAP[w.k], done:false}))
+    waves: st.waves.map(w=>({t:w.t, l:w.l, k:KMAP[w.k], dp:w.dp, done:false}))
   });
 }
 const S_SCHOOL={
@@ -1741,6 +1791,12 @@ const S_SCHOOL={
     brief:"저녁 6시. 야자가 몰려옵니다. 수가 많고 빠릅니다. 화력을 빨리 세우세요.",
     winMsg:"야자 인원 미달. 오늘은 집에 갑니다.",
     loseMsg:"야자가 책상까지 왔습니다. 10시까지입니다."}),
+  weekly: reskin(S_OFFICE.weekly,{
+    id:"weekly", icon:"🗂️", name:"수행평가 주간",
+    tagline:"과목이 돌아가며 들어온다. 난이도가 아니라 과목을 보고 막아라",
+    brief:"금요일 오후. 다섯 과목이 차례로 수행평가를 들고 옵니다. 같은 수행평가라도 어느 과목인지에 따라 하는 짓이 다릅니다 \u2014 배지를 보세요.",
+    winMsg:"다섯 과목 전부 넘겼습니다. 수행평가는 다음 주로 밀렸습니다.",
+    loseMsg:"수행평가가 책상까지 왔습니다. 주말은 없습니다."}),
   closing: reskin(S_OFFICE.closing,{
     id:"closing", icon:"📚", name:"개학 전날",
     tagline:"막는 게 아니라 쳐내는 스테이지. 자정까지 밀린 숙제를 끝내라",
@@ -1843,7 +1899,7 @@ function place(r,c){
   }
   if(g.grid[r][c]){ flash(g,"이미 뭔가 놓여 있습니다."); return; }
   g.coffee-=def.cost; S("place",def.id);
-  g.grid[r][c]={type:def.id,hp:def.hp,maxhp:def.hp,cd:def.rate?def.rate*0.5:0,gen:0};
+  g.grid[r][c]={type:def.id,hp:def.hp,maxhp:def.hp,cd:def.rate?def.rate*0.5:0,gen:0,stun:0};
 }
 function flash(g,msg){ g.toast=msg; g.toastT=2.2; S("deny"); }
 
@@ -1861,10 +1917,14 @@ function step(dt){
   g.waves.forEach(w=>{
     if(!w.done && g.t>=w.t){
       w.done=true;
-      const d=FOES[w.k];
-      g.foes.push({kind:w.k,lane:w.l,x:FW+18,hp:d.hp,maxhp:d.hp,
-                   spd:d.spd,dmg:d.dmg,eat:0,slow:0});
+      const d=FOES[w.k], dp=w.dp?DEPTS[w.dp]:null;
+      const hp=Math.round(d.hp*(dp?dp.hp:1));
+      g.foes.push({kind:w.k,dept:w.dp||null,lane:w.l,
+                   x:(dp&&dp.ambush)?FW*dp.ambush:FW+18,
+                   hp:hp,maxhp:hp,spd:d.spd*(dp?dp.spd:1),
+                   dmg:d.dmg,eat:0,slow:0,poach:0});
       if(d.boss) S("bossIn");
+      else if(dp&&dp.ambush) S("deny");        // 기습 — 갑자기 나타났다는 신호
     }
   });
 
@@ -1876,11 +1936,12 @@ function step(dt){
       u.gen+=dt;
       if(u.gen>=def.gen){ u.gen=0; g.coffee+=25; S("coin"); g.fx.push({type:"coin",x:c*CW+CW/2,y:r*CH+30,t:0}); }
     }
+    if(u.stun>0) u.stun-=dt;                 // 품질 점검 중 — 발사 정지
     if(def.rate){
       // 같은 레인 오른쪽에 적이 있을 때만 발사
       const ahead=g.foes.some(f=>f.lane===r && f.x>c*CW);
       u.cd-=dt;
-      if(ahead && u.cd<=0){
+      if(ahead && u.cd<=0 && u.stun<=0){
         u.cd=def.rate;
         g.shots.push({lane:r,x:c*CW+CW*0.72,dmg:def.dmg}); S("shoot",u.type);
       }
@@ -1905,14 +1966,37 @@ function step(dt){
 
     const cc=clamp(Math.floor((f.x-20)/CW),0,COLS-1);
     const front=g.grid[f.lane][cc];
+    const dp=f.dept?DEPTS[f.dept]:null;
     if(front){
-      // 먹는 중
       f.eat+=dt;
-      front.hp-=f.dmg*dt; S("chew");
-      if(front.hp<=0){ g.grid[f.lane][cc]=null;
-        g.fx.push({type:"pop",x:cc*CW+CW/2,y:f.lane*CH+CH/2,t:0}); }
+      if(dp&&dp.poach){
+        // 인사 — 부수지 않는다. 데려간다.
+        f.poach+=dt;
+        if(f.poach>=dp.poach){
+          f.poach=0;
+          g.grid[f.lane][cc]=null;
+          f.hp=Math.min(f.maxhp,f.hp+f.maxhp*dp.heal);  // 자기 체급만큼만 채운다
+          S("nuke");
+          g.fx.push({type:"poach",x:cc*CW+CW/2,y:f.lane*CH+CH/2,t:0});
+        }
+      } else if(dp&&dp.silence){
+        // 품질 — 점검. 사물은 거의 안 부수지만 그동안 발사가 멈춘다.
+        front.stun=.35;
+        front.hp-=f.dmg*.3*dt; S("chew");
+        if(front.hp<=0){ g.grid[f.lane][cc]=null;
+          g.fx.push({type:"pop",x:cc*CW+CW/2,y:f.lane*CH+CH/2,t:0}); }
+      } else {
+        front.hp-=f.dmg*dt; S("chew");
+        if(front.hp<=0){ g.grid[f.lane][cc]=null;
+          g.fx.push({type:"pop",x:cc*CW+CW/2,y:f.lane*CH+CH/2,t:0}); }
+      }
     } else {
       f.x-=f.spd*crunchMul(g)*dt;
+      if(dp&&dp.drain&&g.coffee>0){                     // 재무 — 전진하는 동안 예산 삭감
+        g.drainAcc=(g.drainAcc||0)+dp.drain*dt;
+        if(g.drainAcc>=1){ const n=Math.floor(g.drainAcc); g.drainAcc-=n;
+          g.coffee=Math.max(0,g.coffee-n); }
+      }
     }
     if(f.x<=HOME){
       g.leaked++;
@@ -1982,8 +2066,15 @@ function draw(){
     const u=g.grid[r][c]; if(!u) continue;
     const x=c*CW+CW/2, y=r*CH+CH/2;
     const su=SP&&SP.units&&SP.units[u.type];
+    if(u.stun>0){                       // 품질 점검 중 — 이 사물은 지금 못 쓴다
+      ctx.save(); ctx.globalAlpha=.45;
+      ctx.strokeStyle="#57d98a"; ctx.lineWidth=2;
+      ctx.strokeRect(x-30,y-32,60,60); ctx.restore();
+      ctx.save(); ctx.globalAlpha=.5;
+    }
     if(su) su(ctx,x,y-4,54);
     else if(UNITS[u.type]&&UNITS[u.type].e){ ctx.font="30px sans-serif"; ctx.fillText(UNITS[u.type].e,x,y-4); }
+    if(u.stun>0) ctx.restore();
     const ratio=u.hp/u.maxhp;
     if(ratio<1){
       ctx.fillStyle="#0b0e14"; ctx.fillRect(x-22,y+22,44,4);
@@ -2004,9 +2095,19 @@ function draw(){
     const sf=SP&&SP.foes&&SP.foes[f.kind];
     if(sf) sf(ctx,f.x,y-4,d.boss?68:52);
     else if(d.e){ ctx.font=(d.boss?"36px":"28px")+" sans-serif"; ctx.fillText(d.e,f.x,y-4); }
+    const dp=f.dept?DEPTS[f.dept]:null;
     const ratio=clamp(f.hp/f.maxhp,0,1), w=d.boss?52:38;
     ctx.fillStyle="#0b0e14"; ctx.fillRect(f.x-w/2,y+20,w,5);
-    ctx.fillStyle=d.color; ctx.fillRect(f.x-w/2,y+20,w*ratio,5);
+    ctx.fillStyle=dp?dp.color:d.color; ctx.fillRect(f.x-w/2,y+20,w*ratio,5);
+    if(dp){
+      // 부서 배지 — 같은 직급이라도 어느 부서인지 한눈에 보여야 한다
+      const tag=(PACK.id==="school"?DEPT_TAG_SCHOOL[dp.key]:dp.tag);
+      ctx.font="700 11px 'Gothic A1','Malgun Gothic',sans-serif";
+      const bw=ctx.measureText(tag).width+10;
+      ctx.fillStyle=dp.color;
+      ctx.fillRect(f.x-bw/2,y-34,bw,15);
+      ctx.fillStyle="#0b0e14"; ctx.fillText(tag,f.x,y-26);
+    }
     if(d.boss){
       ctx.fillStyle="#ff6b6b"; ctx.font="10px 'Gothic A1','Malgun Gothic',sans-serif";
       ctx.fillText(d.name,f.x,y+34);
@@ -2024,6 +2125,11 @@ function draw(){
       ctx.font="15px sans-serif"; ctx.fillText("+25",e.x,e.y-e.t*26); }
     else if(e.type==="nuke"){ ctx.fillStyle="rgba(245,196,81,"+a*.55+")";
       ctx.fillRect(0,e.lane*CH,FW,CH); }
+    else if(e.type==="poach"){ ctx.fillStyle="rgba(197,143,255,"+a+")";
+      ctx.font="700 14px 'Gothic A1','Malgun Gothic',sans-serif";
+      ctx.fillText("차출",e.x,e.y-e.t*24);
+      ctx.strokeStyle="rgba(197,143,255,"+a+")"; ctx.lineWidth=2;
+      ctx.strokeRect(e.x-26,e.y-26,52,52); }
     else if(e.type==="leak"){ ctx.fillStyle="rgba(255,107,107,"+a+")";
       ctx.font="700 14px 'Gothic A1','Malgun Gothic',sans-serif";
       ctx.fillText("미처리",e.x+18,e.y-e.t*20); }
