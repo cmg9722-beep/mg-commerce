@@ -105,7 +105,7 @@ canvas{width:100%;display:block;border-radius:8px;background:#111721;
 <body>
 <div id="app"></div>
 <div id="boss">
-  <div class="ribbon">Excel — 2026년_생산실적_집계.xlsx</div>
+  <div class="ribbon" id="bossTitle">Excel — 2026년_생산실적_집계.xlsx</div>
   <div class="tabs">파일 &nbsp; 홈 &nbsp; 삽입 &nbsp; 페이지 레이아웃 &nbsp; 수식 &nbsp; 데이터 &nbsp; 검토 &nbsp; 보기</div>
   <table id="bossSheet"></table>
 </div>
@@ -338,6 +338,324 @@ canvas{width:100%;display:block;border-radius:8px;background:#111721;
 </script>
 
 <script>
+/* _school_sprites.js — 등교 저지(학생 팩) 벡터 스프라이트
+   아트 디렉션: design/Themes.dc.html (학생 팩), 규격은 game/index.html의 SPRITES 블록과 동일.
+   전 함수 시그니처: (ctx, cx, cy, s) — cx,cy 중심, s = 정사각 박스 한 변(px).
+   순수 Canvas2D 패스만 사용. 이모지/텍스트/이미지 없음.
+   적은 전부 '사물'이다 — 사람(선생님·학생)은 절대 그리지 않는다. */
+(function () {
+  "use strict";
+
+  /* ── 팔레트 (직장인 팩과 공유 + 학생 팩 추가색) ── */
+  var PAPER = "#f2f5fa", PAPER2 = "#dfe6f2", PAPER3 = "#c3ccdb";
+  var G1 = "#98a4b8", G2 = "#74829a", G3 = "#5d6a7f", G4 = "#4c5769", INK = "#2f3542";
+  var BLUE = "#9ec8ff", BLUE2 = "#6f9fd8";
+  var YEL = "#f5c451", YEL2 = "#d9a94e";
+  var RED = "#ff6b6b", DRED = "#b93b3b";
+  var STEEL = "#7f96b0", STEEL2 = "#54687f";      // 사물함 금속
+  var CREAM = "#f0e6d2", CREAM2 = "#d9caa8";      // 학용품 종이
+  var GRN2 = "#4b8f70";                           // 자습서 표지 (학생 팩 그린)
+  var LIT = "#cfe4ff";                            // 자판기 상품창 불빛
+
+  /* 둥근 사각형 패스 (roundRect 폴리필 불요) */
+  function rr(ctx, x, y, w, h, r) {
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function frr(ctx, x, y, w, h, r, fill) {
+    ctx.fillStyle = fill;
+    rr(ctx, x, y, w, h, r);
+    ctx.fill();
+  }
+
+  /* 72×72 디자인 좌표계로 진입 (직장인 팩과 동일) */
+  function in72(ctx, cx, cy, s) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    var k = s / 72;
+    ctx.scale(k, k);
+    ctx.translate(-36, -36);
+  }
+
+  /* ══════════ 설치 사물 (오른쪽을 향함) ══════════ */
+
+  /* 자판기 — 어두운 몸통, 왼쪽 상품창(캔 2줄), 우하단 노란 배출구 */
+  function vend(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 16, 4, 40, 62, 4, G4);               // 몸통
+    frr(ctx, 16, 60, 40, 6, 3, INK);              // 하단 받침
+    frr(ctx, 20, 10, 18, 36, 2, LIT);             // 상품창 (왼쪽, 불 켜짐)
+    frr(ctx, 23, 15, 5, 10, 1.5, RED);            // 캔 1줄
+    frr(ctx, 30, 15, 5, 10, 1.5, BLUE2);
+    frr(ctx, 23, 31, 5, 10, 1.5, YEL2);
+    frr(ctx, 30, 31, 5, 10, 1.5, GRN2);           // 캔 2줄
+    frr(ctx, 42, 12, 10, 4, 1.5, G2);             // 버튼 패널
+    frr(ctx, 42, 19, 10, 4, 1.5, G2);
+    frr(ctx, 42, 26, 10, 4, 1.5, G2);
+    frr(ctx, 40, 50, 13, 9, 2, YEL);              // 배출구 — 진행 방향(오른쪽)
+    ctx.restore();
+  }
+
+  /* 사물함 — 3단 적층, 문마다 통풍구 2줄 + 오른쪽 손잡이 */
+  function locker(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 14, 4, 44, 64, 3, STEEL2);           // 프레임
+    var y;
+    for (var i = 0; i < 3; i++) {
+      y = 6 + i * 21;
+      frr(ctx, 16, y, 40, 19, 2, STEEL);          // 문
+      ctx.fillStyle = STEEL2;                     // 통풍구
+      ctx.fillRect(22, y + 4, 20, 2.5);
+      ctx.fillRect(22, y + 9, 20, 2.5);
+      frr(ctx, 48, y + 6, 4, 7, 1.5, PAPER2);     // 손잡이 (오른쪽)
+    }
+    ctx.restore();
+  }
+
+  /* 자습서 — 펼쳐 세운 두꺼운 문제집, 초록 표지, 오른쪽으로 늘어진 빨간 갈피끈 */
+  function book(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    ctx.fillStyle = GRN2;                          // 표지 (펼친 V자)
+    ctx.beginPath();
+    ctx.moveTo(9, 15); ctx.lineTo(36, 22); ctx.lineTo(63, 15);
+    ctx.lineTo(63, 50); ctx.lineTo(36, 58); ctx.lineTo(9, 50);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = CREAM2;                        // 책배(페이지 두께)
+    ctx.beginPath();
+    ctx.moveTo(9, 50); ctx.lineTo(36, 58); ctx.lineTo(63, 50);
+    ctx.lineTo(63, 55); ctx.lineTo(36, 63); ctx.lineTo(9, 55);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = CREAM;                         // 왼쪽 페이지
+    ctx.beginPath();
+    ctx.moveTo(12, 18); ctx.lineTo(36, 24); ctx.lineTo(36, 54); ctx.lineTo(12, 47);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();                               // 오른쪽 페이지
+    ctx.moveTo(60, 18); ctx.lineTo(36, 24); ctx.lineTo(36, 54); ctx.lineTo(60, 47);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "#a9987a"; ctx.lineWidth = 2; ctx.lineCap = "round";
+    ctx.beginPath();                               // 페이지 글줄
+    ctx.moveTo(17, 27); ctx.lineTo(31, 31);
+    ctx.moveTo(17, 34); ctx.lineTo(31, 38);
+    ctx.moveTo(55, 27); ctx.lineTo(41, 31);
+    ctx.moveTo(55, 34); ctx.lineTo(41, 38);
+    ctx.stroke();
+    ctx.fillStyle = RED;                           // 갈피끈 — 오른쪽으로
+    ctx.beginPath();
+    ctx.moveTo(37, 50); ctx.lineTo(43, 50); ctx.lineTo(52, 65); ctx.lineTo(46, 65);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  /* 필통 — 열린 파란 필통, 오른쪽 위로 부챗살처럼 뻗은 연필·펜 3자루 */
+  function pencil(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    function pen(ang, body, tip) {                 // 필기구 1자루 (오른쪽으로)
+      ctx.save();
+      ctx.translate(26, 44); ctx.rotate(ang);
+      frr(ctx, 0, -3, 26, 6, 2.5, body);
+      ctx.fillStyle = CREAM;                       // 깎인 부분
+      ctx.beginPath();
+      ctx.moveTo(26, -3); ctx.lineTo(33, 0); ctx.lineTo(26, 3);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = tip;                         // 심
+      ctx.beginPath();
+      ctx.moveTo(30.5, -1.4); ctx.lineTo(33.5, 0); ctx.lineTo(30.5, 1.4);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    pen(-0.85, YEL, INK);
+    pen(-0.45, RED, DRED);
+    pen(-0.08, BLUE2, INK);
+    ctx.fillStyle = G3;                            // 젖혀진 뚜껑 (왼쪽 뒤)
+    ctx.beginPath();
+    ctx.moveTo(10, 40); ctx.lineTo(3, 20); ctx.lineTo(13, 17); ctx.lineTo(18, 40);
+    ctx.closePath(); ctx.fill();
+    frr(ctx, 8, 40, 42, 20, 5, BLUE2);            // 필통 몸체
+    frr(ctx, 12, 43, 34, 7, 3, INK);              // 열린 입구
+    ctx.restore();
+  }
+
+  /* 조퇴증 — 흰 쪽지, 줄 두 개, 우하단 빨간 관인(테두리 도장) */
+  function leave(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 12, 12, 48, 48, 3, PAPER);
+    frr(ctx, 19, 20, 22, 4, 2, G2);               // 제목 칸
+    frr(ctx, 19, 30, 34, 3, 1.5, G1);             // 줄 1
+    frr(ctx, 19, 37, 34, 3, 1.5, G1);             // 줄 2
+    ctx.strokeStyle = RED; ctx.lineWidth = 2.8;    // 관인 — 네모난 직인
+    ctx.strokeRect(41, 41, 13, 13);
+    ctx.fillStyle = RED;
+    ctx.fillRect(44.2, 44.5, 2.4, 6);
+    ctx.fillRect(48.4, 44.5, 2.4, 6);
+    ctx.restore();
+  }
+
+  /* ══════════ 적 (왼쪽을 향해 밀려오는 사물들) ══════════ */
+  /* 사람은 그리지 않는다. 진행 방향은 왼쪽으로 살짝 기운 자세와
+     오른쪽(뒤쪽)에 남는 디테일 — 펄럭이는 모서리·끌리는 페이지·불빛 — 로 표현. */
+
+  function makeFoe(prop) {
+    return function (ctx, cx, cy, s) {
+      in72(ctx, cx, cy, s);
+      ctx.fillStyle = "rgba(0,0,0,.35)";           // 그림자
+      ctx.beginPath();
+      ctx.ellipse(36, 66, 21, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.translate(36, 40); ctx.rotate(-0.09); ctx.translate(-36, -40); // 왼쪽 기울기
+      prop(ctx);
+      ctx.restore();
+    };
+  }
+
+  var foes = {
+    /* 숙제 — 낱장 프린트, 연필 낙서 줄, 오른쪽 위 모서리가 접혀 펄럭임 */
+    hw: makeFoe(function (ctx) {
+      frr(ctx, 20, 8, 30, 48, 2, "#8b97ab");      // 낱장
+      ctx.fillStyle = "#aeb8c9";                   // 접힌 모서리 (뒤쪽)
+      ctx.beginPath();
+      ctx.moveTo(50, 8); ctx.lineTo(58, 15); ctx.lineTo(50, 21);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#414c5e"; ctx.lineWidth = 2.4; ctx.lineCap = "round";
+      ctx.beginPath();                             // 연필 낙서
+      ctx.moveTo(25, 20); ctx.quadraticCurveTo(33, 16, 42, 20);
+      ctx.moveTo(25, 29); ctx.quadraticCurveTo(35, 25, 45, 29);
+      ctx.moveTo(25, 38); ctx.quadraticCurveTo(31, 34, 38, 38);
+      ctx.moveTo(25, 47); ctx.lineTo(34, 47);
+      ctx.stroke();
+    }),
+    /* 쪽지시험 — 가로로 긴 반쪽짜리 시험지 + 빨간 동그라미 채점 */
+    quiz: makeFoe(function (ctx) {
+      frr(ctx, 12, 20, 46, 27, 2, "#6d7d96");     // 반쪽 시험지 (가로)
+      ctx.fillStyle = "#8e9cb3";                   // 들린 오른쪽 끝 (뒤쪽)
+      ctx.beginPath();
+      ctx.moveTo(58, 22); ctx.lineTo(64, 30); ctx.lineTo(58, 38);
+      ctx.closePath(); ctx.fill();
+      frr(ctx, 17, 26, 17, 3, 1.5, "#3f4c61");    // 문항 줄
+      frr(ctx, 17, 33, 13, 3, 1.5, "#3f4c61");
+      frr(ctx, 17, 40, 15, 3, 1.5, "#3f4c61");
+      ctx.strokeStyle = RED; ctx.lineWidth = 3.2; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.arc(46, 30, 7.5, 0, Math.PI * 2); ctx.stroke(); // 채점 ○
+      ctx.beginPath(); ctx.moveTo(20, 45); ctx.lineTo(28, 37); ctx.stroke(); // 채점 빗금
+    }),
+    /* 수행평가 — 스테이플러로 묶인 여러 장 묶음, 뒷장이 오른쪽으로 끌림 */
+    task: makeFoe(function (ctx) {
+      frr(ctx, 28, 13, 28, 44, 2, "#82a0c9");     // 끌리는 뒷장 (뒤쪽)
+      frr(ctx, 23, 10, 28, 44, 2, "#6c88b3");
+      frr(ctx, 17, 7, 28, 44, 2, "#5b7bab");      // 앞장
+      ctx.save();                                  // 왼쪽 위 스테이플 심
+      ctx.translate(22, 12); ctx.rotate(-0.65);
+      ctx.fillStyle = INK; ctx.fillRect(-5, -1.6, 10, 3.2);
+      ctx.restore();
+      frr(ctx, 23, 19, 16, 3, 1.5, "#31517d");    // 글줄
+      frr(ctx, 23, 27, 16, 3, 1.5, "#31517d");
+      frr(ctx, 23, 35, 11, 3, 1.5, "#31517d");
+    }),
+    /* 조별과제 — 명단 클립보드: 빈 체크박스 + 이름 줄, 오른쪽으로 삐져나온 종이 */
+    group: makeFoe(function (ctx) {
+      frr(ctx, 17, 8, 38, 52, 3, "#a8703f");      // 보드
+      ctx.fillStyle = PAPER2;                      // 삐져나온 종이 (뒤쪽)
+      ctx.beginPath();
+      ctx.moveTo(55, 40); ctx.lineTo(62, 46); ctx.lineTo(55, 52);
+      ctx.closePath(); ctx.fill();
+      frr(ctx, 21, 15, 30, 40, 2, PAPER);          // 명단 종이
+      frr(ctx, 28, 5, 16, 8, 2, G1);               // 클립
+      frr(ctx, 33, 2, 6, 5, 2, G3);
+      ctx.strokeStyle = G3; ctx.lineWidth = 2;      // 빈 체크박스 3개
+      ctx.strokeRect(25, 21, 6, 6);
+      ctx.strokeRect(25, 31, 6, 6);
+      ctx.strokeRect(25, 41, 6, 6);
+      frr(ctx, 34, 22.5, 13, 3, 1.5, G1);          // 이름 줄
+      frr(ctx, 34, 32.5, 13, 3, 1.5, G1);
+      frr(ctx, 34, 42.5, 13, 3, 1.5, G1);
+    }),
+    /* 출석부 — 두꺼운 양장 장부: 붉은 표지 + 금박 줄, 왼쪽 책배 페이지 블록 */
+    roll: makeFoe(function (ctx) {
+      frr(ctx, 50, 12, 6, 48, 2, "#7e3535");      // 등(뒤쪽 두께)
+      frr(ctx, 18, 10, 36, 48, 3, "#a04a4a");     // 표지
+      frr(ctx, 13, 13, 6, 42, 1.5, CREAM);        // 책배 페이지 블록 (왼쪽)
+      ctx.fillStyle = CREAM2;                      // 페이지 결
+      ctx.fillRect(13, 22, 6, 1.6);
+      ctx.fillRect(13, 32, 6, 1.6);
+      ctx.fillRect(13, 42, 6, 1.6);
+      frr(ctx, 24, 20, 24, 3.5, 1.5, YEL);         // 금박 줄
+      frr(ctx, 24, 27, 16, 2.5, 1, YEL2);
+    }),
+    /* 야자 — 밤의 스탠드: 금색 갓이 왼쪽 아래를 비추고 바닥에 따뜻한 빛 웅덩이 */
+    night: makeFoe(function (ctx) {
+      ctx.save();                                  // 빛 (진행 방향 = 왼쪽 아래)
+      ctx.globalAlpha = 0.18; ctx.fillStyle = YEL;
+      ctx.beginPath();
+      ctx.moveTo(24, 28); ctx.lineTo(4, 60); ctx.lineTo(42, 60);
+      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 0.3;
+      ctx.beginPath(); ctx.ellipse(23, 60, 19, 5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      frr(ctx, 30, 56, 26, 6, 2.5, G4);            // 받침 (오른쪽)
+      frr(ctx, 42, 26, 5, 32, 2, G3);              // 기둥
+      ctx.strokeStyle = G3; ctx.lineWidth = 5; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(44, 28); ctx.lineTo(32, 20); ctx.stroke(); // 팔
+      ctx.fillStyle = "#c99a3f";                   // 갓 — 입이 왼쪽 아래
+      ctx.beginPath();
+      ctx.moveTo(17, 24); ctx.lineTo(36, 12); ctx.lineTo(43, 25); ctx.lineTo(23, 35);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#ffe9b0";                    // 전구
+      ctx.beginPath(); ctx.arc(27, 29, 4, 0, Math.PI * 2); ctx.fill();
+    }),
+    /* 기말고사(보스) — 화면을 가득 채우는 육중한 시험지 묶음 + 대각선 봉인 띠 */
+    final: makeFoe(function (ctx) {
+      frr(ctx, 6, 52, 62, 12, 2, CREAM2);          // 페이지 블록 (두께)
+      ctx.fillStyle = "#b3a184";
+      ctx.fillRect(6, 56, 62, 1.8);
+      ctx.fillRect(6, 60, 62, 1.8);
+      ctx.fillStyle = CREAM;                        // 끌리는 낱장 (뒤쪽)
+      ctx.beginPath();
+      ctx.moveTo(66, 46); ctx.lineTo(72, 54); ctx.lineTo(66, 60);
+      ctx.closePath(); ctx.fill();
+      frr(ctx, 6, 2, 62, 52, 3, "#8f2a2a");        // 표지 테두리
+      frr(ctx, 10, 6, 54, 44, 2, "#b93b3b");       // 표지
+      ctx.save();                                   // 봉인 띠 (대각선)
+      ctx.translate(37, 28); ctx.rotate(-0.32);
+      frr(ctx, -36, -8, 72, 16, 2, PAPER);
+      frr(ctx, -30, -3, 14, 6, 3, DRED);            // 띠 위 붉은 표기
+      frr(ctx, 16, -3, 14, 6, 3, DRED);
+      ctx.fillStyle = DRED;                         // 봉인 도장
+      ctx.beginPath(); ctx.arc(0, 0, 7.5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = PAPER; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    })
+  };
+
+  /* ══════════ 내 자리 — 옆에서 본 학교 책걸상 (오른쪽을 향함) ══════════ */
+  function seat(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 8, 14, 7, 30, 3, BLUE2);              // 의자 등받이 (왼쪽 = 뒤)
+    frr(ctx, 8, 38, 22, 7, 3, BLUE2);              // 좌판
+    frr(ctx, 10, 45, 4, 19, 1.5, G4);              // 의자 다리
+    frr(ctx, 24, 45, 4, 19, 1.5, G4);
+    frr(ctx, 28, 24, 38, 7, 2.5, BLUE2);           // 책상 상판 — 오른쪽으로 열림
+    frr(ctx, 32, 31, 4, 33, 1.5, G4);              // 책상 다리
+    frr(ctx, 58, 31, 4, 33, 1.5, G4);
+    frr(ctx, 32, 31, 30, 4, 1.5, G3);              // 서랍(책 넣는 칸)
+    ctx.restore();
+  }
+
+  window.SPRITES_SCHOOL = {
+    units: { vend: vend, locker: locker, book: book, pencil: pencil, leave: leave },
+    foes: foes,
+    seat: seat
+  };
+})();
+</script>
+
+<script>
 "use strict";
 
 /* ══════════════ 상수 ══════════════ */
@@ -348,6 +666,8 @@ const HOME=0;                       // 좌측 경계 = 내 자리
 const $=(s,r)=>(r||document).querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+/* 사운드 안전 호출 — _audio.js(window.SFX)가 없어도 게임은 그대로 동작한다 */
+const S=(m,...a)=>{ try{ const x=window.SFX; if(x&&typeof x[m]==="function") x[m](...a); }catch(e){} };
 
 /* ══════════════ 유닛 ══════════════ */
 const U_OFFICE={
@@ -508,7 +828,36 @@ let PACK=null, UNITS=null, PAL=null, FOES=null, STAGES=null, RES=null;
 function usePack(id){
   PACK=PACKS[id]; UNITS=PACK.units; PAL=PACK.pal; FOES=PACK.foes;
   STAGES=PACK.stages; RES=PACK.res;
+  if(document.getElementById("bossSheet")) buildBossSheet(id);
 }
+/* 보스키(ESC) — 팩마다 다른 위장 화면 */
+const BOSSSHEET={
+  office:{ title:"Excel — 2026년_생산실적_집계.xlsx",
+    head:["공정","계획","실적","달성률","불량","비고"],
+    rows:["전처리","노광","에칭","전해","검사","출하"].map((n,i)=>{
+      const p=1200+i*130, a=p-(i*37+11);
+      return [n,p,a,((a/p)*100).toFixed(1)+"%",3+i,""]; }) },
+  school:{ title:"Excel — 2학기_중간고사_오답노트.xlsx",
+    head:["과목","범위","문항","정답률","오답","복습"],
+    rows:[["국어","1~4단원",40,"82.5%",7,"O"],["수학","이차함수",30,"70.0%",9,"O"],
+          ["영어","Unit 1-3",45,"88.9%",5,"O"],["과학","전기와 자기",35,"77.1%",8,""],
+          ["사회","경제 단원",30,"90.0%",3,"O"],["한국사","근현대",25,"84.0%",4,""]] },
+};
+function buildBossSheet(id){
+  const cfg=BOSSSHEET[id]||BOSSSHEET.office;
+  const cols=["","A","B","C","D","E","F"];
+  let rows="<tr>"+cols.map(c=>"<th>"+c+"</th>").join("")+"</tr>";
+  for(let r=1;r<=22;r++){
+    let t="<th>"+r+"</th>";
+    if(r===1) t+=cfg.head.map(h=>"<td>"+esc(h)+"</td>").join("");
+    else if(r<=1+cfg.rows.length) t+=cfg.rows[r-2].map(v=>"<td>"+esc(v)+"</td>").join("");
+    else t+="<td></td>".repeat(6);
+    rows+="<tr>"+t+"</tr>";
+  }
+  $("#bossTitle").textContent=cfg.title;
+  $("#bossSheet").innerHTML=rows;
+}
+
 usePack("office");
 
 /* ══════════════ 상태 ══════════════ */
@@ -540,14 +889,14 @@ function place(r,c){
     g.coffee-=def.cost;
     hitFoes.forEach(f=>{ f.hp-=def.nuke; });
     g.fx.push({type:"nuke",lane:r,t:0});
-    flash(g,"사직서 — "+r+"번 줄 소각");
+    S("nuke"); flash(g,UNITS[g.sel].name+" — "+(r+1)+"번 줄 소각");
     return;
   }
   if(g.grid[r][c]){ flash(g,"이미 뭔가 놓여 있습니다."); return; }
-  g.coffee-=def.cost;
+  g.coffee-=def.cost; S("place",def.id);
   g.grid[r][c]={type:def.id,hp:def.hp,maxhp:def.hp,cd:def.rate?def.rate*0.5:0,gen:0};
 }
-function flash(g,msg){ g.toast=msg; g.toastT=2.2; }
+function flash(g,msg){ g.toast=msg; g.toastT=2.2; S("deny"); }
 
 /* ══════════════ 루프 ══════════════ */
 function step(dt){
@@ -557,7 +906,7 @@ function step(dt){
 
   // 커피 기본 수급
   g.trickle+=dt;
-  if(g.trickle>=g.st.trickle){ g.trickle=0; g.coffee+=25; }
+  if(g.trickle>=g.st.trickle){ g.trickle=0; g.coffee+=25; S("coin"); }
 
   // 스폰
   g.waves.forEach(w=>{
@@ -566,6 +915,7 @@ function step(dt){
       const d=FOES[w.k];
       g.foes.push({kind:w.k,lane:w.l,x:FW+18,hp:d.hp,maxhp:d.hp,
                    spd:d.spd,dmg:d.dmg,eat:0,slow:0});
+      if(d.boss) S("bossIn");
     }
   });
 
@@ -575,7 +925,7 @@ function step(dt){
     const def=UNITS[u.type];
     if(def.gen){
       u.gen+=dt;
-      if(u.gen>=def.gen){ u.gen=0; g.coffee+=25; g.fx.push({type:"coin",x:c*CW+CW/2,y:r*CH+30,t:0}); }
+      if(u.gen>=def.gen){ u.gen=0; g.coffee+=25; S("coin"); g.fx.push({type:"coin",x:c*CW+CW/2,y:r*CH+30,t:0}); }
     }
     if(def.rate){
       // 같은 레인 오른쪽에 적이 있을 때만 발사
@@ -583,7 +933,7 @@ function step(dt){
       u.cd-=dt;
       if(ahead && u.cd<=0){
         u.cd=def.rate;
-        g.shots.push({lane:r,x:c*CW+CW*0.72,dmg:def.dmg});
+        g.shots.push({lane:r,x:c*CW+CW*0.72,dmg:def.dmg}); S("shoot",u.type);
       }
     }
   }
@@ -595,13 +945,13 @@ function step(dt){
     s.x+=430*dt;
     if(px>FW+20){ g.shots.splice(i,1); continue; }
     const hit=g.foes.find(f=>f.lane===s.lane && f.x>=px-16 && f.x<=s.x+16);
-    if(hit){ hit.hp-=s.dmg; g.fx.push({type:"hit",x:s.x,y:s.lane*CH+CH/2,t:0}); g.shots.splice(i,1); }
+    if(hit){ hit.hp-=s.dmg; S("hit"); g.fx.push({type:"hit",x:s.x,y:s.lane*CH+CH/2,t:0}); g.shots.splice(i,1); }
   }
 
   // 적
   for(let i=g.foes.length-1;i>=0;i--){
     const f=g.foes[i];
-    if(f.hp<=0){ g.foes.splice(i,1); g.killed++;
+    if(f.hp<=0){ g.foes.splice(i,1); g.killed++; S("kill",!!FOES[f.kind].boss);
       g.fx.push({type:"pop",x:f.x,y:f.lane*CH+CH/2,t:0}); continue; }
 
     const cc=clamp(Math.floor((f.x-20)/CW),0,COLS-1);
@@ -609,7 +959,7 @@ function step(dt){
     if(front){
       // 먹는 중
       f.eat+=dt;
-      front.hp-=f.dmg*dt;
+      front.hp-=f.dmg*dt; S("chew");
       if(front.hp<=0){ g.grid[f.lane][cc]=null;
         g.fx.push({type:"pop",x:cc*CW+CW/2,y:f.lane*CH+CH/2,t:0}); }
     } else {
@@ -627,7 +977,7 @@ function step(dt){
 
 function finish(o){
   if(G.over) return;
-  G.over=o;
+  G.over=o; S(o==="win"?"win":"lose");
   if(raf) cancelAnimationFrame(raf);
   raf=null;
   render();
@@ -688,7 +1038,7 @@ function draw(){
     ctx.fillStyle=d.color; ctx.fillRect(f.x-w/2,y+20,w*ratio,5);
     if(d.boss){
       ctx.fillStyle="#ff6b6b"; ctx.font="10px 'Gothic A1','Malgun Gothic',sans-serif";
-      ctx.fillText("점검단",f.x,y+34);
+      ctx.fillText(d.name,f.x,y+34);
     }
   });
 
@@ -748,7 +1098,7 @@ function renderPackSelect(){
     </div>
     <div class="hint">ESC — 보스키 (즉시 엑셀 화면)</div>`;
   $("#app").querySelectorAll("[data-pack]").forEach(b=>b.onclick=()=>{
-    usePack(b.dataset.pack); renderStageSelect();
+    S("resume"); S("select"); usePack(b.dataset.pack); renderStageSelect();
   });
 }
 
@@ -767,7 +1117,7 @@ function renderStageSelect(){
     <div class="panel"><div class="stages">${items}</div>
       <button class="ghost" id="toPack">← 팩 선택</button></div>
     <div class="hint">ESC — 보스키 (즉시 엑셀 화면)</div>`;
-  $("#app").querySelectorAll("[data-stage]").forEach(b=>b.onclick=()=>renderSetup(b.dataset.stage));
+  $("#app").querySelectorAll("[data-stage]").forEach(b=>b.onclick=()=>{S("resume");S("select");renderSetup(b.dataset.stage);});
   $("#toPack").onclick=renderPackSelect;
 }
 
@@ -820,7 +1170,7 @@ function renderGame(){
 
   cvs=$("#cv"); ctx=cvs.getContext("2d");
   $("#pal").querySelectorAll("[data-u]").forEach(b=>{
-    b.onclick=()=>{ g.sel=b.dataset.u; syncPal(); };
+    b.onclick=()=>{ S("select"); g.sel=b.dataset.u; syncPal(); };
   });
   drawPalIcons();
   cvs.onpointerdown=e=>{
@@ -904,26 +1254,12 @@ function start(){
 }
 
 /* ══════════════ 보스키 ══════════════ */
-function buildBossSheet(){
-  const cols=["","A","B","C","D","E","F"];
-  const items=["전처리","노광","에칭","전해","검사","출하"];
-  let rows="<tr>"+cols.map(c=>"<th>"+c+"</th>").join("")+"</tr>";
-  for(let r=1;r<=22;r++){
-    let t="<th>"+r+"</th>";
-    if(r===1) t+="<td>공정</td><td>계획</td><td>실적</td><td>달성률</td><td>불량</td><td>비고</td>";
-    else if(r<=7){ const i=r-2,p=1200+i*130,a=p-(i*37+11);
-      t+=`<td>${items[i]}</td><td>${p}</td><td>${a}</td><td>${((a/p)*100).toFixed(1)}%</td><td>${3+i}</td><td></td>`; }
-    else t+="<td></td>".repeat(6);
-    rows+="<tr>"+t+"</tr>";
-  }
-  $("#bossSheet").innerHTML=rows;
-}
 document.addEventListener("keydown",e=>{
   if(e.key==="Escape"){ e.preventDefault(); $("#boss").classList.toggle("on"); }
 });
 
 window.__g=()=>G;   // 테스트 훅
-buildBossSheet();
+buildBossSheet(PACK.id);
 renderPackSelect();
 </script>
 </body>
