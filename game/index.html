@@ -34,6 +34,13 @@ button:disabled{opacity:.4;cursor:not-allowed}
   border:1px solid var(--line);color:var(--dim)}
 #mute:hover{border-color:var(--accent);color:var(--ink)}
 #mute svg{display:block}
+.deptlegend{margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:8px;background:#0f131b}
+.dl-row{display:flex;align-items:center;gap:10px;padding:4px 0}
+.dl-tag{flex:none;min-width:46px;text-align:center;color:#0b0e14;font-weight:800;
+  font-size:12px;padding:3px 7px;border-radius:4px}
+.dl-d{font-size:13px;color:var(--ink)}
+.dl-note{margin-top:9px;padding-top:9px;border-top:1px solid var(--line);
+  font-size:12px;color:var(--dim)}
 /* 마감 D-crunch 구간 — 화면이 붉어진다 */
 #cvwrap.crunch{border-color:#5a2b2f;box-shadow:inset 0 0 0 9999px rgba(255,107,107,.05)}
 #cvwrap.crunch canvas{box-shadow:0 0 0 1px #5a2b2f}
@@ -1750,15 +1757,19 @@ const F_SCHOOL={
    좀비는 내 경제를 건드리지 않고 내 사물을 뺏어가지 않는다 — 부서는 그걸 한다. */
 const DEPTS={
   sales:{key:"sales",tag:"영업",color:"#ffb26b",hp:.85,spd:1.30,
-         desc:"예고 없이 복도 중간에서 나타난다", ambush:.55},
+         desc:"예고 없이 복도 중간에서 나타난다",
+         descS:"예고 없이 복도 중간에서 튀어나온다", ambush:.55},
   prod :{key:"prod", tag:"생산",color:"#8fb4ff",hp:1.55,spd:.80,
-         desc:"물량으로 민다"},
+         desc:"물량으로 민다", descS:"양으로 민다 — 두껍고 느리다"},
   qa   :{key:"qa",   tag:"품질",color:"#57d98a",hp:1.00,spd:.90,
-         desc:"앞의 사물을 점검한다 — 점검 중엔 발사 정지", silence:true},
+         desc:"앞의 사물을 점검한다 — 점검 중엔 발사 정지",
+         descS:"앞의 사물을 검사한다 — 검사 중엔 발사 정지", silence:true},
   fin  :{key:"fin",  tag:"재무",color:"#f5c451",hp:.90,spd:1.00,
-         desc:"전진하는 동안 예산을 깎는다", drain:9},
+         desc:"전진하는 동안 예산을 깎는다",
+         descS:"전진하는 동안 매점 포인트를 깎는다", drain:9},
   hr   :{key:"hr",   tag:"인사",color:"#c58fff",hp:1.15,spd:.95,
-         desc:"사물을 부수지 않고 차출한다 — 데려가며 회복", poach:1.9, heal:.3},
+         desc:"사물을 부수지 않고 차출한다 — 데려가며 회복",
+         descS:"사물을 부수지 않고 데려간다 — 데려가며 회복", poach:1.9, heal:.3},
 };
 /* 학생 팩에서는 부서가 과목이 된다 (능력은 그대로) */
 const DEPT_TAG_SCHOOL={sales:"체육",prod:"수학",qa:"과학",fin:"영어",hr:"음악"};
@@ -2205,6 +2216,25 @@ function renderStageSelect(){
   $("#toPack").onclick=renderPackSelect;
 }
 
+/* 부서가 나오는 스테이지에서만 — 무엇이 어떤 짓을 하는지 미리 알려준다.
+   품질이 발사를 멈춘다는 걸 죽고 나서 알게 하면 안 된다. */
+function deptLegend(st){
+  const seen=[];
+  st.waves.forEach(w=>{ if(w.dp && seen.indexOf(w.dp)<0) seen.push(w.dp); });
+  if(!seen.length) return "";
+  const school=PACK.id==="school";
+  const rows=seen.map(k=>{ const d=DEPTS[k];
+    const tag=school?DEPT_TAG_SCHOOL[k]:d.tag;
+    return `<div class="dl-row"><span class="dl-tag" style="background:${d.color}">${esc(tag)}</span>`
+         + `<span class="dl-d">${esc((school&&d.descS)||d.desc)}</span></div>`;
+  }).join("");
+  return `<div class="deptlegend">
+    <div class="kicker" style="color:var(--dim);margin-bottom:8px">${school?"이번 주 과목":"오늘 들어오는 부서"}</div>
+    ${rows}
+    <div class="dl-note">${school?"난이도는 체격(체력·속도), 과목은":"직급은 체격(체력·속도), 부서는"} 능력입니다. 배지를 보세요.</div>
+  </div>`;
+}
+
 function renderSetup(id){
   stopLoop(); G=null;
   const st=STAGES[id];
@@ -2213,6 +2243,7 @@ function renderSetup(id){
     <div class="sub">${esc(st.tagline)}</div>
     <div class="panel">
       <div class="sub" style="margin:0">${esc(st.brief)}</div>
+      ${deptLegend(st)}
       <label>오늘 누구 때문에 힘드셨나요? (적 말풍선이 됩니다)</label>
       <input id="grudge" maxlength="40" placeholder="예: 이거 오늘 안에 되죠?" autocomplete="off">
       <button class="primary" id="go">시작</button>
