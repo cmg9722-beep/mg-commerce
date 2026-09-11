@@ -77,6 +77,10 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-acti
 .pick{background:#232936;border:1px solid var(--line);border-radius:10px;padding:14px;
   cursor:pointer;text-align:left;color:var(--ink);font-family:inherit;display:flex;gap:12px;align-items:flex-start}
 .pick:hover{border-color:var(--accent);background:#2c3342}
+.pick.evo{border-color:var(--accent);background:linear-gradient(180deg,#2f2a1c,#232936);
+  box-shadow:0 0 0 1px rgba(245,196,81,.35),0 6px 24px rgba(245,196,81,.12)}
+.pick.evo .n{color:var(--accent)}
+.pick.evo .lvl{color:var(--good)}
 .pick canvas{position:static;width:40px;height:40px;flex:none}
 .pick .n{font-weight:800;font-size:14px;display:block}
 .pick .lvl{font-size:11px;color:var(--accent);display:block;margin:1px 0 4px}
@@ -1915,7 +1919,64 @@ const WEAPONS = {
     desc:"화면 전체를 쓸어버린다",
     lv:l=>({cd:25-l*2.8, dmg:180+l*120}),
     up:l=>"피해 +90, 재사용 −2.6초" },
+  meeting:{ id:"meeting", name:"회의 소집", max:6,
+    desc:"한 점으로 끌어모은다. 모인 것은 함께 닳는다",
+    lv:l=>({cd:6.2-l*.35, r:120+l*16, pull:130+l*18, dps:10+l*5, life:2.6}),
+    up:l=>"범위 +16, 초당 피해 +5" },
+  overtime:{ id:"overtime", name:"야근", max:8,
+    desc:"내 주변에 있는 것은 계속 닳는다",
+    lv:l=>({r:66+l*9, dps:11+l*6}),
+    up:l=>"범위 +9, 초당 피해 +6" },
+  msg:{ id:"msg", name:"사내 메신저", max:7,
+    desc:"적에서 적으로 옮겨 붙는다",
+    lv:l=>({cd:2.4-l*.16, dmg:26+l*11, jumps:2+Math.floor(l/2), range:150+l*12}),
+    up:l=>l%2===0?("연쇄 +1 (총 "+(2+Math.floor(l/2))+")"):"피해 +11" },
+  card:{ id:"card", name:"법인카드", max:7,
+    desc:"날아갔다 돌아온다. 오가며 두 번 스친다",
+    lv:l=>({cd:2.8-l*.18, dmg:30+l*13, n:1+Math.floor(l/3), reach:230+l*16}),
+    up:l=>l%3===0?"동시에 +1장":"피해 +13" },
+  attend:{ id:"attend", name:"근태기록", max:7,
+    desc:"막히지 않는다. 전부 꿰뚫는다",
+    lv:l=>({cd:2.0-l*.13, dmg:22+l*9, n:1+Math.floor(l/2), spd:420}),
+    up:l=>l%2===0?"동시에 +1발":"피해 +9" },
+  elev:{ id:"elev", name:"엘리베이터", max:6,
+    desc:"밀어낸다. 벽에 몰린 것은 더 아프다",
+    lv:l=>({cd:5.0-l*.32, r:150+l*20, push:260+l*40, dmg:34+l*16}),
+    up:l=>"범위 +20, 밀어내기 +40" },
 };
+
+/* ── 진화 ──────────────────────────────────────────────────────
+   무기를 끝까지 올리고 짝이 되는 강화도 끝까지 올리면 진화한다.
+   이 장르에서 사람을 붙잡아두는 가장 큰 장치다. */
+const EVO={
+  stamp   :{ perk:"laptop", to:"jeongyeol", name:"전결" },
+  copy    :{ perk:"card",   to:"notice",    name:"전사 공지" },
+  mail    :{ perk:"cup",    to:"replyall",  name:"전체 답장" },
+  coffee  :{ perk:"shoes",  to:"caffeine",  name:"카페인 중독" },
+  clock   :{ perk:"leave",  to:"ontime",    name:"정시 퇴근" },
+  quit    :{ perk:"suit",   to:"resign",    name:"퇴사" },
+};
+const EVOLVED={
+  jeongyeol:{ id:"jeongyeol", name:"전결", max:1, evo:true,
+    desc:"결재를 안 올린다. 사거리 안의 전부를 동시에 찍는다",
+    lv:l=>({cd:.55, dmg:120, range:280}), up:l=>"" },
+  notice:{ id:"notice", name:"전사 공지", max:1, evo:true,
+    desc:"모두에게. 서류가 관통하며 사방으로 퍼진다",
+    lv:l=>({cd:1.0, dmg:46, n:20, spd:300}), up:l=>"" },
+  replyall:{ id:"replyall", name:"전체 답장", max:1, evo:true,
+    desc:"빠져나갈 수 없다. 놓치지 않는 메일이 쏟아진다",
+    lv:l=>({cd:.85, dmg:80, n:6, turn:9}), up:l=>"" },
+  caffeine:{ id:"caffeine", name:"카페인 중독", max:1, evo:true,
+    desc:"지나간 자리마다 남는다",
+    lv:l=>({cd:.22, dps:70, r:56, life:2.4}), up:l=>"" },
+  ontime:{ id:"ontime", name:"정시 퇴근", max:1, evo:true,
+    desc:"6시다. 주변이 멈춘다",
+    lv:l=>({r:210, slow:.12}), up:l=>"" },
+  resign:{ id:"resign", name:"퇴사", max:1, evo:true,
+    desc:"전부 밀어내고 전부 정리한다",
+    lv:l=>({cd:11, dmg:900, push:520}), up:l=>"" },
+};
+Object.assign(WEAPONS, EVOLVED);
 /* ── 강화(패시브) ─────────────────────────────────────────────── */
 const PERKS = {
   shoes :{ id:"shoes", name:"편한 구두",   max:5, desc:"이동 속도 +12%",        f:(P,l)=>P.spd*=1.12 },
@@ -1938,25 +1999,31 @@ const E = {
             atk:"shock", atkCd:3.6, summon:"staff", summonN:7, summonCd:7.5},
   chief  :{name:"부장",   hp:1500,spd:46, dmg:28, xp:70, r:26, boss:true,
             atk:"charge", atkCd:4.2},
+  rookie :{name:"신입", hp:14,  spd:96, dmg:4,  xp:1, r:13},
+  hrteam :{name:"인사팀",hp:120, spd:58, dmg:12, xp:4, r:17, eatXp:true},
+  vendor :{name:"협력사",hp:190, spd:74, dmg:13, xp:5, r:17},
+  ceo    :{name:"대표이사",hp:9000,spd:32,dmg:44,xp:400,r:36, boss:true,
+            atk:"shock", atkCd:2.8, summon:"manager", summonN:9, summonCd:6},
 };
 /* 시간대별 스폰 구성 — 시(hour) 기준 */
 const SCHED = [
-  {h:9,  kinds:["intern"],                       rate:1.40, n:1},
-  {h:10, kinds:["intern","staff"],               rate:1.15, n:2},
-  {h:11, kinds:["staff","senior"],               rate:1.00, n:3},
-  {h:12, kinds:["staff","drunk"],                rate:0.85, n:4},
-  {h:13, kinds:["senior","manager"],             rate:0.72, n:6},
-  {h:14, kinds:["staff","senior","manager"],     rate:0.60, n:8},
-  {h:15, kinds:["manager","gm","staff"],         rate:0.50, n:10},
-  {h:16, kinds:["senior","manager","drunk"],     rate:0.42, n:13},
-  {h:17, kinds:["manager","gm","drunk","staff"], rate:0.34, n:16},
+  {h:9,  kinds:["rookie"],                              rate:1.40, n:1},
+  {h:10, kinds:["rookie","intern"],                     rate:1.15, n:2},
+  {h:11, kinds:["intern","staff"],                      rate:1.00, n:3},
+  {h:12, kinds:["staff","drunk","vendor"],              rate:0.85, n:4},
+  {h:13, kinds:["senior","manager","hrteam"],           rate:0.72, n:6},
+  {h:14, kinds:["staff","senior","manager","vendor"],   rate:0.60, n:8},
+  {h:15, kinds:["manager","gm","staff","hrteam"],       rate:0.50, n:10},
+  {h:16, kinds:["senior","manager","drunk","vendor"],   rate:0.42, n:13},
+  {h:17, kinds:["manager","gm","drunk","staff","hrteam"],rate:0.34, n:16},
 ];
 /* 정각 보스 */
 const BOSSES = [
   {h:12,   kind:"chief", msg:"12:00 — 점심 회의 소집"},
-  {h:15,   kind:"chief", msg:"15:00 — 갑작스러운 보고 요청"},
-  {h:17,   kind:"audit", msg:"17:00 — 고객사 점검단 도착"},
-  {h:17.7, kind:"audit", msg:"17:42 — 퇴근 직전, 한 팀 더"},
+  {h:14,   kind:"chief", msg:"14:00 — 갑작스러운 보고 요청"},
+  {h:16,   kind:"audit", msg:"16:00 — 고객사 점검단 도착"},
+  {h:17.3, kind:"ceo",   msg:"17:18 — 대표이사 순회"},
+  {h:17.8, kind:"audit", msg:"17:48 — 퇴근 직전, 한 팀 더"},
 ];
 
 /* ── 상태 ────────────────────────────────────────────────────── */
@@ -1977,7 +2044,7 @@ function newGame(grudge){
     lv:1+M.startLv, xp:0, next:6, kills:0, dmgDealt:0, pendingLv:M.startLv,
     weapons:{ stamp:1+M.stampLv }, perks:{},
     cds:{}, foes:[], shots:[], orbs:[], pools:[], fx:[], floats:[], bodies:[], drops:[],
-    shocks:[],
+    shocks:[], vortex:[], cards:[],
     spawnAcc:0, bossIdx:0, shake:0, shakeX:0, shakeY:0, hitstop:0,
     combo:0, comboT:0, comboBest:0, comboPop:0, flash:0,
     toast:"", toastT:0, paused:false, best:0,
@@ -2098,7 +2165,7 @@ function fireWeapons(g,dt){
   const P=g.P;
   for(const id in g.weapons){
     const W=WEAPONS[id], L=W.lv(g.weapons[id]);
-    if(id==="clock") continue;                    // 지속형
+    if(id==="clock"||id==="ontime"||id==="overtime") continue;   // 지속형
     g.cds[id]=(g.cds[id]||0)-dt;
     if(g.cds[id]>0) continue;
 
@@ -2138,6 +2205,97 @@ function fireWeapons(g,dt){
     if(id==="coffee"){
       g.pools.push({x:P.x,y:P.y,r:L.r*P.range,dps:L.dps,life:L.life,t:0});
       S("place","water"); g.cds[id]=L.cd*P.haste; continue;
+    }
+    if(id==="meeting"){
+      // 회의 소집 — 한 점으로 끌어모으고 그 안을 계속 깎는다
+      const tgt=nearest(g,P.x,P.y,520) || {x:P.x+120,y:P.y};
+      g.vortex.push({x:tgt.x,y:tgt.y,r:L.r*P.range,pull:L.pull,dps:L.dps,life:L.life,t:0});
+      S("bossIn"); g.cds[id]=L.cd*P.haste; continue;
+    }
+    if(id==="msg"){
+      // 사내 메신저 — 적에서 적으로 옮겨 붙는다
+      let cur=nearest(g,P.x,P.y,L.range*P.range);
+      if(!cur){ g.cds[id]=.2; continue; }
+      const seen=new Set(); let from={x:P.x,y:P.y};
+      for(let j=0;j<=L.jumps && cur;j++){
+        seen.add(cur);
+        damage(g,cur,L.dmg,from.x,from.y,6);
+        g.fx.push({type:"bolt",x1:from.x,y1:from.y,x2:cur.x,y2:cur.y,t:0});
+        from={x:cur.x,y:cur.y};
+        let nx=null,bd=(L.range*0.8)**2;
+        for(const f2 of g.foes){ if(seen.has(f2)) continue;
+          const dx=f2.x-cur.x,dy=f2.y-cur.y,d2=dx*dx+dy*dy; if(d2<bd){bd=d2;nx=f2;} }
+        cur=nx;
+      }
+      S("hit"); g.cds[id]=L.cd*P.haste; continue;
+    }
+    if(id==="card"){
+      for(let i=0;i<L.n;i++){
+        const tgt=nearest(g,P.x,P.y,900);
+        const a=(tgt?Math.atan2(tgt.y-P.y,tgt.x-P.x):Math.random()*7)+(i-(L.n-1)/2)*0.4;
+        g.cards.push({x:P.x,y:P.y,a:a,t:0,reach:L.reach*P.range,dmg:L.dmg,hitSet:new Set()});
+      }
+      S("shoot","stap"); g.cds[id]=L.cd*P.haste; continue;
+    }
+    if(id==="attend"){
+      for(let i=0;i<L.n;i++){
+        const tgt=nearest(g,P.x,P.y,900);
+        const a=(tgt?Math.atan2(tgt.y-P.y,tgt.x-P.x):Math.random()*7)+(i-(L.n-1)/2)*0.22;
+        g.shots.push({x:P.x,y:P.y,vx:Math.cos(a)*L.spd,vy:Math.sin(a)*L.spd,
+                      dmg:L.dmg,life:1.9*P.range,kind:"pierce",r:9,pierce:true,hitSet:new Set()});
+      }
+      S("shoot","copy"); g.cds[id]=L.cd*P.haste; continue;
+    }
+    if(id==="elev"){
+      const R=L.r*P.range; let n=0;
+      for(const f of g.foes){
+        const dx=f.x-P.x, dy=f.y-P.y, d=Math.hypot(dx,dy)||1;
+        if(d>R) continue;
+        damage(g,f,L.dmg,P.x,P.y,L.push/9); n++;
+      }
+      g.fx.push({type:"ring",x:P.x,y:P.y,t:0,r0:20,r1:R,c:"#9ec8ff"});
+      if(n){ S("nuke"); kick(g,0,1,5); }
+      g.cds[id]=L.cd*P.haste; continue;
+    }
+    /* ── 진화형 ── */
+    if(id==="jeongyeol"){
+      const R=L.range*P.range; let n=0;
+      for(const f of g.foes){
+        if(Math.hypot(f.x-P.x,f.y-P.y)>R) continue;
+        damage(g,f,L.dmg,P.x,P.y,9); n++;
+        g.fx.push({type:"stamp",x:f.x,y:f.y,t:0});
+      }
+      if(n){ S("hit"); P.atk=.25; }
+      g.cds[id]=L.cd*P.haste; continue;
+    }
+    if(id==="notice"){
+      for(let i=0;i<L.n;i++){
+        const a=(i/L.n)*Math.PI*2 + g.t*.5;
+        g.shots.push({x:P.x,y:P.y,vx:Math.cos(a)*L.spd,vy:Math.sin(a)*L.spd,
+                      dmg:L.dmg,life:2.2*P.range,kind:"pierce",r:8,pierce:true,hitSet:new Set()});
+      }
+      S("shoot","copy"); g.cds[id]=L.cd*P.haste; continue;
+    }
+    if(id==="replyall"){
+      for(let i=0;i<L.n;i++){
+        const a=Math.random()*7;
+        g.shots.push({x:P.x,y:P.y,vx:Math.cos(a)*320,vy:Math.sin(a)*320,
+                      dmg:L.dmg,life:4.5,kind:"mail",r:9,turn:L.turn});
+      }
+      S("shoot","stap"); g.cds[id]=L.cd*P.haste; continue;
+    }
+    if(id==="caffeine"){
+      g.pools.push({x:P.x,y:P.y,r:L.r*P.range,dps:L.dps,life:L.life,t:0});
+      g.cds[id]=L.cd; continue;                 // 지나간 자리마다 남는다
+    }
+    if(id==="resign"){
+      let n=0;
+      for(const f of g.foes){ damage(g,f,L.dmg,P.x,P.y,L.push/9); n++; }
+      g.fx.push({type:"quit",t:0});
+      g.fx.push({type:"ring",x:P.x,y:P.y,t:0,r0:30,r1:520,c:"#f5c451"});
+      g.shake=Math.max(g.shake,20); g.hitstop=Math.max(g.hitstop,.14);
+      S("nuke"); flash(g,"퇴사 — "+n+"명 정리");
+      g.cds[id]=L.cd; continue;
     }
     if(id==="quit"){
       let n=0;
@@ -2264,7 +2422,8 @@ function step(g,dt){
   fireWeapons(g,dt);
 
   // 퇴근 시계(지속형 감속)
-  const CK=g.weapons.clock?WEAPONS.clock.lv(g.weapons.clock):null;
+  const CK = g.weapons.ontime ? WEAPONS.ontime.lv(1)
+           : g.weapons.clock ? WEAPONS.clock.lv(g.weapons.clock) : null;
   const ckR=CK?CK.r*P.range:0;
 
   // 적
@@ -2275,6 +2434,15 @@ function step(g,dt){
     const dx=P.x-f.x, dy=P.y-f.y, d=Math.hypot(dx,dy)||1;
     f.slow = (CK && d<ckR) ? CK.slow : 1;
     f.face = dx<0 ? -1 : 1;
+    if(E[f.kind].eatXp){                     // 인사팀 — 경험치를 가로챈다
+      for(let k=g.orbs.length-1;k>=0;k--){
+        const o=g.orbs[k];
+        if(Math.hypot(o.x-f.x,o.y-f.y) < f.r+9){
+          g.orbs.splice(k,1); f.hp+=14;
+          g.fx.push({type:"spark",x:o.x,y:o.y,t:0});
+        }
+      }
+    }
     if(f.boss) bossStep(g,f,dt);
     if(f.dash>0){                          // 돌진 중 — 조준은 이미 끝났다
       f.dash-=dt; f.x+=f.dvx*dt; f.y+=f.dvy*dt;
@@ -2325,6 +2493,13 @@ function step(g,dt){
     for(const f of g.foes){
       const dx=f.x-s.x, dy=f.y-s.y;
       if(dx*dx+dy*dy < (f.r+s.r)*(f.r+s.r)){
+        if(s.pierce){                        // 근태기록·전사 공지 — 막히지 않는다
+          if(s.hitSet.has(f)) continue;
+          s.hitSet.add(f);
+          damage(g,f,s.dmg,s.x,s.y,4); S("hit");
+          g.fx.push({type:"spark",x:s.x,y:s.y,t:0});
+          continue;
+        }
         damage(g,f,s.dmg,s.x,s.y,8); S("hit");
         g.fx.push({type:"spark",x:s.x,y:s.y,t:0});
         g.shots.splice(i,1); break;
@@ -2357,6 +2532,41 @@ function step(g,dt){
                        : 26;                       // 범위 밖에서도 천천히 따라온다
     o.x+=dx/d*pull*dt; o.y+=dy/d*pull*dt;
     if(d<P.r+10){ g.orbs.splice(i,1); gainXp(g,o.xp); }
+  }
+  // 야근 / 카페인 — 내 주변 지속 피해
+  if(g.weapons.overtime){
+    const L=WEAPONS.overtime.lv(g.weapons.overtime), R=L.r*P.range;
+    for(const f of g.foes){
+      if(Math.hypot(f.x-P.x,f.y-P.y)<R) damage(g,f,L.dps*dt,0,0,0);
+    }
+  }
+  // 회의 소집 — 한 점으로 끌어당기고 그 안을 깎는다
+  for(let i=g.vortex.length-1;i>=0;i--){
+    const v=g.vortex[i]; v.life-=dt; v.t+=dt;
+    if(v.life<=0){ g.vortex.splice(i,1); continue; }
+    for(const f of g.foes){
+      if(f.boss) continue;                   // 보스는 끌려오지 않는다
+      const dx=v.x-f.x, dy=v.y-f.y, d=Math.hypot(dx,dy)||1;
+      if(d>v.r*1.6) continue;
+      f.x+=dx/d*v.pull*dt; f.y+=dy/d*v.pull*dt;
+      if(d<v.r) damage(g,f,v.dps*dt,0,0,0);
+    }
+  }
+  // 법인카드 — 날아갔다 돌아온다
+  for(let i=g.cards.length-1;i>=0;i--){
+    const c=g.cards[i]; c.t+=dt;
+    const T=1.05;
+    if(c.t>=T){ g.cards.splice(i,1); continue; }
+    const k=Math.sin(c.t/T*Math.PI);          // 0→1→0, 갔다가 돌아온다
+    c.px=P.x+Math.cos(c.a)*c.reach*k;
+    c.py=P.y+Math.sin(c.a)*c.reach*k;
+    for(const f of g.foes){
+      if(c.hitSet.has(f)) continue;
+      if(Math.hypot(f.x-c.px,f.y-c.py) < f.r+11){
+        c.hitSet.add(f); damage(g,f,c.dmg,c.px,c.py,7); S("hit");
+        setTimeout(()=>c.hitSet.delete(f), 260);   // 돌아올 때 한 번 더
+      }
+    }
   }
   // 보스 충격파 — 퍼지는 링에 닿으면 맞는다
   for(let i=g.shocks.length-1;i>=0;i--){
@@ -2728,7 +2938,9 @@ function drawWorld(g){
   for(const s of g.shots){
     ctx.save(); ctx.translate(X(s.x),Y(s.y));
     ctx.rotate(Math.atan2(s.vy,s.vx));
-    if(s.kind==="paper"){ ctx.fillStyle="#f2f5fa"; ctx.fillRect(-6,-4,12,8);
+    if(s.kind==="pierce"){ ctx.fillStyle="#9ec8ff"; ctx.fillRect(-12,-2.5,24,5);
+      ctx.fillStyle="#cfe4ff"; ctx.fillRect(6,-2.5,6,5); }
+    else if(s.kind==="paper"){ ctx.fillStyle="#f2f5fa"; ctx.fillRect(-6,-4,12,8);
       ctx.fillStyle="#c3ccdb"; ctx.fillRect(-6,-4,12,2); }
     else { ctx.fillStyle="#dfe6f2"; ctx.fillRect(-7,-5,14,10);
       ctx.strokeStyle="#7d8699"; ctx.lineWidth=1.2;
@@ -2795,7 +3007,10 @@ function icon(id,size){
   const c=document.createElement("canvas"); c.width=c.height=72;
   const x=c.getContext("2d"); const SP=window.SPRITES;
   const map={stamp:"quit",copy:"copy",mail:"stap",coffee:"water",clock:"wall",quit:"quit",
-             shoes:"wall",laptop:"copy",card:"stap",leave:"quit",cup:"water",suit:"wall"};
+             shoes:"wall",laptop:"copy",card:"stap",leave:"quit",cup:"water",suit:"wall",
+             meeting:"wall",overtime:"water",msg:"stap",attend:"copy",elev:"wall",
+             jeongyeol:"quit",notice:"copy",replyall:"stap",caffeine:"water",
+             ontime:"wall",resign:"quit"};
   const f=SP&&SP.units&&SP.units[map[id]];
   if(f) f(x,36,36,64);
   else { x.fillStyle="#6f9fd8"; x.fillRect(18,18,36,36); }
@@ -2804,7 +3019,20 @@ function icon(id,size){
 }
 
 /* ── 레벨업 선택 ─────────────────────────────────────────────── */
+function evoReady(g){
+  const out=[];
+  for(const base in EVO){
+    const e=EVO[base];
+    if(!g.weapons[base] || g.weapons[base]<WEAPONS[base].max) continue;
+    if((g.perks[e.perk]|0) < PERKS[e.perk].max) continue;
+    if(g.weapons[e.to]) continue;
+    out.push({kind:"e", id:e.to, base:base, lv:0});
+  }
+  return out;
+}
 function offers(g){
+  const ev=evoReady(g);
+  if(ev.length) return [ev[0]];            // 진화가 가능하면 그것만 보여준다
   const out=[];
   for(const id in WEAPONS){ const lv=g.weapons[id]||0;
     if(lv>=WEAPONS[id].max) continue;
@@ -2830,21 +3058,30 @@ function levelUp(g){
   const list=offers(g);
   if(!list.length){ g.paused=false; return; }
   const card=$("#card");
-  card.innerHTML='<h1 class="ttl">레벨 '+g.lv+'</h1>'
-    +'<div class="sub">하나를 고르세요</div><div class="picks"></div>';
+  const isEvo = list.length===1 && list[0].kind==="e";
+  card.innerHTML='<h1 class="ttl">'+(isEvo?"진화":"레벨 "+g.lv)+'</h1>'
+    +'<div class="sub">'+(isEvo?"조건이 맞았습니다":"하나를 고르세요")+'</div><div class="picks"></div>';
   const box=card.querySelector(".picks");
   list.forEach(o=>{
-    const D = o.kind==="w"?WEAPONS[o.id]:PERKS[o.id];
-    const b=document.createElement("button"); b.className="pick";
-    b.appendChild(icon(o.id,40));
+    const D = o.kind==="p"?PERKS[o.id]:WEAPONS[o.id];
+    const b=document.createElement("button");
+    b.className = o.kind==="e" ? "pick evo" : "pick";
+    b.appendChild(icon(o.kind==="e"?o.base:o.id,40));
     const txt=document.createElement("div");
-    const lvl = o.lv===0 ? "신규" : ("Lv "+o.lv+" → "+(o.lv+1));
-    const desc = o.kind==="w" ? (o.lv===0?D.desc:D.up(o.lv+1)) : D.desc;
+    const lvl = o.kind==="e" ? ("진화 — "+WEAPONS[o.base].name+" 을(를) 대체")
+              : o.lv===0 ? "신규" : ("Lv "+o.lv+" → "+(o.lv+1));
+    const desc = o.kind==="p" ? D.desc : (o.lv===0?D.desc:D.up(o.lv+1));
     txt.innerHTML='<span class="n">'+esc(D.name)+'</span>'
       +'<span class="lvl">'+lvl+'</span><span class="d">'+esc(desc)+'</span>';
     b.appendChild(txt);
     b.onclick=()=>{
-      if(o.kind==="w") g.weapons[o.id]=(g.weapons[o.id]||0)+1;
+        if(o.kind==="e"){
+        delete g.weapons[o.base]; delete g.cds[o.base];
+        g.weapons[o.id]=1;
+        flash(g,WEAPONS[o.id].name+" — 진화");
+        S("nuke"); g.flash=Math.max(g.flash,1); kick(g,0,-1,12);
+      }
+      else if(o.kind==="w") g.weapons[o.id]=(g.weapons[o.id]||0)+1;
       else { g.perks[o.id]=(g.perks[o.id]||0)+1; applyPerks(g); }
       S("place"); closeOverlay(); g.paused=false; syncSlots(g);
     };
