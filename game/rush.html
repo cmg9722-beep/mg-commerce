@@ -1893,7 +1893,10 @@ const E = {
   manager:{name:"과장", hp:130, spd:70, dmg:14, xp:5, r:18},
   drunk  :{name:"회식조",hp:74, spd:92, dmg:11, xp:4, r:17},
   gm     :{name:"부장", hp:340, spd:44, dmg:22, xp:12,r:22},
-  audit  :{name:"점검단",hp:2600,spd:38, dmg:34, xp:120,r:30, boss:true},
+  audit  :{name:"점검단",hp:3400,spd:36, dmg:34, xp:160,r:30, boss:true,
+            atk:"shock", atkCd:3.6, summon:"staff", summonN:7, summonCd:7.5},
+  chief  :{name:"부장",   hp:1500,spd:46, dmg:28, xp:70, r:26, boss:true,
+            atk:"charge", atkCd:4.2},
 };
 /* 시간대별 스폰 구성 — 시(hour) 기준 */
 const SCHED = [
@@ -1909,10 +1912,10 @@ const SCHED = [
 ];
 /* 정각 보스 */
 const BOSSES = [
-  {h:12,   kind:"gm",    msg:"12:00 — 점심 회의 소집"},
-  {h:15,   kind:"gm",    msg:"15:00 — 갑작스러운 보고 요청"},
+  {h:12,   kind:"chief", msg:"12:00 — 점심 회의 소집"},
+  {h:15,   kind:"chief", msg:"15:00 — 갑작스러운 보고 요청"},
   {h:17,   kind:"audit", msg:"17:00 — 고객사 점검단 도착"},
-  {h:17.7, kind:"audit", msg:"17:42 — 부장님이 퇴근 전에 부릅니다"},
+  {h:17.7, kind:"audit", msg:"17:42 — 퇴근 직전, 한 팀 더"},
 ];
 
 /* ── 상태 ────────────────────────────────────────────────────── */
@@ -1930,6 +1933,7 @@ function newGame(grudge){
     lv:1, xp:0, next:6, kills:0, dmgDealt:0,
     weapons:{ stamp:1 }, perks:{},
     cds:{}, foes:[], shots:[], orbs:[], pools:[], fx:[], floats:[], bodies:[], drops:[],
+    shocks:[],
     spawnAcc:0, bossIdx:0, shake:0, shakeX:0, shakeY:0, hitstop:0,
     combo:0, comboT:0, comboBest:0, comboPop:0, flash:0,
     toast:"", toastT:0, paused:false, best:0,
@@ -1960,7 +1964,9 @@ function spawnAt(g,kind,x,y){
   const d=E[kind];
   g.foes.push({kind, x, y, hp:d.hp, maxhp:d.hp, spd:d.spd, dmg:d.dmg,
                r:d.r, xp:d.xp, boss:!!d.boss, hit:0, slow:1, kb:0, kbx:0, kby:0,
-               walk:Math.random(), face:-1});
+               walk:Math.random(), face:-1,
+               atkT:d.atkCd?d.atkCd*0.6:0, sumT:d.summonCd||0,
+               rage:0, wind:0, dash:0, dvx:0, dvy:0});
 }
 function spawnRing(g,kind,n){
   const P=g.P, R=Math.max(VW,VH)/ZOOM*0.62+90;
@@ -1982,8 +1988,58 @@ function doSpawns(g,dt){
   while(g.bossIdx<BOSSES.length && h>=BOSSES[g.bossIdx].h){
     const b=BOSSES[g.bossIdx++];
     spawnRing(g,b.kind,1);
-    flash(g,b.msg); S("bossIn"); g.shake=Math.max(g.shake,9);
+    flash(g,b.msg); S("bossIn");
+    kick(g,0,-1,16); g.hitstop=Math.max(g.hitstop,.22);   // 등장 순간 화면이 멎는다
+    g.flash=Math.max(g.flash,.9);
   }
+}
+
+/* ── 보스 ──────────────────────────────────────────────────────
+   보스가 그냥 체력 많은 적이면 보스가 아니다. 패턴과 격노 단계를 준다. */
+function bossStep(g,f,dt){
+  const D=E[f.kind];
+  // 격노 — 체력 절반에서 한 번, 눈에 띄게 바뀐다
+  if(!f.rage && f.hp < f.maxhp*0.5){
+    f.rage=1; f.spd*=1.35;
+    flash(g, D.name+" — 표정이 바뀝니다");
+    S("bossIn"); kick(g,0,-1,10); g.flash=Math.max(g.flash,.6);
+  }
+  const rk = f.rage ? 0.6 : 1;
+  // 수행 인원 소환
+  if(D.summon){
+    f.sumT-=dt;
+    if(f.sumT<=0){
+      f.sumT=D.summonCd*rk;
+      for(let i=0;i<D.summonN;i++){
+        const a=Math.random()*6.283, r=80+Math.random()*70;
+        spawnAt(g,D.summon,f.x+Math.cos(a)*r,f.y+Math.sin(a)*r);
+      }
+      g.fx.push({type:"ring",x:f.x,y:f.y,t:0,r0:20,r1:150,c:"#9ec8ff"});
+      S("deny");
+    }
+  }
+  if(!D.atk || f.wind>0 || f.dash>0) return;
+  f.atkT-=dt;
+  if(f.atkT>0) return;
+  f.wind = D.atk==="shock" ? 0.45 : 0.55;
+  f.pending = D.atk;
+  f.atkT = D.atkCd*rk;
+}
+/* 예비동작이 끝나는 순간 실제 공격이 나간다 */
+function bossFire(g,f){
+  const D=E[f.kind], P=g.P;
+  if(f.pending==="shock"){
+    // 「지적」 — 클립보드를 내리치고 충격파가 퍼진다
+    g.shocks.push({x:f.x,y:f.y,r:26,max:230*(f.rage?1.25:1),dmg:D.dmg,t:0,done:false});
+    S("nuke"); kick(g, f.x-P.x, f.y-P.y, 8);
+  } else if(f.pending==="charge"){
+    // 「호출」 — 조준하고 멈췄다가 돌진한다
+    const dx=P.x-f.x, dy=P.y-f.y, d=Math.hypot(dx,dy)||1;
+    const sp=520*(f.rage?1.25:1);
+    f.dvx=dx/d*sp; f.dvy=dy/d*sp; f.dash=0.45;
+    S("bossIn"); g.shake=Math.max(g.shake,6);
+  }
+  f.pending=null;
 }
 
 /* ── 무기 발사 ───────────────────────────────────────────────── */
@@ -2097,7 +2153,16 @@ function takeDrop(g,d){
 }
 function killFoe(g,f,i){
   g.foes.splice(i,1); g.kills++;
-  g.orbs.push({x:f.x,y:f.y,xp:f.xp,t:0,boss:f.boss});
+  if(f.boss){                            // 보스 처치 — 경험치가 쏟아진다
+    for(let k=0;k<14;k++){
+      const a=Math.random()*6.283, r=30+Math.random()*90;
+      g.orbs.push({x:f.x+Math.cos(a)*r,y:f.y+Math.sin(a)*r,xp:Math.ceil(f.xp/14),t:0,boss:true});
+    }
+    g.fx.push({type:"ring",x:f.x,y:f.y,t:0,r0:30,r1:280,c:"#f5c451"});
+    g.flash=Math.max(g.flash,1);
+  } else {
+    g.orbs.push({x:f.x,y:f.y,xp:f.xp,t:0,boss:false});
+  }
   // 시체 — 쓰러지는 동작을 재생하고 바닥에 잠시 남는다.
   // 죽은 게 그냥 사라지면 "갈아버렸다"는 감각이 남지 않는다.
   g.bodies.push({kind:f.kind, x:f.x, y:f.y, face:f.face, boss:f.boss, t:0,
@@ -2162,8 +2227,24 @@ function step(g,dt){
     if(f.hit>0) f.hit-=dt;
     const dx=P.x-f.x, dy=P.y-f.y, d=Math.hypot(dx,dy)||1;
     f.slow = (CK && d<ckR) ? CK.slow : 1;
+    f.face = dx<0 ? -1 : 1;
+    if(f.boss) bossStep(g,f,dt);
+    if(f.dash>0){                          // 돌진 중 — 조준은 이미 끝났다
+      f.dash-=dt; f.x+=f.dvx*dt; f.y+=f.dvy*dt;
+      if(d < f.r+P.r && P.inv<=0){
+        P.hp-=f.dmg; P.inv=.62; P.hurt=.30;
+        kick(g,P.x-f.x,P.y-f.y,11); S("chew");
+        if(P.hp<=0){ finish(g,"lose"); return; }
+      }
+      continue;
+    }
+    if(f.wind>0){                          // 예비동작 — 멈춰서 힘을 모은다
+      f.wind-=dt; if(f.wind<=0 && f.pending) bossFire(g,f);
+      continue;
+    }
     if(f.kb>0){ f.kb-=dt; f.x+=f.kbx*dt*9; f.y+=f.kby*dt*9; }
-    else { f.x+=dx/d*f.spd*f.slow*dt; f.y+=dy/d*f.spd*f.slow*dt; }
+    else { f.x+=dx/d*f.spd*f.slow*dt; f.y+=dy/d*f.spd*f.slow*dt;
+           f.walk += dt*f.spd*f.slow/44; }
     // 접촉
     if(d < f.r+P.r && P.inv<=0){
       P.hp-=f.dmg; P.inv=.62; P.hurt=.30;
@@ -2229,6 +2310,21 @@ function step(g,dt){
                        : 26;                       // 범위 밖에서도 천천히 따라온다
     o.x+=dx/d*pull*dt; o.y+=dy/d*pull*dt;
     if(d<P.r+10){ g.orbs.splice(i,1); gainXp(g,o.xp); }
+  }
+  // 보스 충격파 — 퍼지는 링에 닿으면 맞는다
+  for(let i=g.shocks.length-1;i>=0;i--){
+    const w=g.shocks[i]; w.t+=dt;
+    w.r += (w.max-26)/0.55*dt;
+    if(w.r>=w.max){ g.shocks.splice(i,1); continue; }
+    if(!w.done && P.inv<=0){
+      const dd=Math.hypot(P.x-w.x,P.y-w.y);
+      if(Math.abs(dd-w.r) < P.r+14){
+        w.done=true;
+        P.hp-=w.dmg; P.inv=.62; P.hurt=.30;
+        kick(g,P.x-w.x,P.y-w.y,12); S("chew");
+        if(P.hp<=0){ finish(g,"lose"); return; }
+      }
+    }
   }
   // 드롭 아이템
   for(let i=g.drops.length-1;i>=0;i--){
@@ -2341,6 +2437,29 @@ function drawFoe(g,f,sx,sy){
     ctx.restore();
   }
   // 체력바 — 보스와 다친 적만
+  if(f.wind>0){                          // 예비동작 — 무엇이 올지 보여준다
+    const w0=f.pending==="shock"?0.45:0.55;
+    const a=clamp(1-f.wind/w0,0,1);
+    ctx.save();
+    ctx.strokeStyle="rgba(245,196,81,.85)"; ctx.lineWidth=3;
+    ctx.setLineDash([6,5]); ctx.lineDashOffset=-g.t*40;
+    if(f.pending==="shock"){
+      ctx.beginPath(); ctx.arc(sx,sy,30+a*200,0,7); ctx.stroke();
+    } else {
+      const dx=g.P.x-f.x, dy=g.P.y-f.y, dd=Math.hypot(dx,dy)||1;
+      ctx.beginPath(); ctx.moveTo(sx,sy);
+      ctx.lineTo(sx+dx/dd*260*a, sy+dy/dd*260*a); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.save(); ctx.globalCompositeOperation="lighter";
+    ctx.globalAlpha=a*.5; ctx.fillStyle="#f5c451";
+    ctx.beginPath(); ctx.arc(sx,sy,f.r+8,0,7); ctx.fill(); ctx.restore();
+  }
+  if(f.rage){                            // 격노 — 붉은 아지랑이
+    ctx.save(); ctx.globalAlpha=.22+Math.sin(g.t*9)*.08;
+    ctx.fillStyle="#ff6b6b";
+    ctx.beginPath(); ctx.arc(sx,sy,f.r+11,0,7); ctx.fill(); ctx.restore();
+  }
   if(f.boss || f.hp<f.maxhp){
     const w=f.boss?70:30, rt=clamp(f.hp/f.maxhp,0,1);
     ctx.fillStyle="rgba(11,14,20,.85)"; ctx.fillRect(sx-w/2,sy+f.r+6,w,4);
@@ -2409,9 +2528,35 @@ function drawPlayer(g,sx,sy){
 function draw(g){
   ctx.setTransform(DPR*ZOOM,0,0,DPR*ZOOM,0,0);
   try{ drawWorld(g); } finally { ctx.setTransform(DPR,0,0,DPR,0,0); }
+  drawBossBar(g);
   drawCombo(g);
 }
 /* 콤보 — 10단위마다 화면이 번쩍인다 */
+/* 상단 보스 체력바 — 얼마나 남았는지 모르면 보스전이 아니다 */
+function drawBossBar(g){
+  const bs=g.foes.filter(f=>f.boss);
+  if(!bs.length) return;
+  const b=bs.reduce((a,c)=>c.hp>a.hp?c:a,bs[0]);
+  const w=Math.min(560,VW-80), x=(VW-w)/2, y=64;
+  const rt=clamp(b.hp/b.maxhp,0,1);
+  ctx.save();
+  ctx.fillStyle="rgba(11,14,20,.82)"; ctx.fillRect(x-2,y-2,w+4,16);
+  ctx.strokeStyle=b.rage?"#ff6b6b":"#5a2b2f"; ctx.lineWidth=1;
+  ctx.strokeRect(x-2.5,y-2.5,w+5,17);
+  ctx.fillStyle="#241016"; ctx.fillRect(x,y,w,12);
+  const gr=ctx.createLinearGradient(x,0,x+w,0);
+  gr.addColorStop(0,b.rage?"#b93b3b":"#6f9fd8");
+  gr.addColorStop(1,b.rage?"#ff6b6b":"#9ec8ff");
+  ctx.fillStyle=gr; ctx.fillRect(x,y,w*rt,12);
+  ctx.font="800 12px 'Gothic A1','Malgun Gothic',sans-serif";
+  ctx.textAlign="left"; ctx.textBaseline="alphabetic";
+  ctx.fillStyle=b.rage?"#ff6b6b":"#9ec8ff";
+  ctx.fillText(E[b.kind].name + (b.rage?" · 격노":"") + (bs.length>1?"  ×"+bs.length:""), x, y-6);
+  ctx.textAlign="right";
+  ctx.fillStyle="#7d8699";
+  ctx.fillText(Math.ceil(b.hp)+" / "+b.maxhp, x+w, y-6);
+  ctx.restore();
+}
 function drawCombo(g){
   if(g.flash>0){
     ctx.save(); ctx.globalCompositeOperation="lighter";
