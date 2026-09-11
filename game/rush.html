@@ -29,7 +29,7 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-acti
 #clock{font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-size:30px;line-height:1;
   font-variant-numeric:tabular-nums;letter-spacing:.5px}
 #clock small{font-size:12px;color:var(--dim);font-family:inherit;margin-left:6px}
-#daybar{flex:1;height:8px;background:#0b0d12;border-radius:5px;overflow:hidden;
+#daybar{flex:1;min-width:60px;height:8px;background:#0b0d12;border-radius:5px;overflow:hidden;
   border:1px solid var(--line);position:relative}
 #daybar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#6f9fd8,#9ec8ff);
   border-radius:5px}
@@ -38,6 +38,10 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-acti
 #lv b{color:var(--accent);font-size:17px}
 #kills{font-size:13px;color:var(--dim)}
 #kills b{color:var(--ink);font-size:17px}
+#todo{font-size:13px;color:var(--dim)}
+#todo b{color:var(--bad);font-size:17px}
+#todo.ok b{color:var(--good)}
+#daybar.ot i{background:linear-gradient(90deg,#b93b3b,#ff6b6b)}
 
 /* 체력 + 경험치 */
 #bars{position:absolute;left:14px;right:14px;bottom:12px;z-index:5;pointer-events:none}
@@ -69,7 +73,15 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-acti
   .pick{padding:12px}
   #clock{font-size:22px}
   #hud{padding:8px 50px 8px 10px;gap:8px}
-  #kills,#lv{font-size:11px}
+  #kills,#lv,#todo{font-size:11px}
+  #kills b,#lv b,#todo b{font-size:15px}
+  #daybar{min-width:40px}
+}
+/* 아주 좁은 화면 — 「처리」는 결과 화면에도 나오니 접고,
+   오늘의 목표인 「미결」과 하루 진행 막대를 살린다. */
+@media (max-width:430px){
+  #kills{display:none}
+  #daybar{min-width:88px}
   .slot{width:36px;height:36px}
   .slot canvas{width:28px;height:28px}
 }
@@ -197,6 +209,7 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     <div id="daybar"><i></i></div>
     <div id="lv">Lv <b class="num">1</b></div>
     <div id="kills">처리 <b class="num">0</b></div>
+    <div id="todo" class="ok">미결 <b class="num">0</b></div>
   </div>
   <div id="slots"></div>
   <div id="bars">
@@ -1947,6 +1960,15 @@ function clockStr(t){
   return String(hh).padStart(2,"0")+":"+String(Math.floor(mm/5)*5).padStart(2,"0");
 }
 
+/* ── 결재함 ─────────────────────────────────────────────────────
+   정시에 나가려면 오늘 몫을 끝내야 한다. 서류는 하루 내내 올라오고,
+   처리(처치) 한 건이 한 건을 지운다. 18:00에 미결이 남아 있으면 야근.
+   이 규칙이 있어야 「아무것도 안 하고 버티기」가 구조적으로 이길 수 없다.
+   적 속도로 막는 건 수치라 언제든 다시 깨지지만, 이건 규칙이라 안 깨진다. */
+const WORK_TOTAL = 460;          // 하루에 올라오는 총 결재 건수
+const workAt = u => (WORK_TOTAL/(DAY*0.9333))*(0.2 + u*u*2.2);  // 오후로 갈수록 가팔라진다
+const todoOf = g => Math.max(0, Math.floor(g.due) - g.kills);
+
 /* ── 무기 ─────────────────────────────────────────────────────── */
 const WEAPONS = {
   stamp:{ id:"stamp", name:"반려 도장", max:8, base:"start",
@@ -2049,29 +2071,29 @@ const E = {
   staff  :{name:"사원", hp:44,  spd:62, dmg:8,  xp:2, r:16},
   senior :{name:"대리", hp:96,  spd:55, dmg:11, xp:3, r:17},
   manager:{name:"과장", hp:130, spd:70, dmg:14, xp:5, r:18},
-  drunk  :{name:"회식조",hp:74, spd:92, dmg:11, xp:4, r:17},
+  drunk  :{name:"회식조",hp:74, spd:138,dmg:11, xp:4, r:17},
   gm     :{name:"부장", hp:340, spd:44, dmg:22, xp:12,r:22},
   audit  :{name:"점검단",hp:3400,spd:36, dmg:34, xp:160,r:30, boss:true,
             atk:"shock", atkCd:3.6, summon:"staff", summonN:7, summonCd:7.5},
   chief  :{name:"부장",   hp:1500,spd:46, dmg:28, xp:70, r:26, boss:true,
             atk:"charge", atkCd:4.2},
-  rookie :{name:"신입", hp:14,  spd:96, dmg:4,  xp:1, r:13},
+  rookie :{name:"신입", hp:16,  spd:182,dmg:5,  xp:1, r:13},
   hrteam :{name:"인사팀",hp:120, spd:58, dmg:12, xp:4, r:17, eatXp:true},
-  vendor :{name:"협력사",hp:190, spd:74, dmg:13, xp:5, r:17},
+  vendor :{name:"협력사",hp:190, spd:118,dmg:13, xp:5, r:17},
   ceo    :{name:"대표이사",hp:9000,spd:32,dmg:44,xp:400,r:36, boss:true,
             atk:"shock", atkCd:2.8, summon:"manager", summonN:9, summonCd:6},
 };
 /* 시간대별 스폰 구성 — 시(hour) 기준 */
 const SCHED = [
-  {h:9,  kinds:["rookie"],                              rate:1.40, n:1},
-  {h:10, kinds:["rookie","intern"],                     rate:1.15, n:2},
-  {h:11, kinds:["intern","staff"],                      rate:1.00, n:3},
-  {h:12, kinds:["staff","drunk","vendor"],              rate:0.85, n:4},
-  {h:13, kinds:["senior","manager","hrteam"],           rate:0.72, n:6},
-  {h:14, kinds:["staff","senior","manager","vendor"],   rate:0.60, n:8},
-  {h:15, kinds:["manager","gm","staff","hrteam"],       rate:0.50, n:10},
-  {h:16, kinds:["senior","manager","drunk","vendor"],   rate:0.42, n:13},
-  {h:17, kinds:["manager","gm","drunk","staff","hrteam"],rate:0.34, n:16},
+  {h:9,  kinds:["rookie"],                                    rate:1.40, n:1},
+  {h:10, kinds:["rookie","intern"],                           rate:1.15, n:2},
+  {h:11, kinds:["intern","staff","rookie"],                   rate:1.00, n:3},
+  {h:12, kinds:["staff","drunk","vendor"],                    rate:0.85, n:4},
+  {h:13, kinds:["senior","manager","hrteam","rookie"],        rate:0.72, n:6},
+  {h:14, kinds:["staff","senior","manager","vendor"],         rate:0.60, n:8},
+  {h:15, kinds:["manager","gm","staff","hrteam","rookie"],    rate:0.50, n:10},
+  {h:16, kinds:["senior","manager","drunk","vendor"],         rate:0.42, n:13},
+  {h:17, kinds:["manager","gm","drunk","staff","rookie"],     rate:0.34, n:16},
 ];
 /* 정각 보스 */
 const BOSSES = [
@@ -2102,6 +2124,7 @@ function newGame(grudge){
     cds:{}, foes:[], shots:[], orbs:[], pools:[], fx:[], floats:[], bodies:[], drops:[],
     shocks:[], vortex:[], cards:[],
     spawnAcc:0, bossIdx:0, shake:0, shakeX:0, shakeY:0, hitstop:0,
+    due:0, ot:false, otT:0, warned:false,
     combo:0, comboT:0, comboBest:0, comboPop:0, flash:0,
     toast:"", toastT:0, paused:false, best:0,
   };
@@ -2149,7 +2172,9 @@ function doSpawns(g,dt){
   const h=hourOf(g.t), s=schedFor(h);
   g.spawnAcc+=dt;
   const CAP=420;                       // 폭주 방지 상한 (성능·가독성 둘 다)
-  if(g.foes.length<CAP && g.spawnAcc>=s.rate){
+  // 야근은 시간이 갈수록 조여 온다 — 미결을 빨리 비우는 것 말고 답이 없게
+  const otk = g.ot ? Math.max(0.55, 1-g.otT*0.012) : 1;
+  if(g.foes.length<CAP && g.spawnAcc>=s.rate*otk){
     g.spawnAcc=0;
     const k=s.kinds[(Math.random()*s.kinds.length)|0];
     spawnRing(g,k,s.n);
@@ -2453,7 +2478,25 @@ function killFoe(g,f,i){
 function step(g,dt){
   const P=g.P;
   g.t+=dt;
-  if(g.t>=DAY){ finish(g,"win"); return; }
+  if(!g.ot){
+    g.due += workAt(Math.min(1,g.t/DAY))*dt;
+    if(!g.warned && hourOf(g.t)>=17 && todoOf(g)>0){
+      g.warned=true; flash(g,"17:00 — 미결 "+todoOf(g)+"건. 서두르세요"); S("deny");
+    }
+    if(g.t>=DAY){
+      if(todoOf(g)<=0){ finish(g,"win"); return; }
+      g.ot=true; g.otT=0; g.warned=true;
+      flash(g,"18:00 — 미결 "+todoOf(g)+"건. 야근입니다");
+      S("bossIn"); g.flash=Math.max(g.flash,.9); kick(g,0,-1,14);
+    }
+  }else{
+    g.otT+=dt;
+    if(todoOf(g)<=0){ finish(g,"late"); return; }
+    // 야근 피로 — 버티기만 해선 끝나지 않는다. 시간이 그대로 체력이다.
+    // 이게 없으면 계속 도망치는 플레이가 야근에서 영영 안 끝난다(무한 루프).
+    P.hp -= (0.4 + g.otT*0.02)*dt;
+    if(P.hp<=0 && !revive(g)){ finish(g,"lose"); return; }
+  }
   if(g.toastT>0){ g.toastT-=dt; if(g.toastT<=0) g.toast=""; }
   if(g.shake>0) g.shake=Math.max(0,g.shake-dt*34);
   g.shakeX*=Math.max(0,1-dt*11); g.shakeY*=Math.max(0,1-dt*11);
@@ -2681,7 +2724,7 @@ function flash(g,msg){ g.toast=msg; g.toastT=2.6; }
 function finish(g,how){
   if(g.over) return;
   g.over=how; if(raf) cancelAnimationFrame(raf); raf=null;
-  S(how==="win"?"win":"lose");
+  S(how==="win"||how==="late"?"win":"lose");
   renderEnd(g);
 }
 
@@ -3197,8 +3240,13 @@ function markBossTicks(){
 }
 function syncHud(g){
   const P=g.P;
-  $("#clock").innerHTML=clockStr(g.t)+"<small>"+(hourOf(g.t)>=17?"곧 퇴근":"근무 중")+"</small>";
-  $("#daybar i").style.width=(g.t/DAY*100).toFixed(1)+"%";
+  $("#clock").innerHTML=clockStr(g.t)+"<small>"
+    +(g.ot?"야근":hourOf(g.t)>=17?"곧 퇴근":"근무 중")+"</small>";
+  $("#daybar i").style.width=Math.min(100,g.t/DAY*100).toFixed(1)+"%";
+  $("#daybar").classList.toggle("ot",g.ot);
+  const td=todoOf(g), te=$("#todo");
+  te.querySelector("b").textContent=td;
+  te.classList.toggle("ok",td<=0);
   $("#lv b").textContent=g.lv;
   $("#kills b").textContent=g.kills;
   $("#hpn").textContent=Math.max(0,Math.ceil(P.hp))+" / "+P.maxhp;
@@ -3237,8 +3285,9 @@ function metaBonus(){
 }
 /* 하루 결과 → 경력. 오래 버틸수록, 많이 처리할수록. */
 function careerEarned(g){
-  const hours=(g.t/DAY)*(H1-H0);
-  return Math.round(hours*12 + g.kills*0.22 + (g.over==="win"?150:0));
+  const hours=(Math.min(g.t,DAY)/DAY)*(H1-H0);
+  const bonus = g.over==="win" ? 150 : g.over==="late" ? 60 : 0;
+  return Math.round(hours*12 + g.kills*0.22 + bonus);
 }
 
 /* ── 화면 ────────────────────────────────────────────────────── */
@@ -3257,7 +3306,9 @@ function renderStart(){
       <span class="when">09:00 — 18:00</span>
     </div>
     <div class="sub" style="margin:8px 0 0">
-      오늘도 6시에 나간다. 사방에서 몰려오는 것들을 갈아버리면서.
+      오늘도 6시에 나간다. 사방에서 몰려오는 것들을 갈아버리면서.<br>
+      <span style="color:var(--ink)">18:00까지 결재함을 비워야 정시 퇴근</span>입니다.
+      미결이 남으면 그대로 야근.
     </div>
     <div class="crow">
       <div class="cstat"><b class="num" style="color:var(--accent)">${SAVE.career.toLocaleString()}</b><span>보유 경력</span></div>
@@ -3276,6 +3327,7 @@ function renderStart(){
     <div class="hintrow">
       <span>이동 <b>${isTouch?"화면 드래그":"WASD"}</b></span>
       <span>공격 <b>자동</b></span>
+      <span>퇴근 조건 <b>미결 0</b></span>
       <span>음소거 <b>M</b></span>
     </div>`;
   $("#go").onclick=()=>{
@@ -3335,21 +3387,24 @@ function renderShop(){
 }
 
 function renderEnd(g){
-  const win=g.over==="win";
-  const acc=win?"var(--good)":"var(--bad)";
+  const win=g.over==="win", late=g.over==="late", done=win||late;
+  const acc = win?"var(--good)" : late?"var(--accent)" : "var(--bad)";
   // 경력 정산 — 이 판이 남긴 것
   const earn=careerEarned(g);
   SAVE.career+=earn; SAVE.days++;
   if(g.kills>SAVE.best) SAVE.best=g.kills;
-  if(win) SAVE.cleared=true;
+  if(done) SAVE.cleared=true;
   writeSave(SAVE);
   $("#card").innerHTML=`
     <div class="rhead">
       <span class="rbar" style="background:${acc}"></span>
       <div>
-        <h1 class="ttl" style="color:${acc};font-size:38px;margin:0;line-height:1">${win?"정시 퇴근":"야근 확정"}</h1>
-        <div class="sub" style="margin:6px 0 0">${win?"18:00. 가방 들고 나왔습니다."
-          :clockStr(g.t)+" — 자리에서 쓰러졌습니다."}</div>
+        <h1 class="ttl" style="color:${acc};font-size:38px;margin:0;line-height:1">${
+          win?"정시 퇴근":late?"야근 퇴근":"자리에서 쓰러짐"}</h1>
+        <div class="sub" style="margin:6px 0 0">${
+          win ?"18:00. 가방 들고 나왔습니다."
+        : late?clockStr(g.t)+". 결재함 비우고 나왔습니다."
+        :      clockStr(g.t)+" — 미결 "+todoOf(g)+"건을 남기고 쓰러졌습니다."}</div>
       </div>
     </div>
     <div class="crow">
@@ -3361,7 +3416,7 @@ function renderEnd(g){
     ${loadoutHTML(g,"마지막 구성")}
     <div class="quote">
       <div class="q">“${esc(g.grudge)}”</div>
-      <div class="a">— ${win?"이제 안 들립니다.":"내일 또 듣습니다."}</div>
+      <div class="a">— ${win?"이제 안 들립니다.":late?"늦었지만, 끝내고 나왔습니다.":"내일 또 듣습니다."}</div>
     </div>
     <div class="earnrow">
       <span class="k">오늘의 경력</span>
@@ -3499,7 +3554,8 @@ bindTouch();
 (function(){ const m=!!(window.SFX&&window.SFX.muted);
   $("#mute").setAttribute("aria-pressed",m?"true":"false"); })();
 window.__g=()=>G;                       // 테스트 훅
-window.__api={WEAPONS,PERKS,E,SCHED,BOSSES,DAY,hourOf,clockStr,spawnRing,start};
+window.__finish=finish;                 // 결말 화면 검증용
+window.__api={WEAPONS,PERKS,E,SCHED,BOSSES,DAY,hourOf,clockStr,spawnRing,start,todoOf,WORK_TOTAL};
 renderStart();
 
 </script>
