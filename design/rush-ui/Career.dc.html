@@ -1,0 +1,139 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;600;800&display=swap">
+  <style>
+    body{margin:0;font-family:'Gothic A1',"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+      background:#0b0e14;color:#e8ecf4;-webkit-font-smoothing:antialiased}
+    a{color:#f5c451} a:hover{color:#d9a94e}
+    .ttl{font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
+    .num{font-variant-numeric:tabular-nums}
+  </style>
+</helmet>
+<div style="width:1000px;height:760px;position:relative;overflow:hidden;background:#0b0e14">
+  <div style="position:absolute;inset:0;background:rgba(8,10,15,.82);
+    display:flex;align-items:center;justify-content:center;padding:20px">
+    <div style="width:100%;max-width:760px;background:#141922;border:1px solid #232a36;
+      border-radius:14px;padding:24px">
+
+      <!-- 머리: 제목과 잔액을 한 줄에 — 살 수 있는지가 늘 보여야 한다 -->
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px">
+        <div>
+          <h1 class="ttl" style="font-size:32px;margin:0;line-height:1">자기계발</h1>
+          <div style="color:#7d8699;font-size:13px;margin-top:6px">
+            하루를 버틸 때마다 경력이 쌓입니다. 경력은 영구히 남습니다.
+          </div>
+        </div>
+        <div style="text-align:right;flex:none">
+          <b class="ttl num" style="font-size:30px;color:#f5c451;line-height:1;display:block">1,284</b>
+          <span style="font-size:11px;color:#7d8699">보유 경력</span>
+        </div>
+      </div>
+
+      <div style="height:1px;background:#232a36;margin:18px 0 0"></div>
+
+      <!-- 상점 -->
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:16px">
+
+        <!-- 구매 가능 -->
+        <div style="position:relative;background:#232936;border:1px solid #232a36;border-radius:10px;
+          padding:12px 12px 18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span style="font-weight:800;font-size:14px">체력 관리</span>
+            <span class="num" style="font-size:11px;color:#7d8699">3 / 6</span>
+          </div>
+          <div style="font-size:12px;color:#7d8699;line-height:1.45;margin-top:3px">최대 체력 +60</div>
+          <div style="font-size:12px;color:#f5c451;font-weight:800;margin-top:5px">경력 220</div>
+          <div style="position:absolute;left:12px;right:12px;bottom:9px;height:3px;background:#0b0d12;
+            border-radius:2px;overflow:hidden">
+            <i style="display:block;height:100%;width:50%;background:#f5c451"></i></div>
+        </div>
+
+        <!-- 강조(호버) -->
+        <div style="position:relative;background:#2c3342;border:1px solid #f5c451;border-radius:10px;
+          padding:12px 12px 18px;box-shadow:0 0 0 1px rgba(245,196,81,.25),0 6px 22px rgba(245,196,81,.10)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span style="font-weight:800;font-size:14px">편한 신발</span>
+            <span class="num" style="font-size:11px;color:#7d8699">2 / 5</span>
+          </div>
+          <div style="font-size:12px;color:#9aa4bb;line-height:1.45;margin-top:3px">이동 속도 +18%</div>
+          <div style="font-size:12px;color:#f5c451;font-weight:800;margin-top:5px">경력 235</div>
+          <div style="position:absolute;left:12px;right:12px;bottom:9px;height:3px;background:#0b0d12;
+            border-radius:2px;overflow:hidden">
+            <i style="display:block;height:100%;width:40%;background:#f5c451"></i></div>
+        </div>
+
+        <!-- 구매 가능 -->
+        <div style="position:relative;background:#232936;border:1px solid #232a36;border-radius:10px;
+          padding:12px 12px 18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span style="font-weight:800;font-size:14px">손이 빠름</span>
+            <span class="num" style="font-size:11px;color:#7d8699">1 / 5</span>
+          </div>
+          <div style="font-size:12px;color:#7d8699;line-height:1.45;margin-top:3px">공격 속도 +10%</div>
+          <div style="font-size:12px;color:#f5c451;font-weight:800;margin-top:5px">경력 220</div>
+          <div style="position:absolute;left:12px;right:12px;bottom:9px;height:3px;background:#0b0d12;
+            border-radius:2px;overflow:hidden">
+            <i style="display:block;height:100%;width:20%;background:#f5c451"></i></div>
+        </div>
+
+        <!-- 완료 -->
+        <div style="position:relative;background:#1a221c;border:1px solid #2a3a2f;border-radius:10px;
+          padding:12px 12px 18px;opacity:.8">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span style="font-weight:800;font-size:14px;color:#9fd9b6">눈치</span>
+            <span class="num" style="font-size:11px;color:#57d98a">5 / 5</span>
+          </div>
+          <div style="font-size:12px;color:#7d8699;line-height:1.45;margin-top:3px">경험치 획득 +40%</div>
+          <div style="font-size:12px;color:#57d98a;font-weight:800;margin-top:5px">완료</div>
+          <div style="position:absolute;left:12px;right:12px;bottom:9px;height:3px;background:#0b0d12;
+            border-radius:2px;overflow:hidden">
+            <i style="display:block;height:100%;width:100%;background:#57d98a"></i></div>
+        </div>
+
+        <!-- 경력 부족 -->
+        <div style="position:relative;background:#232936;border:1px solid #232a36;border-radius:10px;
+          padding:12px 12px 18px;opacity:.55">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span style="font-weight:800;font-size:14px">긴 팔</span>
+            <span class="num" style="font-size:11px;color:#7d8699">0 / 4</span>
+          </div>
+          <div style="font-size:12px;color:#7d8699;line-height:1.45;margin-top:3px">수집 범위 +15%</div>
+          <div style="font-size:12px;color:#7d8699;font-weight:800;margin-top:5px">경력 95</div>
+          <div style="position:absolute;left:12px;right:12px;bottom:9px;height:3px;background:#0b0d12;
+            border-radius:2px;overflow:hidden"><i style="display:block;height:100%;width:0"></i></div>
+        </div>
+
+        <!-- 특별 항목: 한 번뿐인 것은 다르게 보여야 한다 -->
+        <div style="position:relative;background:linear-gradient(180deg,#2f2a1c,#232936);
+          border:1px solid #46391f;border-radius:10px;padding:12px 12px 18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span style="font-weight:800;font-size:14px;color:#f5c451">비상금</span>
+            <span style="font-size:10px;color:#0b0e14;background:#f5c451;border-radius:999px;
+              padding:2px 7px;font-weight:800">단 1회</span>
+          </div>
+          <div style="font-size:12px;color:#9aa4bb;line-height:1.45;margin-top:3px">쓰러져도 한 번 일어난다</div>
+          <div style="font-size:12px;color:#f5c451;font-weight:800;margin-top:5px">경력 600</div>
+          <div style="position:absolute;left:12px;right:12px;bottom:9px;height:3px;background:#0b0d12;
+            border-radius:2px;overflow:hidden"><i style="display:block;height:100%;width:0"></i></div>
+        </div>
+      </div>
+
+      <button style="background:#f5c451;color:#17191f;border:0;border-radius:8px;font-weight:800;
+        padding:15px;width:100%;margin-top:18px;font-size:16px;font-family:inherit;cursor:pointer">
+        ← 돌아가기</button>
+      <button style="background:transparent;color:#7d8699;border:1px solid #232a36;border-radius:8px;
+        padding:11px;width:100%;margin-top:8px;font-family:inherit;font-size:13px;cursor:pointer">
+        기록 초기화</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
