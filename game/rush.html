@@ -74,6 +74,32 @@ input{width:100%;padding:11px;border-radius:8px;border:1px solid var(--line);
   background:#0b0d12;color:var(--ink);font-size:14px;font-family:inherit}
 label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
 .tally{display:flex;gap:26px;margin:18px 0 4px;flex-wrap:wrap}
+/* 메타 성장 화면 */
+.crow{display:flex;gap:22px;margin:14px 0 0;flex-wrap:wrap}
+.cstat{display:flex;flex-direction:column}
+.cstat b{font-size:22px;font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
+.cstat span{font-size:11px;color:var(--dim)}
+.mbon{margin-top:12px;padding:9px 11px;border:1px solid #2a3a2f;border-radius:8px;
+  background:#101a14;color:var(--good);font-size:12px;line-height:1.6}
+.earn{margin:14px 0 2px;font-size:14px;color:var(--dim)}
+.earn b{color:var(--accent);font-size:20px;font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
+.shop{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px;margin-top:14px;
+  max-height:46vh;overflow:auto;padding-right:4px}
+.buy{position:relative;background:#232936;border:1px solid var(--line);border-radius:10px;
+  padding:12px 12px 16px;text-align:left;color:var(--ink);font-family:inherit;cursor:pointer;
+  display:grid;grid-template-columns:1fr auto;gap:2px 8px}
+.buy:hover:not(:disabled){border-color:var(--accent);background:#2c3342}
+.buy:disabled{cursor:default}
+.buy.poor{opacity:.55}
+.buy.maxed{opacity:.7;border-color:#2a3a2f}
+.buy .bn{font-weight:800;font-size:14px}
+.buy .bl{font-size:11px;color:var(--dim);text-align:right;align-self:center}
+.buy .bd{grid-column:1/3;font-size:12px;color:var(--dim);line-height:1.45}
+.buy .bc{grid-column:1/3;font-size:12px;color:var(--accent);font-weight:800;margin-top:3px}
+.buy.maxed .bc{color:var(--good)}
+.buy .bar{position:absolute;left:12px;right:12px;bottom:8px;height:3px;background:#0b0d12;border-radius:2px;overflow:hidden}
+.buy .bar i{display:block;height:100%;background:var(--accent)}
+.buy.maxed .bar i{background:var(--good)}
 .tally div{display:flex;flex-direction:column}
 .tally b{font-size:26px;font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
 .tally span{font-size:11px;color:var(--dim)}
@@ -1925,13 +1951,15 @@ function calcZoom(){ return clamp(Math.min(VW,VH*1.6)/760, 1.15, 2.0); }
 const keys = Object.create(null);
 
 function newGame(grudge){
+  const M=metaBonus();
   return {
+    meta:M, revives:M.revive,
     t:0, over:null, grudge,
     P:{ x:0, y:0, vx:0, vy:0, r:14, face:-1, walk:0,
         hp:100, maxhp:100, spd:168, haste:1, range:1, xpMul:1, magnet:1,
         inv:0, hurt:0, atk:0, moving:false },
-    lv:1, xp:0, next:6, kills:0, dmgDealt:0,
-    weapons:{ stamp:1 }, perks:{},
+    lv:1+M.startLv, xp:0, next:6, kills:0, dmgDealt:0, pendingLv:M.startLv,
+    weapons:{ stamp:1+M.stampLv }, perks:{},
     cds:{}, foes:[], shots:[], orbs:[], pools:[], fx:[], floats:[], bodies:[], drops:[],
     shocks:[],
     spawnAcc:0, bossIdx:0, shake:0, shakeX:0, shakeY:0, hitstop:0,
@@ -1942,7 +1970,9 @@ function newGame(grudge){
 
 /* ── 파생 스탯 ───────────────────────────────────────────────── */
 function stats(g){
-  const P={ spd:168, haste:1, range:1, xpMul:1, magnet:1, maxhp:100 };
+  const M=g.meta||metaBonus();
+  const P={ spd:168*(1+M.spd), haste:1*(1-M.haste), range:1,
+            xpMul:1+M.xp, magnet:1+M.magnet, maxhp:100+M.hp };
   for(const k in g.perks){ const p=PERKS[k]; for(let i=0;i<g.perks[k];i++) p.f(P,i+1); }
   return P;
 }
@@ -2234,7 +2264,7 @@ function step(g,dt){
       if(d < f.r+P.r && P.inv<=0){
         P.hp-=f.dmg; P.inv=.62; P.hurt=.30;
         kick(g,P.x-f.x,P.y-f.y,11); S("chew");
-        if(P.hp<=0){ finish(g,"lose"); return; }
+        if(P.hp<=0 && !revive(g)){ finish(g,"lose"); return; }
       }
       continue;
     }
@@ -2249,7 +2279,7 @@ function step(g,dt){
     if(d < f.r+P.r && P.inv<=0){
       P.hp-=f.dmg; P.inv=.62; P.hurt=.30;
       kick(g, P.x-f.x, P.y-f.y, 7); S("chew");
-      if(P.hp<=0){ finish(g,"lose"); return; }
+      if(P.hp<=0 && !revive(g)){ finish(g,"lose"); return; }
     }
   }
   // 적끼리 겹침 완화 — 뭉쳐서 한 덩어리로 보이는 걸 막는다
@@ -2322,7 +2352,7 @@ function step(g,dt){
         w.done=true;
         P.hp-=w.dmg; P.inv=.62; P.hurt=.30;
         kick(g,P.x-w.x,P.y-w.y,12); S("chew");
-        if(P.hp<=0){ finish(g,"lose"); return; }
+        if(P.hp<=0 && !revive(g)){ finish(g,"lose"); return; }
       }
     }
   }
@@ -2351,6 +2381,18 @@ function gainXp(g,n){
     g.next=Math.round(g.next*1.34+3);
     levelUp(g);
   }
+}
+/* 비상금 — 한 번은 다시 일어난다 */
+function revive(g){
+  if(g.revives<=0) return false;
+  g.revives--;
+  g.P.hp=g.P.maxhp; g.P.inv=2.2;
+  for(const f of g.foes) damage(g,f,400,g.P.x,g.P.y,26);
+  g.fx.push({type:"quit",t:0});
+  g.fx.push({type:"ring",x:g.P.x,y:g.P.y,t:0,r0:20,r1:340,c:"#57d98a"});
+  kick(g,0,-1,16); g.hitstop=Math.max(g.hitstop,.2); g.flash=Math.max(g.flash,1);
+  S("nuke"); flash(g,"비상금 — 다시 일어납니다");
+  return true;
 }
 function flash(g,msg){ g.toast=msg; g.toastT=2.6; }
 function finish(g,how){
@@ -2818,13 +2860,61 @@ function syncHud(g){
   $("#toast").textContent=g.toast;
 }
 
+/* ══════════════ 메타 성장 ══════════════
+   판이 끝나면 아무것도 안 남으면 세 판 하고 그만둔다.
+   하루를 버틸 때마다 「경력」이 쌓이고, 경력으로 영구 능력을 산다. */
+const SAVE_KEY="jeongsi.save.v1";
+const CAREER={
+  hp    :{name:"체력 관리", max:6, cost:l=>40+l*45,  desc:l=>"최대 체력 +"+(l*15),      f:(M,l)=>M.hp+=l*15},
+  spd   :{name:"편한 신발", max:5, cost:l=>55+l*60,  desc:l=>"이동 속도 +"+(l*6)+"%",   f:(M,l)=>M.spd+=l*.06},
+  haste :{name:"손이 빠름", max:5, cost:l=>70+l*75,  desc:l=>"공격 속도 +"+(l*5)+"%",   f:(M,l)=>M.haste+=l*.05},
+  xp    :{name:"눈치",      max:5, cost:l=>50+l*55,  desc:l=>"경험치 획득 +"+(l*8)+"%", f:(M,l)=>M.xp+=l*.08},
+  magnet:{name:"긴 팔",     max:4, cost:l=>45+l*50,  desc:l=>"수집 범위 +"+(l*15)+"%",  f:(M,l)=>M.magnet+=l*.15},
+  start :{name:"짬",        max:3, cost:l=>120+l*160,desc:l=>"시작 레벨 +"+l,           f:(M,l)=>M.startLv+=l},
+  stamp :{name:"요령",      max:3, cost:l=>110+l*150,desc:l=>"반려 도장 시작 Lv +"+l,   f:(M,l)=>M.stampLv+=l},
+  revive:{name:"비상금",    max:1, cost:l=>600,      desc:l=>"쓰러져도 한 번 일어난다", f:(M,l)=>M.revive+=l},
+};
+function loadSave(){
+  try{ const j=JSON.parse(localStorage.getItem(SAVE_KEY)||"{}");
+       return {career:+j.career||0, lv:j.lv&&typeof j.lv==="object"?j.lv:{},
+               best:+j.best||0, days:+j.days||0, cleared:!!j.cleared}; }
+  catch(e){ return {career:0, lv:{}, best:0, days:0, cleared:false}; }
+}
+function writeSave(sv){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(sv)); }catch(e){} }
+let SAVE=loadSave();
+/* 저장된 등급을 실제 보너스로 */
+function metaBonus(){
+  const M={hp:0, spd:0, haste:0, xp:0, magnet:0, startLv:0, stampLv:0, revive:0};
+  for(const k in CAREER){ const l=SAVE.lv[k]|0; if(l>0) CAREER[k].f(M,l); }
+  return M;
+}
+/* 하루 결과 → 경력. 오래 버틸수록, 많이 처리할수록. */
+function careerEarned(g){
+  const hours=(g.t/DAY)*(H1-H0);
+  return Math.round(hours*12 + g.kills*0.22 + (g.over==="win"?150:0));
+}
+
 /* ── 화면 ────────────────────────────────────────────────────── */
 function renderStart(){
+  const M=metaBonus();
   const card=$("#card");
   card.innerHTML=`
     <h1 class="ttl">정시 퇴근</h1>
     <div class="sub">09:00 출근. 18:00까지 버티면 정시 퇴근입니다.</div>
-    <div class="hint" style="margin:0 0 4px">
+    <div class="crow">
+      <div class="cstat"><b class="num">${SAVE.career}</b><span>보유 경력</span></div>
+      <div class="cstat"><b class="num">${SAVE.days}</b><span>출근 일수</span></div>
+      <div class="cstat"><b class="num">${SAVE.best}</b><span>최다 처리</span></div>
+      <div class="cstat"><b class="num" style="color:${SAVE.cleared?"var(--good)":"var(--dim)"}">${SAVE.cleared?"있음":"없음"}</b><span>정시 퇴근</span></div>
+    </div>
+    ${M.hp||M.spd||M.haste||M.xp||M.magnet||M.startLv||M.stampLv||M.revive
+      ? `<div class="mbon">적용 중 — ${[
+          M.hp?"체력 +"+M.hp:"", M.spd?"속도 +"+Math.round(M.spd*100)+"%":"",
+          M.haste?"공속 +"+Math.round(M.haste*100)+"%":"", M.xp?"경험치 +"+Math.round(M.xp*100)+"%":"",
+          M.magnet?"수집 +"+Math.round(M.magnet*100)+"%":"", M.startLv?"시작 Lv+"+M.startLv:"",
+          M.stampLv?"도장 Lv+"+M.stampLv:"", M.revive?"비상금":""
+        ].filter(Boolean).join(" · ")}</div>` : ""}
+    <div class="hint" style="margin:14px 0 4px">
       이동 <b>WASD</b> 또는 <b>방향키</b> · 공격은 자동입니다<br>
       적을 처리하면 경험치가 떨어집니다. 주우면 레벨이 오르고 무기를 고릅니다.<br>
       12:00 · 15:00 · 17:00 정각에 큰 게 옵니다.
@@ -2832,16 +2922,65 @@ function renderStart(){
     <label>오늘 누구 때문에 힘드셨나요? (적 대사가 됩니다)</label>
     <input id="grudge" maxlength="40" placeholder="예: 이거 오늘 안에 되죠?" autocomplete="off">
     <button class="primary" id="go">출근</button>
+    <button class="ghost" id="shop">자기계발 — 경력 ${SAVE.career}</button>
     <div class="hint">M — 음소거</div>`;
   $("#go").onclick=()=>{
     S("resume");
     start(($("#grudge").value||"").trim()||"이거 오늘 안에 되죠?");
   };
+  $("#shop").onclick=()=>{ S("resume"); S("select"); renderShop(); };
   openOverlay();
 }
+
+/* 자기계발 — 경력으로 영구 능력을 산다 */
+function renderShop(){
+  const card=$("#card");
+  const rows=Object.keys(CAREER).map(k=>{
+    const C=CAREER[k], l=SAVE.lv[k]|0, maxed=l>=C.max, cost=C.cost(l+1);
+    const can=!maxed && SAVE.career>=cost;
+    return `<button class="buy ${maxed?"maxed":""} ${can?"":"poor"}" data-k="${k}" ${maxed||!can?"disabled":""}>
+      <span class="bn">${esc(C.name)}</span>
+      <span class="bl">${l} / ${C.max}</span>
+      <span class="bd">${esc(maxed?C.desc(l):C.desc(l+1))}</span>
+      <span class="bc">${maxed?"완료":"경력 "+cost}</span>
+      <span class="bar"><i style="width:${(l/C.max*100).toFixed(0)}%"></i></span>
+    </button>`;
+  }).join("");
+  card.innerHTML=`
+    <h1 class="ttl">자기계발</h1>
+    <div class="sub">하루를 버틸 때마다 경력이 쌓입니다. 경력은 영구히 남습니다.</div>
+    <div class="crow"><div class="cstat"><b class="num" style="color:var(--accent)">${SAVE.career}</b><span>보유 경력</span></div></div>
+    <div class="shop">${rows}</div>
+    <button class="primary" id="back">← 돌아가기</button>
+    <button class="ghost" id="reset">기록 초기화</button>`;
+  card.querySelectorAll("[data-k]").forEach(b=>{
+    b.onclick=()=>{
+      const k=b.dataset.k, C=CAREER[k], l=SAVE.lv[k]|0;
+      if(l>=C.max) return;
+      const cost=C.cost(l+1);
+      if(SAVE.career<cost) return;
+      SAVE.career-=cost; SAVE.lv[k]=l+1; writeSave(SAVE);
+      S("levelup"); renderShop();
+    };
+  });
+  $("#back").onclick=()=>{ S("select"); renderStart(); };
+  $("#reset").onclick=()=>{
+    if(!confirm("경력과 기록을 전부 지웁니다. 되돌릴 수 없습니다.")) return;
+    SAVE={career:0, lv:{}, best:0, days:0, cleared:false}; writeSave(SAVE);
+    S("deny"); renderShop();
+  };
+  openOverlay();
+}
+
 function renderEnd(g){
   const win=g.over==="win";
   const acc=win?"var(--good)":"var(--bad)";
+  // 경력 정산 — 이 판이 남긴 것
+  const earn=careerEarned(g);
+  SAVE.career+=earn; SAVE.days++;
+  if(g.kills>SAVE.best) SAVE.best=g.kills;
+  if(win) SAVE.cleared=true;
+  writeSave(SAVE);
   $("#card").innerHTML=`
     <h1 class="ttl" style="color:${acc}">${win?"정시 퇴근":"야근 확정"}</h1>
     <div class="sub">${win?"18:00. 가방 들고 나왔습니다.":clockStr(g.t)+" — 자리에서 쓰러졌습니다."}</div>
@@ -2853,8 +2992,11 @@ function renderEnd(g){
       <div><b class="num">${Math.round(g.dmgDealt).toLocaleString()}</b><span>누적 피해</span></div>
     </div>
     <div class="hint" style="margin-top:6px">${esc(g.grudge)} — ${win?"이제 안 들립니다.":"내일 또 듣습니다."}</div>
-    <button class="primary" id="again" style="background:${acc}">다시 출근</button>`;
+    <div class="earn">오늘의 경력 <b class="num">+${earn}</b> <span>· 보유 ${SAVE.career}</span></div>
+    <button class="primary" id="again" style="background:${acc}">다시 출근</button>
+    <button class="ghost" id="toShop">자기계발 — 경력 ${SAVE.career}</button>`;
   $("#again").onclick=()=>{ S("select"); start(g.grudge); };
+  $("#toShop").onclick=()=>{ S("select"); renderShop(); };
   openOverlay();
 }
 
@@ -2872,6 +3014,7 @@ function resize(){
 function start(grudge){
   closeOverlay();
   G=newGame(grudge); applyPerks(G); syncSlots(G);
+  if(G.pendingLv>0){ G.pendingLv--; levelUp(G); }   // 「짬」 — 시작부터 고를 게 있다
   let last=performance.now();
   const loop=now=>{
     const g=G; if(!g||g.over) return;
