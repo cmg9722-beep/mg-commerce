@@ -8,7 +8,10 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;600;800&display=swap">
 <style>
 :root{--bg:#0b0e14;--panel:#141922;--line:#232a36;--ink:#e8ecf4;--dim:#7d8699;
-      --accent:#f5c451;--good:#57d98a;--bad:#ff6b6b;--blue:#9ec8ff;--deep:#6f9fd8}
+      --accent:#f5c451;--good:#57d98a;--bad:#ff6b6b;--blue:#9ec8ff;--deep:#6f9fd8;
+      /* 칩·기록칸 — 기존에 없던 컴포넌트라 토큰을 새로 둔다 */
+      --cell:#171d27;--chip-g:#16251c;--chip-gb:#24402f;--chip-gt:#9fd9b6;
+      --chip-a:#251f12;--chip-ab:#46391f;--surf2:#1a2029;--quote:#1a1416}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden;
   touch-action:none;-webkit-user-select:none;user-select:none;
@@ -93,13 +96,50 @@ input{width:100%;padding:11px;border-radius:8px;border:1px solid var(--line);
   background:#0b0d12;color:var(--ink);font-size:14px;font-family:inherit}
 label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
 .tally{display:flex;gap:26px;margin:18px 0 4px;flex-wrap:wrap}
-/* 메타 성장 화면 */
-.crow{display:flex;gap:22px;margin:14px 0 0;flex-wrap:wrap}
-.cstat{display:flex;flex-direction:column}
-.cstat b{font-size:22px;font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
+/* 기록 격자 — 숫자가 주인공 */
+.crow{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:1px;margin:20px 0 0;
+  background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.cstat{background:var(--cell);padding:14px 14px 12px;display:flex;flex-direction:column;gap:3px}
+.cstat b{font-size:26px;line-height:1;
+  font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
 .cstat span{font-size:11px;color:var(--dim)}
-.mbon{margin-top:12px;padding:9px 11px;border:1px solid #2a3a2f;border-radius:8px;
-  background:#101a14;color:var(--good);font-size:12px;line-height:1.6}
+/* 적용 중인 영구 능력 — 한 줄 텍스트로는 뭐가 켜졌는지 안 읽힌다 */
+.mbon{margin-top:12px;padding:10px 12px;border:1px solid #2a3a2f;border-radius:8px;
+  background:#101a14;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mbon>.k{font-size:11px;font-weight:800;color:var(--good);letter-spacing:.5px;flex:none}
+.mbon .chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:12px;color:var(--chip-gt);background:var(--chip-g);border:1px solid var(--chip-gb);
+  border-radius:999px;padding:3px 9px;white-space:nowrap}
+.chip.gold{color:var(--accent);background:var(--chip-a);border-color:var(--chip-ab);font-weight:800}
+/* 무기 칩 — 레벨업·결과에서 현재 구성을 보여준다 */
+.wrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.wrow .k{font-size:11px;color:var(--dim);margin-right:2px}
+.wchip{display:flex;align-items:center;gap:6px;background:var(--surf2);border:1px solid var(--line);
+  border-radius:999px;padding:4px 10px 4px 6px;font-size:12px}
+.wchip canvas{position:static;width:18px;height:18px;flex:none}
+.wchip b{font-size:11px;color:var(--accent);font-weight:800}
+.wchip.evo{background:#251f12;border-color:#46391f;color:var(--accent);font-weight:800}
+.wchip.empty{background:#12161d;border:1px dashed var(--line);color:#59627a;padding:4px 10px}
+/* 상점 머리 — 잔액이 늘 보여야 살지 말지 판단한다 */
+.shead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+.bal{text-align:right;flex:none}
+.bal b{display:block;font-size:30px;line-height:1;color:var(--accent);
+  font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
+.bal span{font-size:11px;color:var(--dim)}
+.rule{height:1px;background:var(--line);margin:18px 0 0}
+/* 결과 머리 — 이겼는지가 0.2초 안에 읽혀야 한다 */
+.rhead{display:flex;align-items:center;gap:14px}
+.rbar{width:8px;height:44px;border-radius:4px;flex:none}
+.quote{margin-top:18px;padding:14px 16px;border-left:2px solid var(--bad);
+  background:var(--quote);border-radius:0 8px 8px 0}
+.quote .q{font-size:15px;color:var(--ink)}
+.quote .a{font-size:12px;color:var(--dim);margin-top:5px}
+.earnrow{margin-top:18px;display:flex;align-items:center;justify-content:space-between;
+  padding:13px 16px;background:var(--cell);border:1px solid var(--line);border-radius:10px}
+.earnrow .k{font-size:13px;color:var(--dim)}
+.earnrow b{font-size:26px;line-height:1;color:var(--accent);
+  font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
+.earnrow span{font-size:12px;color:var(--dim);margin-left:10px}
 .earn{margin:14px 0 2px;font-size:14px;color:var(--dim)}
 .earn b{color:var(--accent);font-size:20px;font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
 .shop{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px;margin-top:14px;
@@ -110,7 +150,13 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
 .buy:hover:not(:disabled){border-color:var(--accent);background:#2c3342}
 .buy:disabled{cursor:default}
 .buy.poor{opacity:.55}
-.buy.maxed{opacity:.7;border-color:#2a3a2f}
+.buy.maxed{opacity:.8;border-color:#2a3a2f;background:#1a221c}
+.buy.maxed .bn{color:#9fd9b6}
+.buy.maxed .bl{color:var(--good)}
+.buy.once{background:linear-gradient(180deg,#2f2a1c,#232936);border-color:var(--chip-ab)}
+.buy.once .bn{color:var(--accent)}
+.buy .tag{font-size:10px;color:#0b0e14;background:var(--accent);border-radius:999px;
+  padding:2px 7px;font-weight:800;justify-self:end;align-self:center}
 .buy .bn{font-weight:800;font-size:14px}
 .buy .bl{font-size:11px;color:var(--dim);text-align:right;align-self:center}
 .buy .bd{grid-column:1/3;font-size:12px;color:var(--dim);line-height:1.45}
@@ -123,6 +169,14 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
 .tally b{font-size:26px;font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
 .tally span{font-size:11px;color:var(--dim)}
 .hint{color:var(--dim);font-size:12px;margin-top:14px;line-height:1.6}
+.hintrow{color:var(--dim);font-size:12px;margin-top:16px;line-height:1.7;
+  display:flex;gap:18px;flex-wrap:wrap}
+.hintrow b{color:var(--ink)}
+.title{display:flex;align-items:baseline;gap:12px}
+.title h1{font-size:44px !important;letter-spacing:-.5px;line-height:1;margin:0 !important}
+.title .when{font-size:12px;color:var(--dim);letter-spacing:2px;font-weight:800}
+.slot.evo{border-color:var(--chip-ab)}
+.slot.evo b{color:var(--accent)}
 #mute{position:absolute;top:10px;right:14px;z-index:30;width:34px;height:34px;padding:0;
   display:flex;align-items:center;justify-content:center;background:rgba(20,25,34,.86);
   border:1px solid var(--line);color:var(--dim);border-radius:8px;cursor:pointer}
@@ -1902,15 +1956,15 @@ const WEAPONS = {
   copy:{ id:"copy", name:"복사기", max:8,
     desc:"사방으로 서류를 뿌린다",
     lv:l=>({cd:2.1-l*.13, dmg:13+l*5, n:6+l*2, spd:260}),
-    up:l=>"장수 +1, 피해 +4" },
+    up:l=>"장수 +2, 피해 +5" },
   mail:{ id:"mail", name:"참조 메일", max:8,
     desc:"적을 쫓아가는 유도 메일",
     lv:l=>({cd:1.45-l*.10, dmg:22+l*10, n:1+Math.floor(l/1.6), turn:3.6}),
-    up:l=>l%2===0?"동시 발송 +1":"피해 +8" },
+    up:l=>Math.floor(l/1.6)>Math.floor((l-1)/1.6)?"동시 발송 +1":"피해 +10" },
   coffee:{ id:"coffee", name:"쏟은 커피", max:8,
     desc:"발밑에 장판. 밟는 적이 계속 닳는다",
     lv:l=>({cd:3.2-l*.18, dps:16+l*8, r:62+l*9, life:3.6}),
-    up:l=>"범위 +7, 초당 피해 +6" },
+    up:l=>"범위 +9, 초당 피해 +8" },
   clock:{ id:"clock", name:"퇴근 시계", max:6,
     desc:"주변 적을 느리게 만든다",
     lv:l=>({r:96+l*14, slow:.62-l*.05}),
@@ -1918,7 +1972,7 @@ const WEAPONS = {
   quit:{ id:"quit", name:"사직서", max:5,
     desc:"화면 전체를 쓸어버린다",
     lv:l=>({cd:25-l*2.8, dmg:180+l*120}),
-    up:l=>"피해 +90, 재사용 −2.6초" },
+    up:l=>"피해 +120, 재사용 −2.8초" },
   meeting:{ id:"meeting", name:"회의 소집", max:6,
     desc:"한 점으로 끌어모은다. 모인 것은 함께 닳는다",
     lv:l=>({cd:6.2-l*.35, r:120+l*16, pull:130+l*18, dps:10+l*5, life:2.6}),
@@ -1956,6 +2010,7 @@ const EVO={
   clock   :{ perk:"leave",  to:"ontime",    name:"정시 퇴근" },
   quit    :{ perk:"suit",   to:"resign",    name:"퇴사" },
 };
+const EVO_BASE={};   // 진화형 id → 원본 id (아이콘을 물려 쓴다)
 const EVOLVED={
   jeongyeol:{ id:"jeongyeol", name:"전결", max:1, evo:true,
     desc:"결재를 안 올린다. 사거리 안의 전부를 동시에 찍는다",
@@ -1977,6 +2032,7 @@ const EVOLVED={
     lv:l=>({cd:11, dmg:900, push:520}), up:l=>"" },
 };
 Object.assign(WEAPONS, EVOLVED);
+for(const base in EVO) EVO_BASE[EVO[base].to]=base;
 /* ── 강화(패시브) ─────────────────────────────────────────────── */
 const PERKS = {
   shoes :{ id:"shoes", name:"편한 구두",   max:5, desc:"이동 속도 +12%",        f:(P,l)=>P.spd*=1.12 },
@@ -3053,14 +3109,33 @@ function offers(g){
   }
   return pick;
 }
+/* 지금 들고 있는 무기 — 뭘 키울지 판단하려면 보여야 한다 */
+function loadoutHTML(g,label){
+  const ids=Object.keys(g.weapons);
+  if(!ids.length) return "";
+  const chips=ids.map(id=>{
+    const W=WEAPONS[id], lv=g.weapons[id];
+    return W.evo
+      ? `<span class="wchip evo">${esc(W.name)}</span>`
+      : `<span class="wchip">${esc(W.name)} <b class="num">${lv}</b></span>`;
+  }).join("");
+  const free=Math.max(0,5-ids.length);
+  return `<div class="wrow">${label?'<span class="k">'+esc(label)+'</span>':""}${chips}`
+    + (free?`<span class="wchip empty">빈 칸 ${free}</span>`:"") + `</div>`;
+}
+
 function levelUp(g){
   g.paused=true; S("levelup");
   const list=offers(g);
   if(!list.length){ g.paused=false; return; }
   const card=$("#card");
   const isEvo = list.length===1 && list[0].kind==="e";
-  card.innerHTML='<h1 class="ttl">'+(isEvo?"진화":"레벨 "+g.lv)+'</h1>'
-    +'<div class="sub">'+(isEvo?"조건이 맞았습니다":"하나를 고르세요")+'</div><div class="picks"></div>';
+  card.innerHTML='<div class="title" style="align-items:baseline;gap:10px">'
+    +'<h1 class="ttl" style="font-size:30px">'+(isEvo?"진화":"레벨 "+g.lv)+'</h1>'
+    +'<span style="font-size:13px;color:'+(isEvo?"var(--good)":"var(--dim)")+'">'
+    +(isEvo?"조건이 맞았습니다":"하나를 고르세요")+'</span></div>'
+    + (isEvo?"":loadoutHTML(g))
+    +'<div class="picks" style="margin-top:16px"></div>';
   const box=card.querySelector(".picks");
   list.forEach(o=>{
     const D = o.kind==="p"?PERKS[o.id]:WEAPONS[o.id];
@@ -3068,7 +3143,7 @@ function levelUp(g){
     b.className = o.kind==="e" ? "pick evo" : "pick";
     b.appendChild(icon(o.kind==="e"?o.base:o.id,40));
     const txt=document.createElement("div");
-    const lvl = o.kind==="e" ? ("진화 — "+WEAPONS[o.base].name+" 을(를) 대체")
+    const lvl = o.kind==="e" ? ("진화 — "+WEAPONS[o.base].name+"을 대체합니다")
               : o.lv===0 ? "신규" : ("Lv "+o.lv+" → "+(o.lv+1));
     const desc = o.kind==="p" ? D.desc : (o.lv===0?D.desc:D.up(o.lv+1));
     txt.innerHTML='<span class="n">'+esc(D.name)+'</span>'
@@ -3096,12 +3171,29 @@ function closeOverlay(){ $("#ov").classList.remove("on"); }
 function syncSlots(g){
   const el=$("#slots"); el.innerHTML="";
   for(const id in g.weapons){
-    const d=document.createElement("div"); d.className="slot";
-    d.appendChild(icon(id,34));
-    const b=document.createElement("b"); b.textContent=g.weapons[id]; d.appendChild(b);
-    d.title=WEAPONS[id].name+" Lv"+g.weapons[id];
+    const W=WEAPONS[id];
+    const d=document.createElement("div");
+    d.className = W.evo ? "slot evo" : "slot";      // 진화한 무기는 눈에 띄어야 한다
+    d.appendChild(icon(W.evo && EVO_BASE[id] ? EVO_BASE[id] : id, 34));
+    const b=document.createElement("b");
+    b.textContent = W.evo ? "★" : g.weapons[id];
+    d.appendChild(b);
+    d.title=W.name+(W.evo?" (진화)":" Lv"+g.weapons[id]);
     el.appendChild(d);
   }
+}
+/* 보스가 오는 시각을 시간 막대에 눈금으로 — 언제 큰 게 오는지 보여야 한다 */
+function markBossTicks(){
+  const bar=$("#daybar"); if(!bar) return;
+  bar.querySelectorAll("u").forEach(u=>u.remove());
+  BOSSES.forEach(b=>{
+    const p=((b.h-H0)/(H1-H0))*100;
+    if(p<0||p>100) return;
+    const u=document.createElement("u");
+    u.style.left=p.toFixed(1)+"%";
+    u.title=b.msg;
+    bar.appendChild(u);
+  });
 }
 function syncHud(g){
   const P=g.P;
@@ -3152,33 +3244,40 @@ function careerEarned(g){
 /* ── 화면 ────────────────────────────────────────────────────── */
 function renderStart(){
   const M=metaBonus();
-  const card=$("#card");
-  card.innerHTML=`
-    <h1 class="ttl">정시 퇴근</h1>
-    <div class="sub">09:00 출근. 18:00까지 버티면 정시 퇴근입니다.</div>
+  const bon=[
+    M.hp?"체력 +"+M.hp:"", M.spd?"속도 +"+Math.round(M.spd*100)+"%":"",
+    M.haste?"공속 +"+Math.round(M.haste*100)+"%":"", M.xp?"경험치 +"+Math.round(M.xp*100)+"%":"",
+    M.magnet?"수집 +"+Math.round(M.magnet*100)+"%":"", M.startLv?"시작 Lv+"+M.startLv:"",
+    M.stampLv?"도장 Lv+"+M.stampLv:"",
+  ].filter(Boolean).map(t=>'<span class="chip">'+esc(t)+'</span>').join("")
+    + (M.revive?'<span class="chip gold">비상금</span>':"");
+  $("#card").innerHTML=`
+    <div class="title">
+      <h1 class="ttl">정시 퇴근</h1>
+      <span class="when">09:00 — 18:00</span>
+    </div>
+    <div class="sub" style="margin:8px 0 0">
+      오늘도 6시에 나간다. 사방에서 몰려오는 것들을 갈아버리면서.
+    </div>
     <div class="crow">
-      <div class="cstat"><b class="num">${SAVE.career}</b><span>보유 경력</span></div>
+      <div class="cstat"><b class="num" style="color:var(--accent)">${SAVE.career.toLocaleString()}</b><span>보유 경력</span></div>
       <div class="cstat"><b class="num">${SAVE.days}</b><span>출근 일수</span></div>
-      <div class="cstat"><b class="num">${SAVE.best}</b><span>최다 처리</span></div>
-      <div class="cstat"><b class="num" style="color:${SAVE.cleared?"var(--good)":"var(--dim)"}">${SAVE.cleared?"있음":"없음"}</b><span>정시 퇴근</span></div>
+      <div class="cstat"><b class="num">${SAVE.best.toLocaleString()}</b><span>최다 처리</span></div>
+      <div class="cstat"><b class="ttl" style="color:${SAVE.cleared?"var(--good)":"var(--dim)"}">${SAVE.cleared?"있음":"없음"}</b><span>정시 퇴근</span></div>
     </div>
-    ${M.hp||M.spd||M.haste||M.xp||M.magnet||M.startLv||M.stampLv||M.revive
-      ? `<div class="mbon">적용 중 — ${[
-          M.hp?"체력 +"+M.hp:"", M.spd?"속도 +"+Math.round(M.spd*100)+"%":"",
-          M.haste?"공속 +"+Math.round(M.haste*100)+"%":"", M.xp?"경험치 +"+Math.round(M.xp*100)+"%":"",
-          M.magnet?"수집 +"+Math.round(M.magnet*100)+"%":"", M.startLv?"시작 Lv+"+M.startLv:"",
-          M.stampLv?"도장 Lv+"+M.stampLv:"", M.revive?"비상금":""
-        ].filter(Boolean).join(" · ")}</div>` : ""}
-    <div class="hint" style="margin:14px 0 4px">
-      ${isTouch?"이동 <b>화면을 누른 채 드래그</b>":"이동 <b>WASD</b> 또는 <b>방향키</b>"} · 공격은 자동입니다<br>
-      적을 처리하면 경험치가 떨어집니다. 주우면 레벨이 오르고 무기를 고릅니다.<br>
-      12:00 · 15:00 · 17:00 정각에 큰 게 옵니다.
-    </div>
-    <label>오늘 누구 때문에 힘드셨나요? (적 대사가 됩니다)</label>
-    <input id="grudge" maxlength="40" placeholder="예: 이거 오늘 안에 되죠?" autocomplete="off">
+    ${bon?`<div class="mbon"><span class="k">적용 중</span><div class="chips">${bon}</div></div>`:""}
+    <label>오늘 누구 때문에 힘드셨나요? <span style="color:#59627a">적 대사가 됩니다</span></label>
+    <input id="grudge" maxlength="40" placeholder="이거 오늘 안에 되죠?" autocomplete="off">
     <button class="primary" id="go">출근</button>
-    <button class="ghost" id="shop">자기계발 — 경력 ${SAVE.career}</button>
-    <div class="hint">M — 음소거</div>`;
+    <button class="ghost" id="shop" style="color:var(--ink);font-size:14px;padding:13px;
+      display:flex;align-items:center;justify-content:center;gap:8px">
+      <span>자기계발</span><span style="color:var(--accent);font-weight:800">경력 ${SAVE.career.toLocaleString()}</span>
+    </button>
+    <div class="hintrow">
+      <span>이동 <b>${isTouch?"화면 드래그":"WASD"}</b></span>
+      <span>공격 <b>자동</b></span>
+      <span>음소거 <b>M</b></span>
+    </div>`;
   $("#go").onclick=()=>{
     S("resume");
     start(($("#grudge").value||"").trim()||"이거 오늘 안에 되죠?");
@@ -3193,18 +3292,26 @@ function renderShop(){
   const rows=Object.keys(CAREER).map(k=>{
     const C=CAREER[k], l=SAVE.lv[k]|0, maxed=l>=C.max, cost=C.cost(l+1);
     const can=!maxed && SAVE.career>=cost;
-    return `<button class="buy ${maxed?"maxed":""} ${can?"":"poor"}" data-k="${k}" ${maxed||!can?"disabled":""}>
+    const once=C.max===1;
+    const cls=["buy", maxed?"maxed":"", (!maxed&&!can)?"poor":"", (once&&!maxed)?"once":""].filter(Boolean).join(" ");
+    return `<button class="${cls}" data-k="${k}" ${maxed||!can?"disabled":""}>
       <span class="bn">${esc(C.name)}</span>
-      <span class="bl">${l} / ${C.max}</span>
+      ${once&&!maxed?'<span class="tag">단 1회</span>'
+                   :`<span class="bl num">${l} / ${C.max}</span>`}
       <span class="bd">${esc(maxed?C.desc(l):C.desc(l+1))}</span>
       <span class="bc">${maxed?"완료":"경력 "+cost}</span>
       <span class="bar"><i style="width:${(l/C.max*100).toFixed(0)}%"></i></span>
     </button>`;
   }).join("");
   card.innerHTML=`
-    <h1 class="ttl">자기계발</h1>
-    <div class="sub">하루를 버틸 때마다 경력이 쌓입니다. 경력은 영구히 남습니다.</div>
-    <div class="crow"><div class="cstat"><b class="num" style="color:var(--accent)">${SAVE.career}</b><span>보유 경력</span></div></div>
+    <div class="shead">
+      <div>
+        <h1 class="ttl">자기계발</h1>
+        <div class="sub" style="margin:6px 0 0">하루를 버틸 때마다 경력이 쌓입니다. 경력은 영구히 남습니다.</div>
+      </div>
+      <div class="bal"><b class="num">${SAVE.career.toLocaleString()}</b><span>보유 경력</span></div>
+    </div>
+    <div class="rule"></div>
     <div class="shop">${rows}</div>
     <button class="primary" id="back">← 돌아가기</button>
     <button class="ghost" id="reset">기록 초기화</button>`;
@@ -3237,19 +3344,34 @@ function renderEnd(g){
   if(win) SAVE.cleared=true;
   writeSave(SAVE);
   $("#card").innerHTML=`
-    <h1 class="ttl" style="color:${acc}">${win?"정시 퇴근":"야근 확정"}</h1>
-    <div class="sub">${win?"18:00. 가방 들고 나왔습니다.":clockStr(g.t)+" — 자리에서 쓰러졌습니다."}</div>
-    <div class="tally">
-      <div><b class="num">${g.kills}</b><span>처리</span></div>
-      <div><b class="num">${clockStr(g.t)}</b><span>도달 시각</span></div>
-      <div><b class="num">${g.lv}</b><span>레벨</span></div>
-      <div><b class="num">${g.comboBest}</b><span>최고 연속</span></div>
-      <div><b class="num">${Math.round(g.dmgDealt).toLocaleString()}</b><span>누적 피해</span></div>
+    <div class="rhead">
+      <span class="rbar" style="background:${acc}"></span>
+      <div>
+        <h1 class="ttl" style="color:${acc};font-size:38px;margin:0;line-height:1">${win?"정시 퇴근":"야근 확정"}</h1>
+        <div class="sub" style="margin:6px 0 0">${win?"18:00. 가방 들고 나왔습니다."
+          :clockStr(g.t)+" — 자리에서 쓰러졌습니다."}</div>
+      </div>
     </div>
-    <div class="hint" style="margin-top:6px">${esc(g.grudge)} — ${win?"이제 안 들립니다.":"내일 또 듣습니다."}</div>
-    <div class="earn">오늘의 경력 <b class="num">+${earn}</b> <span>· 보유 ${SAVE.career}</span></div>
-    <button class="primary" id="again" style="background:${acc}">다시 출근</button>
-    <button class="ghost" id="toShop">자기계발 — 경력 ${SAVE.career}</button>`;
+    <div class="crow">
+      <div class="cstat"><b class="num">${g.kills.toLocaleString()}</b><span>처리</span></div>
+      <div class="cstat"><b class="num" style="color:var(--bad)">${g.comboBest.toLocaleString()}</b><span>최고 연속</span></div>
+      <div class="cstat"><b class="num">${g.lv}</b><span>레벨</span></div>
+      <div class="cstat"><b class="num">${Math.round(g.dmgDealt).toLocaleString()}</b><span>누적 피해</span></div>
+    </div>
+    ${loadoutHTML(g,"마지막 구성")}
+    <div class="quote">
+      <div class="q">“${esc(g.grudge)}”</div>
+      <div class="a">— ${win?"이제 안 들립니다.":"내일 또 듣습니다."}</div>
+    </div>
+    <div class="earnrow">
+      <span class="k">오늘의 경력</span>
+      <div><b class="num">+${earn.toLocaleString()}</b><span class="num">보유 ${SAVE.career.toLocaleString()}</span></div>
+    </div>
+    <button class="primary" id="again" style="background:${acc};color:#17191f">다시 출근</button>
+    <button class="ghost" id="toShop" style="color:var(--ink);font-size:14px;padding:13px;
+      display:flex;align-items:center;justify-content:center;gap:8px">
+      <span>자기계발</span><span style="color:var(--accent);font-weight:800">경력 ${SAVE.career.toLocaleString()}</span>
+    </button>`;
   $("#again").onclick=()=>{ S("select"); start(g.grudge); };
   $("#toShop").onclick=()=>{ S("select"); renderShop(); };
   openOverlay();
@@ -3268,7 +3390,7 @@ function resize(){
 }
 function start(grudge){
   closeOverlay();
-  G=newGame(grudge); applyPerks(G); syncSlots(G);
+  G=newGame(grudge); applyPerks(G); syncSlots(G); markBossTicks();
   if(G.pendingLv>0){ G.pendingLv--; levelUp(G); }   // 「짬」 — 시작부터 고를 게 있다
   let last=performance.now();
   const loop=now=>{
