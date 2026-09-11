@@ -11,11 +11,13 @@
       --accent:#f5c451;--good:#57d98a;--bad:#ff6b6b;--blue:#9ec8ff;--deep:#6f9fd8}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden;
+  touch-action:none;-webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent;overscroll-behavior:none;
   font-family:'Gothic A1',"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif}
 .ttl{font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
 .num{font-variant-numeric:tabular-nums}
 #wrap{position:relative;width:100vw;height:100vh;overflow:hidden}
-canvas{display:block;position:absolute;inset:0;width:100%;height:100%}
+canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-action:none}
 
 /* ── 상단 HUD ── */
 #hud{position:absolute;top:0;left:0;right:0;padding:10px 58px 10px 14px;z-index:5;pointer-events:none;
@@ -54,7 +56,20 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%}
   background:rgba(8,10,15,.82);padding:20px}
 #ov.on{display:flex}
 #card{width:100%;max-width:760px;background:var(--panel);border:1px solid var(--line);
-  border-radius:14px;padding:24px}
+  border-radius:14px;padding:24px;max-height:92vh;overflow:auto}
+@media (max-width:560px){
+  #card{padding:16px;border-radius:12px}
+  #card h1{font-size:24px}
+  .picks{grid-template-columns:1fr}
+  .shop{grid-template-columns:1fr;max-height:40vh}
+  .primary,.ghost{padding:15px}
+  .pick{padding:12px}
+  #clock{font-size:22px}
+  #hud{padding:8px 50px 8px 10px;gap:8px}
+  #kills,#lv{font-size:11px}
+  .slot{width:36px;height:36px}
+  .slot canvas{width:28px;height:28px}
+}
 #card h1{font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400;
   font-size:30px;margin:0 0 6px}
 #card .sub{color:var(--dim);font-size:14px;margin-bottom:18px}
@@ -1946,8 +1961,9 @@ const BOSSES = [
 
 /* ── 상태 ────────────────────────────────────────────────────── */
 let cv, ctx, G=null, raf=null, VW=960, VH=600, DPR=1, ZOOM=1;
-/* 화면이 클수록 배율을 올려 캐릭터가 작아 보이지 않게 한다 (기준 1000px 폭) */
-function calcZoom(){ return clamp(Math.min(VW,VH*1.6)/760, 1.15, 2.0); }
+/* 배율 — 짧은 변 기준. 세로 화면(폰)에서 시야가 좁아지면
+   적이 화면 끝에서 갑자기 튀어나와 피할 수가 없다. */
+function calcZoom(){ return clamp(Math.min(VW,VH)/540, 0.85, 1.8); }
 const keys = Object.create(null);
 
 function newGame(grudge){
@@ -2235,6 +2251,7 @@ function step(g,dt){
   let ix=(keys.d||keys.ArrowRight?1:0)-(keys.a||keys.ArrowLeft?1:0);
   let iy=(keys.s||keys.ArrowDown?1:0)-(keys.w||keys.ArrowUp?1:0);
   const m=Math.hypot(ix,iy)||1; ix/=m; iy/=m;
+  if(TOUCH.on){ ix=TOUCH.dx; iy=TOUCH.dy; }      // 터치가 있으면 터치 우선
   P.x+=ix*P.spd*dt; P.y+=iy*P.spd*dt;
   if(ix) P.face=ix<0?-1:1;
   P.moving = !!(ix||iy);
@@ -2572,6 +2589,7 @@ function draw(g){
   try{ drawWorld(g); } finally { ctx.setTransform(DPR,0,0,DPR,0,0); }
   drawBossBar(g);
   drawCombo(g);
+  drawStick();
 }
 /* 콤보 — 10단위마다 화면이 번쩍인다 */
 /* 상단 보스 체력바 — 얼마나 남았는지 모르면 보스전이 아니다 */
@@ -2915,7 +2933,7 @@ function renderStart(){
           M.stampLv?"도장 Lv+"+M.stampLv:"", M.revive?"비상금":""
         ].filter(Boolean).join(" · ")}</div>` : ""}
     <div class="hint" style="margin:14px 0 4px">
-      이동 <b>WASD</b> 또는 <b>방향키</b> · 공격은 자동입니다<br>
+      ${isTouch?"이동 <b>화면을 누른 채 드래그</b>":"이동 <b>WASD</b> 또는 <b>방향키</b>"} · 공격은 자동입니다<br>
       적을 처리하면 경험치가 떨어집니다. 주우면 레벨이 오르고 무기를 고릅니다.<br>
       12:00 · 15:00 · 17:00 정각에 큰 게 옵니다.
     </div>
@@ -3029,6 +3047,70 @@ function start(grudge){
   raf=requestAnimationFrame(loop);
 }
 
+/* ══════════════ 터치 조이스틱 ══════════════
+   화면 아무 데나 누르면 그 자리에 조이스틱이 생긴다(플로팅 방식).
+   고정식은 엄지로 위치를 더듬어야 해서 작은 화면에서 불리하다. */
+const TOUCH={ on:false, id:null, ox:0, oy:0, x:0, y:0, dx:0, dy:0, R:62 };
+const isTouch = ("ontouchstart" in window) || navigator.maxTouchPoints>0;
+
+function touchStart(e){
+  if(!G || G.over || G.paused) return;
+  for(const t of e.changedTouches){
+    if(TOUCH.id!==null) break;
+    TOUCH.id=t.identifier; TOUCH.on=true;
+    TOUCH.ox=TOUCH.x=t.clientX; TOUCH.oy=TOUCH.y=t.clientY;
+    TOUCH.dx=TOUCH.dy=0;
+  }
+  e.preventDefault();
+}
+function touchMove(e){
+  if(!TOUCH.on) return;
+  for(const t of e.changedTouches){
+    if(t.identifier!==TOUCH.id) continue;
+    TOUCH.x=t.clientX; TOUCH.y=t.clientY;
+    let dx=TOUCH.x-TOUCH.ox, dy=TOUCH.y-TOUCH.oy;
+    const d=Math.hypot(dx,dy);
+    if(d>TOUCH.R){                       // 손가락이 멀어지면 원점을 끌고 간다
+      TOUCH.ox+=dx*(1-TOUCH.R/d); TOUCH.oy+=dy*(1-TOUCH.R/d);
+      dx=TOUCH.x-TOUCH.ox; dy=TOUCH.y-TOUCH.oy;
+    }
+    const m=Math.hypot(dx,dy)||1;
+    const f=Math.min(1, m/(TOUCH.R*0.72));   // 가운데는 둔감, 바깥은 최대속도
+    TOUCH.dx=dx/m*f; TOUCH.dy=dy/m*f;
+  }
+  e.preventDefault();
+}
+function touchEnd(e){
+  for(const t of e.changedTouches){
+    if(t.identifier!==TOUCH.id) continue;
+    TOUCH.on=false; TOUCH.id=null; TOUCH.dx=TOUCH.dy=0;
+  }
+}
+function bindTouch(){
+  const el=$("#wrap");
+  el.addEventListener("touchstart",touchStart,{passive:false});
+  el.addEventListener("touchmove", touchMove, {passive:false});
+  el.addEventListener("touchend",  touchEnd,  {passive:false});
+  el.addEventListener("touchcancel",touchEnd,{passive:false});
+}
+/* 조이스틱 그리기 — 화면 좌표계(배율 밖) */
+function drawStick(){
+  if(!TOUCH.on) return;
+  const ox=TOUCH.ox, oy=TOUCH.oy;
+  ctx.save();
+  ctx.globalAlpha=.30;
+  ctx.strokeStyle="#9ec8ff"; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(ox,oy,TOUCH.R,0,7); ctx.stroke();
+  ctx.fillStyle="#0b0e14"; ctx.globalAlpha=.28;
+  ctx.beginPath(); ctx.arc(ox,oy,TOUCH.R,0,7); ctx.fill();
+  ctx.globalAlpha=.62;
+  ctx.fillStyle="#9ec8ff";
+  ctx.beginPath();
+  ctx.arc(ox+TOUCH.dx*TOUCH.R*0.72, oy+TOUCH.dy*TOUCH.R*0.72, 22, 0, 7);
+  ctx.fill();
+  ctx.restore();
+}
+
 /* ── 입력 ────────────────────────────────────────────────────── */
 addEventListener("keydown",e=>{
   const k=e.key.length===1?e.key.toLowerCase():e.key;
@@ -3054,6 +3136,7 @@ function toggleMute(){
 cv=$("#cv"); ctx=cv.getContext("2d");
 resize(); addEventListener("resize",resize);
 $("#mute").onclick=toggleMute;
+bindTouch();
 (function(){ const m=!!(window.SFX&&window.SFX.muted);
   $("#mute").setAttribute("aria-pressed",m?"true":"false"); })();
 window.__g=()=>G;                       // 테스트 훅
