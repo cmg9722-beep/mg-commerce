@@ -2407,7 +2407,10 @@ const SCHED = [
   {h:14, kinds:["staff","senior","manager","vendor"],         rate:0.60, n:8},
   {h:15, kinds:["manager","gm","staff","hrteam","rookie"],    rate:0.50, n:10},
   {h:16, kinds:["senior","manager","drunk","vendor"],         rate:0.42, n:13},
-  {h:17, kinds:["manager","gm","drunk","staff","rookie"],     rate:0.34, n:16},
+  /* 16시 반부터 마감 — 빠른 적(신입·회식조·협력사) 비중이 올라간다 */
+  {h:16.5,kinds:["manager","drunk","vendor","rookie"],        rate:0.36, n:15},
+  {h:17, kinds:["manager","gm","drunk","staff","rookie"],     rate:0.30, n:18},
+  {h:17.5,kinds:["rookie","drunk","manager","gm","vendor"],   rate:0.24, n:20},
 ];
 /* 정각 보스 */
 const BOSSES = [
@@ -2431,6 +2434,7 @@ function newGame(grudge){
     meta:M, revives:M.revive,
     t:0, over:null, grudge,
     P:{ x:0, y:0, vx:0, vy:0, r:14, face:-1, walk:0,
+        px0:0, py0:0, hx:-1, hy:0,          // 지연 추적 진행 방향
         hp:100, maxhp:100, spd:168, haste:1, range:1, xpMul:1, magnet:1,
         inv:0, hurt:0, atk:0, moving:false },
     lv:1+M.startLv, xp:0, next:6, kills:0, dmgDealt:0, pendingLv:M.startLv,
@@ -2474,11 +2478,27 @@ function spawnAt(g,kind,x,y){
                atkT:d.atkCd?d.atkCd*0.6:0, sumT:d.summonCd||0,
                rage:0, wind:0, dash:0, dvx:0, dvy:0});
 }
+/* ── 마감 압박 ─────────────────────────────────────────────────
+   16시부터 스폰이 「가고 있는 쪽」으로 쏠린다.
+   하루 종일 원형으로 뿌리면 플레이어보다 느린 적은 영원히 뒤만 따라온다
+   — 측정 결과 아홉 시간 동안 맞은 횟수가 1~3회였다.
+   앞을 막아야 비로소 「길을 뚫는」 게임이 된다. 뒤로 돌면 풀리지만,
+   돌 때마다 그동안 벌어 둔 거리를 잃는다. 그게 대가다. */
+function closingBias(g){
+  if(g.ot) return 0.82;                        // 야근은 사방이 막힌다
+  const h=hourOf(g.t);
+  return h<16 ? 0 : clamp((h-16)/2,0,1)*0.72;
+}
 function spawnRing(g,kind,n){
   const P=g.P, R=Math.max(VW,VH)/ZOOM*0.62+90;
+  const bias=closingBias(g);
+  const hm=Math.hypot(P.hx,P.hy);
+  const hd=hm>0.15 ? Math.atan2(P.hy,P.hx) : null;   // 멈춰 있으면 쏠릴 방향이 없다
   const a0=Math.random()*Math.PI*2;
   for(let i=0;i<n;i++){
-    const a=a0+i*(Math.PI*2/n)+ (Math.random()-.5)*.5;
+    const a = (hd!==null && Math.random()<bias)
+      ? hd + (Math.random()-.5)*1.5                  // 진행 방향 ±43도
+      : a0 + i*(Math.PI*2/n) + (Math.random()-.5)*.5;
     spawnAt(g,kind,P.x+Math.cos(a)*R,P.y+Math.sin(a)*R);
   }
 }
@@ -2827,6 +2847,11 @@ function step(g,dt){
   if(ix) P.face=ix<0?-1:1;
   P.moving = !!(ix||iy);
   if(P.moving) P.walk += dt*7.5;
+  { const pdx=P.x-P.px0, pdy=P.y-P.py0, pd=Math.hypot(pdx,pdy);
+    P.px0=P.x; P.py0=P.y;
+    // 지연 추적 — 즉시 반영하면 방향만 홱 틀어도 포위가 바로 풀린다
+    if(pd>0.01){ const k=Math.min(1,dt*1.6);
+                 P.hx+=(pdx/pd-P.hx)*k; P.hy+=(pdy/pd-P.hy)*k; } }
   if(P.inv>0) P.inv-=dt;
   if(P.hurt>0) P.hurt-=dt;
   if(P.atk>0) P.atk-=dt;
@@ -3155,6 +3180,14 @@ function drawPlayer(g,sx,sy){
   ctx.save();
   ctx.fillStyle="rgba(0,0,0,.45)";
   ctx.beginPath(); ctx.ellipse(sx,sy+19,14,5,0,0,7); ctx.fill();
+  ctx.restore();
+  /* 발밑 표식 — 적 400명 사이에서 내가 어디 있는지 한눈에 찾으려면
+     체형만으로는 부족하다. 얇은 링 하나면 충분하고, 색은 노랑(내 편) 고정. */
+  ctx.save();
+  ctx.strokeStyle="rgba(245,196,81,.55)"; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.ellipse(sx,sy+19,16.5,6,0,0,7); ctx.stroke();
+  ctx.strokeStyle="rgba(245,196,81,.16)"; ctx.lineWidth=5;
+  ctx.beginPath(); ctx.ellipse(sx,sy+19,16.5,6,0,0,7); ctx.stroke();
   ctx.restore();
   const R=window.SPRITES_RANK;
   if(R && R.hero){
