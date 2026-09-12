@@ -3784,7 +3784,8 @@ function spawnAt(g,kind,x,y){
                r:d.r, xp:d.xp, boss:!!d.boss, hit:0, slow:1, kb:0, kbx:0, kby:0,
                walk:Math.random(), face:-1,
                atkT:d.atkCd?d.atkCd*0.6:0, sumT:d.summonCd||0,
-               rage:0, wind:0, dash:0, dvx:0, dvy:0});
+               rage:0, wind:0, dash:0, dvx:0, dvy:0,
+               mv:0, mvx:0, mvy:0, mvT:0, cx:0, cy:0});
 }
 /* ── 마감 압박 ─────────────────────────────────────────────────
    16시부터 스폰이 「가고 있는 쪽」으로 쏠린다.
@@ -3809,6 +3810,64 @@ function spawnRing(g,kind,n){
     spawnAt(g,kind,P.x+Math.cos(a)*R,P.y+Math.sin(a)*R);
   }
 }
+/* ── 대형 ──────────────────────────────────────────────────────
+   지금까지 적은 언제나 「내 둘레에 랜덤하게」 나왔다. 한 종류뿐이라
+   1구역과 8구역이 밀도만 다르고 생김새가 같았다.
+
+   같은 장르 오픈소스의 스폰 코드를 열어 보니 답이 거기 있었다 —
+   Random / Line(한쪽에서 벽처럼) / Circle(원이 조여듦) / Spiral(나선).
+   그리고 대형마다 이동 방식이 달라서, 벽은 쫓지 않고 그냥 흘러간다.
+   그래서 매 분이 다르게 보이고, 피하는 방법도 달라진다.
+
+   우리 식으로 옮긴다. 사무실에서 사람이 몰려오는 모양들이다. */
+function spawnWall(g,kind,n){                        // 복도 한쪽에서 밀려온다
+  const P=g.P, R=Math.max(VW,VH)/ZOOM*0.66+110;
+  const a=Math.random()*Math.PI*2;                   // 오는 방향
+  const ux=Math.cos(a), uy=Math.sin(a);
+  const px=-uy, py=ux;                               // 벽이 늘어서는 축
+  const span=R*1.5;
+  for(let i=0;i<n;i++){
+    const t=(i/(n-1||1)-0.5)*span;
+    spawnAt(g,kind, P.x+ux*R+px*t, P.y+uy*R+py*t);
+    const f=g.foes[g.foes.length-1];
+    f.mv=1; f.mvx=-ux; f.mvy=-uy; f.mvT=5.5;         // 나를 안 쫓고 지나간다
+  }
+  flash(g,"줄지어 옵니다");
+}
+function spawnClose(g,kind,n){                       // 둘러싸고 조여든다
+  const P=g.P, R=Math.max(VW,VH)/ZOOM*0.60+90;
+  const a0=Math.random()*Math.PI*2;
+  const cx=P.x, cy=P.y;
+  for(let i=0;i<n;i++){
+    const a=a0+i*(Math.PI*2/n);
+    spawnAt(g,kind, P.x+Math.cos(a)*R, P.y+Math.sin(a)*R);
+    const f=g.foes[g.foes.length-1];
+    f.mv=2; f.cx=cx; f.cy=cy; f.mvT=6.5;
+  }
+  g.fx.push({type:"ring",x:cx,y:cy,t:0,r0:R,r1:R*0.3,c:"#ff6b6b"});
+  flash(g,"둘러쌉니다");
+}
+function spawnSpiral(g,kind,n){                      // 나선으로 감아 들어온다
+  const P=g.P, R=Math.max(VW,VH)/ZOOM*0.62+90;
+  const a0=Math.random()*Math.PI*2;
+  for(let i=0;i<n;i++){
+    const a=a0+i*0.46, r=R*(1+i*0.035);
+    spawnAt(g,kind, P.x+Math.cos(a)*r, P.y+Math.sin(a)*r);
+  }
+}
+/* 어떤 대형이 나올지는 구역이 정한다 — 구역마다 오는 모양이 달라야
+   「여기는 복도구나」가 눈으로 읽힌다 */
+const FORMS=[
+  null,                 // 1 지하 주차장 — 배우는 중. 흩어져서만
+  "wall",               // 2 로비 — 게이트를 지나 줄지어 들어온다
+  null,                 // 3 사무실 — 사방에서
+  "close",              // 4 구내식당 — 배식 줄이 둘러싼다
+  "wall",               // 5 소회의실 복도 — 복도라 한쪽에서 민다
+  "close",              // 6 대회의실 — 둘러앉는다
+  "spiral",             // 7 탕비실·복사실 — 줄이 감긴다
+  "close",              // 8 임원층 — 조여 온다
+  "spiral",             // 9 대표이사실 — 전부
+];
 function doSpawns(g,dt){
   const s=zoneOf(g);                 // 구성·밀도는 시간이 아니라 구역이 정한다
   g.spawnAcc+=dt;
@@ -3821,7 +3880,17 @@ function doSpawns(g,dt){
   if(g.foes.length<CAP && g.spawnAcc>=s.rate*otk*bk){
     g.spawnAcc=0;
     const k=s.kinds[(Math.random()*s.kinds.length)|0];
-    spawnRing(g,k,s.n);
+    /* 가끔 대형으로 온다. 매번이면 대형이 평범해지고, 없으면 한 덩어리가 된다 */
+    const form=FORMS[Math.min(g.zone,FORMS.length-1)];
+    g.formCd=(g.formCd||0)-1;
+    if(form && g.formCd<=0 && g.foes.length<CAP-40){
+      g.formCd=4+((Math.random()*3)|0);
+      if(form==="wall")       spawnWall(g,k,Math.max(7,s.n+5));
+      else if(form==="close") spawnClose(g,k,Math.max(9,s.n+7));
+      else                    spawnSpiral(g,k,Math.max(8,s.n+6));
+    }else{
+      spawnRing(g,k,s.n);
+    }
   }
   /* 따돌린 적 재배치 — 상한(CAP)에 걸린 뒤 무리를 따돌리면 스폰이 멎고 화면이 텅 빈다
      (측정: 16:30~18:00 처리 2건, 필드 460명). 화면에서 한참 벗어난 적은
@@ -4640,13 +4709,26 @@ function step(g,dt){
     if(f.hold>0){ f.hold-=dt; f.walk+=dt*0.6; }      // 회의에 묶임 — 못 움직인다
     else if(f.kb>0){ f.kb-=dt; f.x+=f.kbx*dt*9; f.y+=f.kby*dt*9; }
     else {
-      // 도발 — 노조원이 시선을 끌면 그쪽으로 간다
+      /* 이동 방식 — 전부 나를 쫓으면 화면은 한 덩어리가 된다.
+         같은 장르 오픈소스를 열어 보니 대형마다 이동 방식이 달랐다:
+         한 방향으로 흘러가는 줄(벽), 중앙으로 조여드는 원.
+         쫓지 않는 적이 섞여야 「읽히는 위협」이 되고 피하는 맛이 생긴다. */
       let gx=dx/d, gy=dy/d;
+      if(f.mv===1){                                   // drift — 한 방향으로 밀려온다
+        gx=f.mvx; gy=f.mvy;
+        f.mvT-=dt; if(f.mvT<=0) f.mv=0;               // 지나가면 다시 쫓는다
+      }else if(f.mv===2){                             // center — 한 점으로 조여든다
+        const cx=f.cx-f.x, cy=f.cy-f.y, cd=Math.hypot(cx,cy)||1;
+        if(cd<40){ f.mv=0; } else { gx=cx/cd; gy=cy/cd; }
+        f.mvT-=dt; if(f.mvT<=0) f.mv=0;
+      }
+      // 도발 — 노조원이 시선을 끌면 그쪽으로 간다
       if(f.tauntT>0){ f.tauntT-=dt;
         const tdx=f.tx-f.x, tdy=f.ty-f.y, td=Math.hypot(tdx,tdy)||1;
-        gx=tdx/td; gy=tdy/td; }
-      f.x+=gx*f.spd*f.slow*dt; f.y+=gy*f.spd*f.slow*dt;
+        gx=tdx/td; gy=tdy/td; f.mv=0; }
+      f.x+=gx*f.spd*f.slow*dt*(f.mv?1.25:1); f.y+=gy*f.spd*f.slow*dt*(f.mv?1.25:1);
       f.walk += dt*f.spd*f.slow/44;
+      f.face = gx<0?-1:1;
     }
     // 접촉
     if(d < f.r+P.r && P.inv<=0){
@@ -6531,7 +6613,8 @@ window.__offers=offers;                 // 선택지 검증용
 window.__applyPerks=applyPerks;         // 강화 반영 검증용
 window.__icon=icon;
 window.__gainXp=gainXp;
-window.__killFoe=killFoe;            // 처치 연출 검증용             // 레벨업·승진 검증용                     // 아이콘 검증용
+window.__killFoe=killFoe;            // 처치 연출 검증용
+window.spawnWall=spawnWall; window.spawnClose=spawnClose; window.spawnSpiral=spawnSpiral;  // 대형 검증용             // 레벨업·승진 검증용                     // 아이콘 검증용
 window.__RND=RND;                       // 무작위 사건 검증용
 window.__api={WEAPONS,PERKS,E,ZONES,DAY,hourOf,clockStr,spawnRing,start,todoOf,zoneOf,gateReady,
              RANKS,rankOf,rankName,quotaOf,promoDue,stats,SAVE:()=>SAVE};
