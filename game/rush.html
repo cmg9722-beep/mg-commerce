@@ -87,7 +87,10 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-acti
 /* 아주 좁은 화면 — 「처리」는 결과 화면에도 나오니 접고,
    오늘의 목표인 「미결」과 하루 진행 막대를 살린다. */
 @media (max-width:430px){
-  #kills,#lv{display:none}
+  #kills,#lv,#clock small{display:none}
+  #zone{font-size:0}                      /* 「7 / 9」는 접고 구역 이름만 */
+  #zone b{font-size:12px;margin-left:0;max-width:96px;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:middle}
+  #todo{white-space:nowrap}
   #daybar{min-width:88px}
   .slot{width:36px;height:36px}
   .slot canvas{width:28px;height:28px}
@@ -399,13 +402,19 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
           { filter: ["bandpass", f, f * 0.45, hi ? 1.6 : 1.1], a: 0.002 });
   }
 
-  /* 명중 — 때린 느낌이 나야 한다. 날카로운 어택 + 짧은 저역 몸통 */
+  /* 명중 — 타격음은 세 겹으로 쌓는다. 한 겹이라도 빠지면 얇게 들린다.
+       ① 트랜지언트  0~12ms, 아주 밝은 「딱」. 귀가 「닿았다」를 먼저 안다
+       ② 몸통        음정이 빠르게 떨어지며 「맞았다」의 무게를 만든다
+       ③ 서브        저역. 이게 없으면 화면은 흔들리는데 소리는 가볍다
+     각 겹의 음량을 낮추고 겹 수를 늘린다 — 총량은 그대로 두고 두께만 키운다. */
   function hit() {
     if (!gate("hit")) return;
     var t0 = ready(); if (t0 < 0) return;
     var v = 0.92 + Math.random() * 0.16;                 // 연타가 기계음이 되지 않게
-    noise(t0, 0.035, 0.30, { filter: ["bandpass", 2700 * v, 900, 1.2], a: 0.0012 });
-    tone(t0, 0.070, 0.26, "triangle", 320 * v, 96, { a: 0.0015 });
+    noise(t0, 0.012, 0.20, { filter: ["highpass", 4200, 5400, 0.7], a: 0.0005 });
+    noise(t0, 0.035, 0.23, { filter: ["bandpass", 2700 * v, 900, 1.2], a: 0.0012 });
+    tone(t0, 0.070, 0.22, "triangle", 320 * v, 96, { a: 0.0015 });
+    tone(t0 + 0.004, 0.085, 0.16, "sine", 128 * v, 52, { a: 0.002 });
   }
 
   /* 처치 — 종이 구겨짐 + 몸통이 떨어지는 둔중음.
@@ -415,14 +424,16 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     var t0 = ready(); if (t0 < 0) return;
     var step = LADDER[Math.min(LADDER.length - 1, Math.floor((combo || 0) / 6))];
     if (boss) {
-      noise(t0, 0.34, 0.34, { filter: ["bandpass", 1400, 300, 0.8], a: 0.003, rate: 0.8 });
-      tone(t0, 0.055, 0.30, "square", 180, 70, { a: 0.001 });          // 어택
-      tone(t0 + 0.02, 0.42, 0.46, "sine", 108, 34, { a: 0.004 });      // 몸통
-      tone(t0 + 0.02, 0.42, 0.16, "triangle", 54, 22, { a: 0.004 });   // 서브
+      noise(t0, 0.010, 0.24, { filter: ["highpass", 5000, 6200, 0.7], a: 0.0004 }); // 트랜지언트
+      noise(t0, 0.34, 0.30, { filter: ["bandpass", 1400, 300, 0.8], a: 0.003, rate: 0.8 });
+      tone(t0, 0.055, 0.26, "square", 180, 70, { a: 0.001 });          // 어택
+      tone(t0 + 0.02, 0.46, 0.42, "sine", 108, 34, { a: 0.004 });      // 몸통
+      tone(t0 + 0.02, 0.46, 0.18, "triangle", 54, 22, { a: 0.004 });   // 서브
     } else {
-      noise(t0, 0.13, 0.26, { filter: ["bandpass", 1900, 520, 0.9], a: 0.0015 });
-      tone(t0, 0.045, 0.20, "triangle", 420 * step, 180 * step, { a: 0.001 });
-      tone(t0 + 0.015, 0.13, 0.24, "sine", 190 * step, 78, { a: 0.003 });
+      noise(t0, 0.13, 0.23, { filter: ["bandpass", 1900, 520, 0.9], a: 0.0015 });
+      tone(t0, 0.045, 0.17, "triangle", 420 * step, 180 * step, { a: 0.001 });
+      tone(t0 + 0.015, 0.13, 0.21, "sine", 190 * step, 78, { a: 0.003 });
+      tone(t0 + 0.008, 0.105, 0.14, "sine", 84, 44, { a: 0.002 });   // 쓰러지는 무게
     }
   }
 
@@ -1874,7 +1885,12 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
   var PART = "#6d6a62";            // 파티션 — 회색 패브릭
   var DESK = "#8a6b47";            // 책상 — 나무
   var DESKEDGE = "#a2825b";
-  var DARKOBJ = "#262a33";         // 모니터·의자 등 짙은 사물
+  var DARKOBJ = "#2c3038";         // 모니터 등 짙은 사물 (검은 구멍이 되지 않게 살짝 띄운다)
+  var CHAIR = "#4a4f5a", CHAIR2 = "#343941";   // 의자 — 회색 패브릭, 등받이는 한 톤 어둡게
+  var PAPER = "#e6e2d8", PAPER2 = "#cfcabf";   // 책상 위 서류 — 흰 종이
+  var METAL = "#9a9ca3", METAL2 = "#7c7f87";   // 복합기·정수기 본체
+  var CONC  = "#6f6c65";                       // 기둥 콘크리트
+  var CARD  = "#a9814f", CARD2 = "#8b6a41";    // 골판지 박스
   var LIT = [255, 244, 214];       // 따뜻한 형광등
 
   function la(a) { return "rgba(" + LIT[0] + "," + LIT[1] + "," + LIT[2] + "," + a + ")"; }
@@ -1923,8 +1939,8 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     rr(c, -85, -ih / 2 - 5, 170, ih + 10, 8); c.fill();
 
     /* 중앙 케이블 스파인 */
-    c.fillStyle = "#0f131c";
-    c.fillRect(-3, -ih / 2, 6, ih);
+    c.fillStyle = "#2b2f38";
+    c.fillRect(-2, -ih / 2, 4, ih);
 
     for (var col = 0; col < 2; col++) {
       var sgn = col === 0 ? -1 : 1;
@@ -1939,30 +1955,30 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
         /* 모니터 — 위에서 보면 스파인과 평행한 얇은 슬래브 + 스탠드 */
         var mx = sgn < 0 ? -20 : 14;
         frr(c, mx, yc - 15, 6, 30, 2, DARKOBJ);
-        c.fillStyle = "#0c0f16";
+        c.fillStyle = "#1f232b";
         c.fillRect(sgn < 0 ? mx + 6 : mx - 5, yc - 3, 5, 6);
         /* 키보드 */
-        frr(c, sgn < 0 ? -48 : 34, yc - 12, 14, 24, 2, "#10161f");
+        frr(c, sgn < 0 ? -48 : 34, yc - 12, 14, 24, 2, "#3d424c");
         /* 잡동사니 — 자리마다 조금씩 다르게 */
         var d = rnd();
         if (d < 0.38) {                          // 서류 더미
           c.save();
           c.translate(sgn < 0 ? -66 : 62, yc + (rnd() - 0.5) * 20);
           c.rotate((rnd() - 0.5) * 0.5);
-          frr(c, -6, -8, 12, 16, 1, "#212938");
-          c.fillStyle = "#1a2130"; c.fillRect(-6, -8, 12, 3);
+          frr(c, -6, -8, 12, 16, 1, PAPER);
+          c.fillStyle = PAPER2; c.fillRect(-6, -8, 12, 3);
           c.restore();
         } else if (d < 0.62) {                   // 머그컵
-          c.fillStyle = "#1d2431";
+          c.fillStyle = "#f2efe8";
           c.beginPath();
           c.arc(sgn < 0 ? -62 : 62, yc + (rnd() - 0.5) * 26, 3.5, 0, Math.PI * 2);
           c.fill();
         }
         /* 의자 — 책상 바깥쪽에 반쯤 밀어 넣음 */
         var chx = sgn * (72 + rnd() * 8), chy = yc + (rnd() - 0.5) * 12;
-        c.fillStyle = DARKOBJ;
+        c.fillStyle = CHAIR;
         c.beginPath(); c.arc(chx, chy, 10, 0, Math.PI * 2); c.fill();
-        c.fillStyle = "#151a24";                 // 등받이 호
+        c.fillStyle = CHAIR2;                    // 등받이 호
         c.beginPath();
         c.arc(chx, chy, 10, sgn < 0 ? -2.2 : 0.94, sgn < 0 ? 2.2 : 5.34);
         c.arc(chx, chy, 6.2, sgn < 0 ? 2.2 : 5.34, sgn < 0 ? -2.2 : 0.94, true);
@@ -1976,32 +1992,32 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
 
   function printer(c, x, y, rot) {
     c.save(); c.translate(x, y); c.rotate(rot);
-    frr(c, -24, -17, 48, 34, 5, "#1a212e");
-    frr(c, -18, -11, 36, 10, 2, "#10151e");     // 급지 트레이
-    frr(c, -14, 3, 28, 9, 2, "#232b3a");        // 배지 용지
+    frr(c, -24, -17, 48, 34, 5, METAL);
+    frr(c, -18, -11, 36, 10, 2, METAL2);        // 급지 트레이
+    frr(c, -14, 3, 28, 9, 2, PAPER);            // 배지 용지
     c.restore();
   }
   function cooler(c, x, y) {
     c.save(); c.translate(x, y);
-    frr(c, -12, -12, 24, 24, 6, "#141a24");     // 본체
-    c.fillStyle = "#1d2836";                    // 물통
+    frr(c, -12, -12, 24, 24, 6, "#d9dde3");     // 본체 — 흰 정수기
+    c.fillStyle = "#7fb0dc";                    // 물통
     c.beginPath(); c.arc(0, 0, 9, 0, Math.PI * 2); c.fill();
-    c.fillStyle = "#141c28";
+    c.fillStyle = "#5d8fbf";
     c.beginPath(); c.arc(0, 0, 4, 0, Math.PI * 2); c.fill();
     c.restore();
   }
   function plant(c, x, y, rnd) {
     c.save(); c.translate(x, y);
-    c.fillStyle = "#1f1a15";                    // 화분
+    c.fillStyle = "#6b4a33";                    // 화분 — 테라코타
     c.beginPath(); c.arc(0, 0, 11, 0, Math.PI * 2); c.fill();
-    c.fillStyle = "#14211b";                    // 잎 — 위에서 본 로제트
+    c.fillStyle = "#3f7a4a";                    // 잎 — 위에서 본 로제트
     for (var i = 0; i < 7; i++) {
       var a = (i / 7) * Math.PI * 2 + rnd() * 0.5;
       c.save(); c.rotate(a);
       c.beginPath(); c.ellipse(8, 0, 8, 3.4, 0, 0, Math.PI * 2); c.fill();
       c.restore();
     }
-    c.fillStyle = "#182a20";
+    c.fillStyle = "#56995f";
     c.beginPath(); c.arc(0, 0, 4.5, 0, Math.PI * 2); c.fill();
     c.restore();
   }
@@ -2009,9 +2025,9 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     c.save(); c.translate(x, y);
     c.fillStyle = "rgba(0,0,0,.28)";
     c.fillRect(-17, -17, 34, 34);
-    c.fillStyle = "#161b25";
+    c.fillStyle = CONC;
     c.fillRect(-14, -14, 28, 28);
-    frr(c, -11, 12, 22, 6, 2, "#262e3c");       // 보드 (위에서 본 두께)
+    frr(c, -11, 12, 22, 6, 2, "#e9ebee");       // 화이트보드 (위에서 본 두께)
     c.restore();
   }
   function boxes(c, x, y, rnd) {                // 박스 더미
@@ -2021,8 +2037,8 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
       c.translate((rnd() - 0.5) * 22, (rnd() - 0.5) * 22);
       c.rotate((rnd() - 0.5) * 0.9);
       var s = 15 + rnd() * 8;
-      frr(c, -s / 2, -s / 2, s, s, 2, "#1f1a13");
-      c.fillStyle = "#2a2419";                  // 테이프
+      frr(c, -s / 2, -s / 2, s, s, 2, CARD);
+      c.fillStyle = CARD2;                      // 테이프
       c.fillRect(-s / 2, -1.5, s, 3);
       c.restore();
     }
@@ -2033,15 +2049,9 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
   /* ── 형광등 ────────────────────────────────────────────────── */
 
   /* 꺼진 등기구 — 거의 안 보이는 하우징 */
-  function darkFixture(c, x, y, horiz) {
-    c.save(); c.translate(x, y);
-    if (!horiz) c.rotate(Math.PI / 2);
-    frr(c, -62, -10, 124, 20, 3, "#10141b");
-    c.fillStyle = "#151b26";                    // 꺼진 관 2개
-    c.fillRect(-56, -6, 112, 4);
-    c.fillRect(-56, 2, 112, 4);
-    c.restore();
-  }
+  /* 낮 사무실에서는 천장을 그리지 않는다 — 위에서 본 바닥에 등기구가 놓이면
+     검은 막대로 읽힌다(심야 팔레트에서만 분위기로 통했다). 빛 웅덩이만 남긴다. */
+  function darkFixture(c, x, y, horiz) {}
 
   /* 켜진 등 스프라이트 — 264×264 캔버스 1장에 구워 재사용 (베이크·깜빡이 공용) */
   var litSprite = null;
@@ -2068,14 +2078,6 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     c.save(); c.scale(1.6, 0.62);
     c.beginPath(); c.arc(0, 0, 46, 0, Math.PI * 2); c.fill();
     c.restore();
-    /* 하우징 + 켜진 관 */
-    frr(c, -62, -10, 124, 20, 3, "#151b28");
-    c.fillStyle = "#8fb4e0";
-    c.fillRect(-56, -6, 112, 4);
-    c.fillRect(-56, 2, 112, 4);
-    c.fillStyle = "#cfe4ff";                    // 코어
-    c.fillRect(-52, -5, 104, 2);
-    c.fillRect(-52, 3, 104, 2);
     c.restore();
     litSprite = cv;
     return litSprite;
