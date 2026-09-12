@@ -622,7 +622,7 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     } catch (e) {}
   }
   function bgmTick() {
-    if (!bgm || !ctx) return;
+    if (!bgm || !ctx || bgm.music) return;
     var t = ctx.currentTime + 0.06;
     var k = bgm.tense;                    // 0=아침 1=마감
     var i = bgm.step;
@@ -644,25 +644,109 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     var bpm = 84 + k * 54;                // 84 → 138
     bgm.timer = setTimeout(bgmTick, (60 / bpm / 2) * 1000);
   }
+  /* ── 음악 — 두 겹을 겹쳐 하루를 따라간다 ────────────────────
+     합성 아르페지오는 사각파 한 음씩이라 「띡 띡 띡」으로 들렸다.
+     그건 음악이 아니라 삐 소리다. 실제 게임들은 합성하지 않고 곡을 깐다.
+
+     그래서 CC0(저작권 포기) 샘플 팩에서 같은 곡의 레이어 둘을 가져왔다 —
+     패드와 드럼. 같은 곡이라 조와 템포가 처음부터 맞는다.
+     둘을 따로 틀고 게인만 움직인다: 아침엔 패드만 멀리서, 오후엔 드럼이
+     붙고, 마감이 가까울수록 저역 필터가 열려 앞으로 나온다.
+     곡을 바꾸는 게 아니라 같은 곡이 조여 오는 것이라 끊기지 않는다.
+
+     이 「시계에 맞춰 겹을 쌓는다」가 우리 요소다. 소재는 남의 것이지만
+     하루가 조여 오는 방식은 이 게임이 정한 것이다.
+
+     길이는 둘 다 497982샘플로 미리 잘라 뒀다. 그래도 Vorbis 디코드가
+     끝에 패딩을 붙여 832샘플(19ms) 차이가 나므로, loopEnd를 둘 다
+     악보상의 길이로 못 박는다 — 안 그러면 몇 분 뒤부터 박자가 밀린다. */
+  var MUS = { src: null, buf: null, loading: 0, loop: 497982 / 44100 };
+  function bgmSrc(pad, drum) { if (pad && drum) MUS.src = { pad: pad, drum: drum }; }
+  function musDecode(then) {
+    if (MUS.buf) { then(); return; }
+    if (!MUS.src || MUS.loading) return;
+    MUS.loading = 1;
+    var names = ["pad", "drum"], out = {};
+    Promise.all(names.map(function (k) {
+      return fetch(MUS.src[k]).then(function (r) { return r.arrayBuffer(); })
+        .then(function (ab) { return ctx.decodeAudioData(ab); })
+        .then(function (b) { out[k] = b; });
+    })).then(function () {
+      MUS.buf = out; MUS.loading = 0; then();
+    }).catch(function () { MUS.loading = 2; then(); });   // 2 = 실패, 합성으로 간다
+  }
+  function musLayer(buf, t0) {
+    var s = ctx.createBufferSource(), g = ctx.createGain();
+    s.buffer = buf; s.loop = true; s.loopStart = 0; s.loopEnd = MUS.loop;
+    g.gain.value = 0.0001;
+    s.connect(g); g.connect(bgm.filt);
+    s.start(t0);
+    return { src: s, gain: g, now: 0.0001 };
+  }
+  function musStart() {
+    var t0 = ctx.currentTime + 0.06;
+    bgm.pad = musLayer(MUS.buf.pad, t0);
+    bgm.drum = musLayer(MUS.buf.drum, t0);
+    bgm.music = 1;
+    musMix(0, 1.6);
+  }
+  /* 게인·필터를 k에 맞춘다. 매 프레임 오는 값이라 변화가 작으면 건드리지 않는다 */
+  function musMix(k, ramp) {
+    if (!bgm || !bgm.music) return;
+    var t = ctx.currentTime, r = ramp || 0.45;
+    /* 하루가 갈수록 커져야 한다. 패드를 많이 줄이면 중간이 오히려 조용해진다 */
+    var padG  = 0.62 - k * 0.10;                       // 패드는 늘 깔린다
+    var drumG = k < 0.22 ? 0.0001 : Math.min(1, (k - 0.22) / 0.40) * 0.95;
+    var cut   = 420 * Math.pow(38, k);                 // 420Hz → 16kHz
+    set(bgm.pad,  padG,  r, t); set(bgm.drum, drumG, r, t);
+    if (Math.abs(cut - bgm.cutNow) / bgm.cutNow > 0.04) {
+      bgm.cutNow = cut;
+      try { bgm.filt.frequency.setTargetAtTime(cut, t, r * 0.5); } catch (e) {}
+    }
+    function set(L, v, rr, tt) {
+      if (!L || Math.abs(v - L.now) < 0.02) return;
+      L.now = v;
+      try { L.gain.gain.setTargetAtTime(v, tt, rr * 0.5); } catch (e) {}
+    }
+  }
   function bgmStart() {
     var c = ensure(); if (!c) return;
     if (bgm) return;
     var g = ctx.createGain();
     g.gain.value = 0.0001;
+    var filt = ctx.createBiquadFilter();
+    filt.type = "lowpass"; filt.frequency.value = 420; filt.Q.value = 0.6;
+    filt.connect(g);
     g.connect(outTail || master);
-    g.gain.linearRampToValueAtTime(0.34, ctx.currentTime + 1.4);   // 천천히 들어온다
-    bgm = { gain: g, timer: null, step: 0, tense: 0 };
-    bgmTick();
+    g.gain.linearRampToValueAtTime(0.52, ctx.currentTime + 1.4);   // 천천히 들어온다
+    bgm = { gain: g, filt: filt, cutNow: 420, timer: null, step: 0, tense: 0,
+            music: 0, pad: null, drum: null };
+    var mine = bgm;
+    musDecode(function () {
+      if (bgm !== mine || bgm.music) return;
+      if (MUS.buf) musStart();
+      else bgmTick();                                   // 음원이 없거나 실패 — 합성으로
+    });
+    if (!MUS.src) bgmTick();
   }
   function bgmStop() {
     if (!bgm) return;
     clearTimeout(bgm.timer);
     try { bgm.gain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.5); } catch (e) {}
     var old = bgm; bgm = null;
-    setTimeout(function () { try { old.gain.disconnect(); } catch (e) {} }, 900);
+    setTimeout(function () {
+      try { if (old.pad) old.pad.src.stop(); } catch (e) {}
+      try { if (old.drum) old.drum.src.stop(); } catch (e) {}
+      try { old.gain.disconnect(); } catch (e) {}
+      try { old.filt.disconnect(); } catch (e) {}
+    }, 900);
   }
   /* 게임이 매 프레임 알려준다: 0=09시 1=18시 */
-  function bgmTense(v) { if (bgm) bgm.tense = Math.max(0, Math.min(1, v)); }
+  function bgmTense(v) {
+    if (!bgm) return;
+    bgm.tense = Math.max(0, Math.min(1, v));
+    if (bgm.music) musMix(bgm.tense);
+  }
 
   var api = {
     place: safe(place),
@@ -678,6 +762,7 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     levelup: safe(levelup),
     win: safe(win),
     lose: safe(lose),
+    bgmSrc: safe(bgmSrc),
     bgmStart: safe(bgmStart),
     bgmStop: safe(bgmStop),
     bgmTense: safe(bgmTense),
@@ -4419,6 +4504,9 @@ const AST={ img:{}, sfx:{}, ready:{} };
     AST.img[k]=im;
   }
   for(const k in (A.sfx||{})) AST.sfx[k]=A.sfx[k];
+  /* 음악 두 겹은 효과음이 아니라 사운드 엔진이 직접 굴린다(게인·필터가 필요해서) */
+  if(AST.sfx.bgmPad && AST.sfx.bgmDrum && window.SFX && window.SFX.bgmSrc)
+    window.SFX.bgmSrc(AST.sfx.bgmPad, AST.sfx.bgmDrum);
 })();
 /* 쓸 수 있는 그림인가 — 로딩이 끝났고 실제로 픽셀이 있는 것만 */
 function asset(name){
