@@ -116,6 +116,11 @@ body.lobby #hud, body.lobby #slots, body.lobby #bars, body.lobby #toast{display:
 .setrow:last-of-type{border-bottom:0}
 .setrow .k{font-size:14px;font-weight:700}
 .setrow .k small{display:block;font-size:11.5px;color:var(--dim);font-weight:400;margin-top:2px}
+.langpick{display:flex;gap:7px;flex-shrink:0}
+.langpick .lang{padding:9px 14px;border-radius:9px;border:1px solid var(--line);
+  background:transparent;color:var(--dim);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.langpick .lang.on{border-color:var(--accent);color:var(--accent);background:rgba(201,162,39,.10)}
+.langpick .lang:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .tg{flex:none;width:52px;height:30px;border-radius:15px;border:1px solid var(--line);
   background:#1a1f29;position:relative;cursor:pointer;padding:0}
 .tg i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;
@@ -3064,6 +3069,372 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const clamp = (v,a,b) => v<a?a:v>b?b:v;
+
+/* ══════════════ 언어 ══════════════════════════════════════════
+   한국어가 원본이고 원문이 곧 키다(gettext 방식). 키를 620개 새로
+   지어내지 않아도 되고, 번역이 빠진 자리는 한국어로 그대로 떨어진다 —
+   빈 칸이나 "missing.key.name"이 화면에 뜨는 일이 없다.
+
+   적용은 두 군데서 한 번씩만 한다.
+     · localizeData()  부팅 때 자료표(무기·적·구역·특성·업적·대사)를
+                       한 번 갈아끼운다. 그리면 그리는 쪽 코드는 안 고쳐도 된다.
+     · i18nDOM(el)     innerHTML을 쓴 뒤 글자 노드만 훑어 바꾼다.
+                       화면 짜는 문자열 수백 개에 T()를 손으로 두를 필요가 없다.
+   덕분에 호출 지점 620곳이 아니라 두 곳만 건드린다. */
+const LANGS = { ko:"한국어", en:"English" };
+const LANG_KEY = "jeongsi.lang";
+function detectLang(){
+  try{ const v=localStorage.getItem(LANG_KEY); if(v && LANGS[v]) return v; }catch(e){}
+  const n=((navigator.languages&&navigator.languages[0])||navigator.language||"ko").toLowerCase();
+  return n.startsWith("ko") ? "ko" : "en";
+}
+let LANG = detectLang();
+function setLang(v){
+  if(!LANGS[v] || v===LANG) return;
+  try{ localStorage.setItem(LANG_KEY,v); }catch(e){}
+  location.reload();                     // 자료표를 갈아끼운 상태라 다시 읽는 게 안전하다
+}
+const L10N = { ko:null, en:{
+  "동료 피해 +25%, 야근 피로 −15%, 간섭 반경 −20%":"Ally damage +25%, overtime fatigue −15%, meddling radius −20%",
+  "간섭 — 상사 곁에서는 손이 느려집니다. 벗어나면 풀립니다":"Meddling — your hands slow near a boss. Step away and it lifts",
+  "범위 안을 회의에 묶는다. 회의 중에는 아무도 못 움직인다":"Locks the area into a meeting. Nobody moves during a meeting",
+  "내일부터 여섯 시에 나갑니다 — 나만이 아니라, 전부.":"From tomorrow we leave at six — not just me. All of us.",
+  "보스와 큰 타격에 화면이 흔들립니다. 어지러우면 끄세요":"The screen shakes on bosses and big hits. Turn it off if it makes you dizzy",
+  "결재를 안 올린다. 사거리 안의 전부를 동시에 찍는다":"No approvals needed. Stamps everything in range at once",
+  "경력과 기록을 전부 지웁니다. 되돌릴 수 없습니다.":"Erases all career progress and records. This cannot be undone.",
+  "오늘은 문을 두드리는 게 아니라, 앉아서 얘기한다.":"Today we don't knock. We sit down and talk.",
+  "단체교섭 시작 — 조합원이 많을수록 빨리 끝납니다":"Bargaining begins — more union members, faster it ends",
+  "복합기 용지 걸림 — 가서 고치면 한 방 나옵니다":"Paper jam — fix it and you get a big hit",
+  "고객사 방문 — 파란 표시는 건드리면 안 됩니다":"Client visit — do not touch the blue markers",
+  "내 자리 — 체력이 찹니다. 대신 일이 쌓입니다":"Your desk — health refills, but work piles up",
+  "복합기 수리 — 밀린 출력이 한꺼번에 쏟아집니다":"Printer fixed — the queued output pours out at once",
+  "빠져나갈 수 없다. 놓치지 않는 메일이 쏟아진다":"No way out. Mail that never misses pours in",
+  "앞에 서서 대신 맞는다. 주변 적을 끌어당긴다":"Stands in front and takes the hits. Pulls them in",
+  "인사팀이 면담을 잡자고 한다. 피할 수 없다.":"HR wants a meeting. No avoiding it.",
+  "점심시간 — 다들 나갔습니다. 미결도 멈춥니다":"Lunch — everyone's out. The backlog pauses too",
+  "한 점으로 끌어모은다. 모인 것은 함께 닳는다":"Pulls them to one point. Whoever gathers wears down together",
+  "로봇을 본 판을 대체율 20% 아래로 끝내기":"Finish a run with bots under 20% replacement",
+  "발표 — 표시된 자리에 서 있어야 처리됩니다":"Presentation — you only clear work while standing on the marker",
+  "밥 먹는 사십 분이 오늘의 유일한 휴전이다.":"Forty minutes of lunch — today's only ceasefire.",
+  "벽을 세운다. 적이 부술 때까지 길을 막는다":"Raises a wall. Blocks the way until they break it",
+  "위로 올라갈수록 조용하다. 그게 더 무섭다.":"The higher you go, the quieter it gets. That's worse.",
+  "후배가 물었다. “선배도… 6시에 가세요?”":"A junior asked: “Do you... leave at six too?”",
+  "후배가 자꾸 쳐다본다. 아직 말은 안 건다.":"A junior keeps looking over. Hasn't said anything yet.",
+  "고객사를 건드렸습니다 — 미결 35건 추가":"You touched a client — backlog +35",
+  "대체율 30% — 이러다 자리가 없어집니다":"Replacement 30% — at this rate your seat disappears",
+  "모두에게. 서류가 관통하며 사방으로 퍼진다":"To everyone. Paper pierces and spreads everywhere",
+  "범위 +14, 감속 강화, 초당 피해 +8":"Radius +14, stronger slow, damage/sec +8",
+  "어제는 6시에 나왔다. 오늘도 그럴 거다.":"Yesterday I left at six. Today too.",
+  "자동화 로봇 투입 — 저게 내 일을 합니다":"Automation deployed — that thing does your job",
+  "</b> · 이 직급은 내일도 따라옵니다":"</b> · this rank carries into tomorrow",
+  "게이트를 찍는 순간부터 하루가 시작된다.":"The day starts the moment you badge in.",
+  "날아갔다 돌아온다. 오가며 두 번 스친다":"Flies out and comes back. Clips them twice",
+  "커피 한 잔 뽑는 데 이십 분이 걸렸다.":"One cup of coffee took twenty minutes.",
+  "대표이사실 앞까지 갔다는 얘기가 돈다.":"Word is someone made it to the CEO's door.",
+  "셋이 모였다. 이름을 붙일 때가 됐다.":"Three of us now. Time to give it a name.",
+  "인수인계 상자 — 더 받을 게 없습니다":"Handover box — nothing left to take",
+  "조용한 층 — 몰아칠수록 더 몰려옵니다":"Quiet floor — the harder you push, the more come",
+  "12:00 — 본부장 점심 회의 소집":"12:00 — Division Head calls a lunch meeting",
+  "17:48 — 퇴근 직전, 한 팀 더":"17:48 — One more team, right before you leave",
+  "</b> · 내일도 오늘만큼만 합니다":"</b> · tomorrow stays the same as today",
+  "밀어낸다. 벽에 몰린 것은 더 아프다":"Shoves them away. Being pinned to a wall hurts more",
+  "발밑에 장판. 밟는 적이 계속 닳는다":"A puddle underfoot. Whoever steps in it keeps wearing down",
+  "어제는 밤에 나왔다. 오늘은 아니다.":"Yesterday I left at night. Not today.",
+  "연차 — 3초간 아무도 못 건드립니다":"Annual leave — nobody can touch you for 3 seconds",
+  "오늘 12시에 뭔가 들어온다고 했다.":"Something's coming in at twelve, they said.",
+  "이제 아무도 이 말을 하지 않습니다.":"Nobody says that anymore.",
+  " — 물러났습니다. 곧 다시 옵니다":" — pushed back. They'll return soon",
+  "18:00. 가방 들고 나왔습니다.":"18:00. Bag in hand, out the door.",
+  "능력 그대로 · 직급 그대로<br>":"Same power · same rank<br>",
+  "문이 열릴 때마다 한 명씩 나온다.":"Every time a door opens, one more walks out.",
+  "어제 6시에 나가는 걸 누가 봤다.":"Someone saw me leave at six yesterday.",
+  "오늘은 다르다. 6시에 나갈 거다.":"Today is different. I'm leaving at six.",
+  "책상에 던진다. 닿는 곳에서 터진다":"Thrown onto a desk. Detonates where it lands",
+  "16:00 — 고객사 점검단 도착":"16:00 — Client audit team arrives",
+  "내 주변에 있는 것은 계속 닳는다":"Anything near you keeps wearing down",
+  "내구도 +90, 도발 범위 +18":"Durability +90, taunt radius +18",
+  "마지막 문. 저 너머가 정문이다.":"The last door. Past it is the lobby exit.",
+  "문이 열렸습니다 — 표시된 곳으로":"The door is open — head for the marker",
+  "어제 그 로봇이 아직 거기 있다.":"That bot from yesterday is still there.",
+  "저... 이거 어떻게 하는지...":"Um... how do I do this...","초당 회복 +2.5, 범위 +10":"Heal/sec +2.5, radius +10",
+  "14:00 — 본부장 보고 요청":"14:00 — Division Head wants a report",
+  "17시 이후 받는 피해 −12%":"Damage taken after 17:00 −12%",
+  "6시다. 주변이 멈추고 정리된다":"It's six. Everything near you stops and gets cleared",
+  "공격 속도 +5%, 범위 +10":"Attack speed +5%, radius +10",
+  "내일부터는 안 나오셔도 됩니다.":"You don't need to come in from tomorrow.",
+  "범위 +16, 회의 +0.35초":"Radius +16, meeting +0.35s",
+  "어제 일은 잘 기억나지 않는다.":"I don't remember much about yesterday.",
+  "이제 이 말은 규정 위반입니다.":"Saying that is now a policy violation.",
+  "피해 +10, 간격 −0.05초":"Damage +10, interval −0.05s","피해 +11, 간격 −0.09초":"Damage +11, interval −0.09s",
+  "피해 +95, 폭발 반경 +26":"Damage +95, blast radius +26",
+  "곁에 서 있으면 손이 빨라진다":"Stand near it and your hands speed up",
+  "놓아두면 알아서 서류를 뿜는다":"Leave it and it spits out paperwork on its own",
+  "늦었지만, 끝내고 나왔습니다.":"Late, but finished and out.","막히지 않는다. 전부 꿰뚫는다":"Nothing blocks it. Pierces everything",
+  "맞은 뒤 무적 시간 +0.2초":"Invulnerability after a hit +0.2s","벌써 가? 6시밖에 안 됐는데":"Leaving already? It's only six",
+  "범위 +16, 초당 피해 +5":"Radius +16, damage/sec +5","범위 +20, 밀어내기 +40":"Radius +20, knockback +40",
+  "보고. 오늘의 첫 번째 관문.":"The report. Today's first gate.","성과가 나면 보상은 따라옵니다":"Results first, rewards follow",
+  "앉기도 전에 이미 쌓여 있다.":"It's already piled up before you sit down.",
+  "이거 먼저 봐주시면 안 될까요":"Could you look at this one first?","재택근무 — 자리를 옮겼습니다":"Work from home — you relocated",
+  "하루가 갈수록 조여 오는 음악":"Music that tightens as the day goes on","12:00 전에 4구역 도달":"Reach zone 4 before 12:00",
+  "17:18 — 대표이사 순회":"17:18 — CEO walkthrough","간단한 거니까 금방 될 거야":"It's simple, won't take long",
+  "곁에 서 있으면 체력이 찬다":"Stand near it and your health refills","내구도 +70, 길이 +12":"Durability +70, length +12",
+  "딱 한 잔만! 진짜 한 잔만":"One drink! Just one, really","밟은 것은 미끄러져 넘어진다":"Whoever steps on it slips and falls",
+  "범위 +9, 초당 피해 +6":"Radius +9, damage/sec +6","범위 +9, 초당 피해 +8":"Radius +9, damage/sec +8",
+  "아 이거 제가 안 배운 건데":"Ah, nobody taught me this one",
+  "어제 말한 거 어떻게 됐어?":"What happened to what I asked yesterday?",
+  "전부 밀어내고 전부 정리한다":"Shoves everything away and clears it all",
+  "주변이 느려지고 계속 닳는다":"Everything near you slows and keeps wearing down",
+  "지금 안 되면 언제 되세요?":"If not now, then when?","텀블러 — 경험치 전부 수집":"Tumbler — all XP collected",
+  "한 구역을 한 대도 안 맞고":"Clear a zone without taking a hit","혹시 파일 어디 있는지...":"Do you know where the file is...",
+  "WASD · 마우스 드래그":"WASD · mouse drag","경험치 수집 범위 +30%":"XP pickup radius +30%",
+  "곁에 붙어 체력을 채워준다":"Sticks by you and tops up your health",
+  "비상금 — 다시 일어납니다":"Emergency stash — you get back up","여러분이 회사의 주인입니다":"You are the owners of this company",
+  "오늘 절반이 안 나왔습니다":"Half the floor didn't come in","요즘 젊은 사람들은 말이야":"Young people these days...",
+  "위험하면 알아서 빠져나간다":"Pulls you out automatically when it gets dangerous",
+  "이거 어디다 올리면 돼요?":"Where do I upload this?","적에서 적으로 옮겨 붙는다":"Jumps from target to target",
+  "전부 한 방향으로 나갑니다":"Everyone heads the same way","피해 +9, 회복 +3.5":"Damage +9, heal +3.5",
+  "한 판에 1,500명 처리":"Clear 1,500 in one run","가장 가까운 적을 찍는다":"Stamps the nearest target",
+  "그건 제 업무가 아닌데요":"That's not my job","내가 언제 그렇게 말했나":"When did I ever say that?",
+  "다 같이 고생하는 겁니다":"We're all struggling together","따라다니며 같이 처리한다":"Follows you and clears work alongside you",
+  "반려 도장 시작 Lv +":"Rejection Stamp starting Lv +","받는 만큼만 — 미결 −":"Paid-for only — backlog −",
+  "범위 +10, 감속 강화":"Radius +10, stronger slow","분. 끝내고 나왔습니다.":"m. Finished and walked out.",
+  "쓰러져도 한 번 일어난다":"Get back up once after falling","오늘은 다 같이 느립니다":"Everyone's slow today",
+  "자료를 더 내라고 합니다":"They want more documents","저희가 손해 보는 겁니다":"We're the ones losing money here",
+  "적을 쫓아가는 유도 메일":"A homing mail that chases them down",
+  "정문 — 회전문을 밉니다":"Main entrance — push the revolving door","혹시 놓치신 건 아니죠?":"You didn't miss it, did you?",
+  " 처리 — 미결 45건":" cleared — backlog 45","계단으로 다녀야 합니다":"Stairs only",
+  "교섭으로 하루를 끝내기":"End the day through bargaining","나 때는 주말도 나왔어":"In my day we came in on weekends",
+  "내일 아침에 필요한데요":"I need it tomorrow morning","누가 간식을 돌렸습니다":"Someone brought snacks around",
+  "다들 탕비실로 갔습니다":"Everyone went to the pantry","믹스커피 — 체력 회복":"Instant coffee — health restored",
+  "방향이 틀렸어 처음부터":"Wrong direction, from the start","사방으로 서류를 뿌린다":"Scatters paperwork in all directions",
+  "소리 켜기/끄기 (M)":"Sound on/off (M)","아무도 일을 못 합니다":"Nobody can work","오늘 저녁에 한잔 어때":"Drinks tonight?",
+  "왜 이렇게 오래 걸려?":"Why is this taking so long?","이거 오늘 안에 되죠?":"You can finish this today, right?",
+  "이거 하는 김에 저것도":"While you're at it, do that too","이걸 보고라고 가져왔나":"You call this a report?",
+  "이번만 좀 부탁드립니다":"Just this once, please","작년 것도 같이 주세요":"Last year's too, please",
+  "작년 목표 기억하시죠?":"You remember last year's goals?","장수 +2, 피해 +5":"Sheets +2, damage +5",
+  "저한테 물어보셔도...":"Don't ask me...","제가 해도 되는 건가요":"Am I allowed to do this?",
+  "지금이 중요한 시기예요":"This is a critical period","지나간 자리마다 남는다":"Leaves a trail wherever you walk",
+  "피해 +8, 장수 +1":"Damage +8, sheets +1","한 판에 100명 처리":"Clear 100 in one run",
+  "한 판에 500명 처리":"Clear 500 in one run"," · 정답은 없습니다":" · there is no right answer",
+  " — 표정이 바뀝니다":" — their expression changes","18:00 — 아직 ":"18:00 — still ",
+  "18:00 전에 정문":"Main entrance before 18:00","가족 같은 회사잖아요":"We're like a family here",
+  "결재선이 이게 맞나요":"Is this the right approval chain?","경험치 획득 +18%":"XP gain +18%",
+  "그건 위에 여쭤보셔야":"You'd have to ask upstairs","근거 자료 주시겠어요":"Supporting documents, please",
+  "김대리님 어디 가세요":"Where are you going?","내가 자네 나이 때는":"When I was your age",
+  "내일 아침까지 가져와":"On my desk by morning","다음에 꼭 갚겠습니다":"I'll make it up to you",
+  "동료 평가가 좀...":"Your peer reviews are... hm","로봇이 멈춰 섰습니다":"The bots have stopped",
+  "서명만 하시면 됩니다":"Just sign here","선배 지금 바쁘세요?":"Are you busy right now?",
+  "소명해 주셔야 합니다":"You'll need to explain this","오늘 점수 · 최고 ":"Today's score · best ",
+  "오늘 점수 — 신기록":"Today's score — new record","오늘까지만 부탁드려요":"Just by end of day, please",
+  "위에서 그렇게 하래요":"Orders from above","위에서 일찍 가랍니다":"Upstairs says go home early",
+  "이 서류 언제 거죠?":"How old is this document?","이 항목은 왜 비었죠":"Why is this field blank?",
+  "이거 기록에 남습니다":"This goes on the record","이거 오늘까지 되죠?":"This is done today, right?",
+  "전달만 드리는 겁니다":"I'm just passing it along","제가 아직 잘 몰라서":"I'm still not sure how",
+  "주기적으로 3초 무적":"3 seconds of invulnerability, periodically","퇴근 중 — 버티세요":"Clocking out — hold on",
+  "한 판 10,000점":"10,000 points in one run"," 승진 — 미결 +":" promotion — backlog +",
+  "% · 구역 몫 +":"% · zone quota +","개 구역 남았습니다":" zones left","공격 범위 +14%":"Attack radius +14%",
+  "공격 속도 +10%":"Attack speed +10%","금방 끝나는 거예요":"It'll only take a minute",
+  "내가 하면 5분인데":"Take me five minutes","내년엔 다를 겁니다":"Next year will be different",
+  "내일 늦게 와도 돼":"Come in late tomorrow","내일 또 듣습니다.":"You'll hear it again tomorrow.",
+  "다들 그렇게 하세요":"Everyone else does","단가 좀 맞춰주시면":"If you could match this price",
+  "메일 보내드렸는데요":"I sent you the email","무기 하나를 끝까지":"Max out one weapon","미결 유입 −12%":"Incoming backlog −12%",
+  "분째</small>":"m</small>","사장님이 꼭 뵙재요":"My boss insists on meeting you",
+  "숫자가 이게 맞아?":"Are these numbers right?","승진을 한 번 거절":"Refuse a promotion once",
+  "야 우리 팀 막내가":"Hey, the youngest on the team—","야근 <small>":"Overtime <small>","어려운 거 아니잖아":"It's not hard",
+  "에서 쓰러졌습니다.":" — you collapsed.","우리 팀은 가족이야":"This team is a family",
+  "이것만 보고 가시죠":"Just look at this before you go","이동 속도 +12%":"Move speed +12%",
+  "이제 안 들립니다.":"You don't hear it anymore.","인수인계 상자 — ":"Handover box — ","입니다. 야근입니다":". That's overtime",
+  "자네 요즘 왜 그래":"What's gotten into you lately?","잠깐이면 되는 거야":"It'll only take a moment",
+  "전 직원 회의 소집":"All-Hands Called","제가 급해서 그런데":"Sorry, I'm in a rush","조금만 더 버팁시다":"Hold on a little longer",
+  "주인의식을 가지세요":"Take ownership","참조 걸어드렸습니다":"I put you on CC","화면 드래그로 이동":"Drag to move",
+  "건드리지 마세요!":"Do not touch!","계약서 검토만 좀":"Just review the contract","규정대로 하셔야죠":"Follow the procedure",
+  "급한 건이라서요!":"It's urgent!","다들 급해졌습니다":"Everyone's in a hurry now","담당이 바뀌었어요":"The owner changed",
+  "리마인드 드립니다":"Just a reminder","받는 만큼만 한다":"Do only what you're paid for","보고서 다시 써와":"Rewrite the report",
+  "분위기 좀 맞춰라":"Read the room","샘플 놓고 갈게요":"I'll leave a sample","연쇄 +1 (총 ":"Chain +1 (total ",
+  "읽으셨다고 떠서요":"It shows as read","저도 몰라요 저도":"I don't know either","저도 받은 거예요":"I just got handed it too",
+  "조건이 맞았습니다":"The conditions are met","죄송한데 이것만요":"Sorry, just this one thing",
+  "죄송한데 잠깐만요":"Sorry, just a second","초</small>":"s</small>","최대 체력 +25":"Max health +25",
+  "탕비실 · 복사실":"Pantry · Copy Room","퇴근이 밀렸습니다":"Your exit got pushed back","평가 시즌이라서요":"It's review season",
+  "확인 부탁드립니다":"Please confirm","회사가 어렵습니다":"Times are hard for the company","회의실 예약 — ":"Room booked — ",
+  "150연속 처리":"150-hit combo","2차 가자 2차":"Second round, let's go","5분이면 됩니다":"Five minutes, tops",
+  "가장 빠른 퇴근":"Fastest exit","경험치 획득 +":"XP gain +","내가 쏠게 앉아":"I'm buying, sit down",
+  "대리 이상 승진":"Promote to Senior or above","도움말 · 소리":"Help · Sound","동시 발송 +1":"Simultaneous sends +1",
+  "면담 좀 할까요":"Let's have a chat","야근 끝에 정문":"Reach the exit after overtime","언제쯤 될까요?":"Any idea when?",
+  "엘리베이터 고장":"Elevator Broken","열정이 있어야지":"Where's your passion?","원본 있으신가요":"Do you have the original?",
+  "이게 최선인가?":"Is this your best?","이번만 좀 해줘":"Just this once","자리에서 쓰러짐":"Collapsed at your desk",
+  "조기 퇴근 권장":"Early Leave Encouraged","출입구 · 로비":"Entrance · Lobby","타격·처치·획득":"Hits, clears, pickups",
+  "하나를 고르세요":"Pick one","한 번에 +1장":"+1 letter per throw","한 장으로 줄여":"Cut it to one page",
+  "회사 방침입니다":"Company policy","회신이 없으셔서":"You haven't replied"," 해금</b>":" unlocked</b>",
+  "50연속 처리":"50-hit combo","</b> 합류":"</b> joins","WASD 이동":"WASD to move","공격 속도 +":"Attack speed +",
+  "그래도 끝냈다":"Finished Anyway","대표이사 처리":"Clear the CEO","동시에 +1개":"+1 at once","동시에 +1대":"+1 unit at once",
+  "동시에 +1명":"+1 person at once","동시에 +1발":"+1 shot at once","동시에 +1장":"+1 card at once",
+  "딱 하나만요!":"Just this one!","벌써 가려고?":"You're leaving already?","벌써 가세요?":"Leaving already?",
+  "소회의실 복도":"Meeting Room Hall","수집 범위 +":"Pickup radius +","승진을 받는다":"Accept the promotion",
+  "시작 레벨 +":"Starting level +","시키면 좀 해":"Just do what you're told","식사라도 한번":"Let's grab a meal sometime",
+  "아직 출근 전":"Not clocked in yet","오늘 미결 +":"Today's backlog +","오늘 미결 −":"Today's backlog −",
+  "오늘 해낸 것":"What you did today","오늘까지랍니다":"It's due today now","을 대체합니다":" is replaced",
+  "이동 속도 +":"Move speed +","인수인계 상자":"Handover Box","잠깐 얘기 좀":"Got a minute?","줄지어 옵니다":"They come in a line",
+  "최대 체력 +":"Max health +","커피머신 고장":"Coffee Machine Broken","케이터링 도착":"Catering Arrived",
+  "한 잔만 더!":"One more round!"," — 미결 ":" — backlog ","9구역 도달":"Reach zone 9",
+  "결론이 뭔데":"What's the conclusion?","다음 이야기":"Next chapter","도장 Lv+":"Stamp Lv+","마감 앞당김":"Deadline Moved Up",
+  "마지막 구성":"Final loadout","미끄럼 주의":"Wet Floor Sign","받는 만큼만":"Paid-For Only",
+  "본부장 처리":"Clear the Division Head","붙잡혔습니다":"You got grabbed","사내 메신저":"Company Messenger",
+  "사직서 — ":"Resignation letter — ","생일 케이크":"Birthday Cake","시작 Lv+":"Start Lv+","여기 서세요":"Stand here",
+  "인터넷 장애":"Network Outage","임원층 복도":"Executive Floor","자동화 로봇":"Automation Bot","자리 지키기":"Holding Your Seat",
+  "전체 답장 ":"Reply All ","점검단 처리":"Clear the Audit Team","점심시간 끝":"Lunch is over","주 52시간":"52-Hour Week",
+  "지하 주차장":"Parking Garage","카페인 중독":"Caffeine Overload","택시비 줄게":"I'll cover your cab","피해 +10":"Damage +10",
+  "피해 +11":"Damage +11","피해 +13":"Damage +13","한 명 처리":"Clear one person","해금됨 — ":"Unlocked — ",
+  "화면 흔들림":"Screen shake","회의실 예약":"Room Booking"," (진화)":" (evolution)"," · 격노":" · enraged",
+  " — 간섭":" — meddling"," — 진화":" — evolution","감사 예고":"Audit Notice","경험치 +":"XP +",
+  "근로계약서":"Employment Contract","누적 피해":"Total damage","단체 연차":"Group Leave","대리 명함":"Senior's Card",
+  "대표이사실":"CEO's Office","둘러쌉니다":"They surround you","마지막 문":"The Last Door","반려 도장":"Rejection Stamp",
+  "소리 끄기":"Sound off","소리 켜기":"Sound on","소방 훈련":"Fire Drill","손이 빠름":"Quick Hands","쏟은 커피":"Spilled Coffee",
+  "야근 퇴근":"Left after overtime","엘리베이터":"Elevator","연속 처리":" combo","용지 걸림":"Paper Jam","잠깐만요!":"Wait!",
+  "전사 공지":"All-Staff Notice","전산 점검":"System Maintenance","전체 답장":"Reply All","점검 통과":"Audit Passed",
+  "점심 전에":"Before Lunch","정시 퇴근":"On-Time Departure","지금 구성":"Current Loadout","진화 — ":"Evolution — ",
+  "참조 메일":"CC Mail","천오백 건":"Fifteen Hundred","체력 관리":"Health Management","최고 도달":"Furthest zone",
+  "최고 연속":"Best combo","최고 점수":"Best score","최고 직급":"Highest rank","최다 처리":"Most cleared",
+  "퇴근 시계":"Clock-Out Watch","퇴사 — ":"Quit — ","편한 구두":"Comfortable Shoes","편한 신발":"Comfortable Shoes",
+  "피해 +8":"Damage +8","피해 +9":"Damage +9","회의 소집":"Called Meeting","  외 ":" and ","10일차":"Day 10",
+  "13일차":"Day 13","15일차":"Day 15","간섭 −":"Meddling −","곧 퇴근":"Almost out","공속 +":"Atk spd +",
+  "교섭 중":"In negotiation","구내식당":"Cafeteria","근무 중":"On the clock","근태기록":"Attendance Log","내 자리":"Your Desk",
+  "노동조합":"Labor Union","능력 +":"Power +","단 1회":"Once only","단체교섭":"Collective Bargaining",
+  "단체협약":"Collective Agreement","대체율 ":"Replacement ","대표이사":"CEO","대회의실":"Main Conference Room",
+  "동시에 ":"at once: ","명 · ":" · ","명 묶임":" locked in","명 정리":" cleared","몰아치기":"Rush","믹스커피":"Instant Coffee",
+  "발표 중":"Presenting","법인카드":"Corporate Card","보고 끝":"Report Done","속도 +":"Speed +","수집 +":"Pickup +",
+  "쓸어담기":"Sweep","야근 중":"During overtime","오백 건":"Five Hundred","일시정지":"Paused","재택근무":"Work From Home",
+  "적용 중":"Active","조합원 ":"Union members ","첫 결재":"First Approval","첫 출근":"First Day","체력 +":"Health +",
+  "커피머신":"Coffee Machine","퇴근 중":"Clocking out"," 구역":" Zone"," 등장":" appears","2일차":"Day 2","3일차":"Day 3",
+  "4일차":"Day 4","6일차":"Day 6","8일차":"Day 8","경력 ":"Career ","고객사":"Client","긴 팔":"Long Arms",
+  "노조원":"Union Member","노트북":"Laptop","대체율":"Replacement","레벨 ":"Level ","만 점":"Ten Thousand","명 ·":" ·",
+  "무결점":"Flawless","미결 ":"Backlog ","배경음":"Music","백 건":"One Hundred","보상 ":"Reward ","복사기":"Copier",
+  "복합기":"Multifunction Printer","본부장":"Division Head","비상금":"Emergency Stash","빈 칸":"Empty slots",
+  "사무실":"The Office","사직서":"Resignation Letter","승진 ":"Promotion ","시간 ":"h ","야근 ":"Overtime ",
+  "이어폰":"Earbuds","인사팀":"HR","일 뒤":" days later","점검단":"Audit Team","정수기":"Water Cooler","처리 ":"Cleared ",
+  "최고 ":"Best ","출구 ":"Exit ","텀블러":"Tumbler","파티션":"Partition","협력사":"Vendor","회식조":"Drinking Crew",
+  "효과음":"Sound effects","과장":"Manager","내일":"Tomorrow","눈치":"Reading the Room","대리":"Senior","대체":"Replaced",
+  "동기":"Peer","명함":"Business Card","미결":"Backlog","반차":"Half Day","부장":"General Mgr","사원":"Staff",
+  "설정":"Settings","숙련":"Mastery","승진":"Promotion","신규":"New","신입":"New Hire","야근":"Overtime",
+  "업적":"Achievements","연차":"Annual Leave","완료":"Done","요령":"Know-How","의자":"Chair","이사":"Director",
+  "인턴":"Intern","전결":"Final Authority","정장":"Suit","조작":"Controls","주임":"Associate","직급":"Rank",
+  "진화":"Evolution","차장":"Deputy GM","책상":"Desk","처리":"Cleared","체력":"Health","퇴사":"Quit","화분":"Plant",
+  "후임":"Junior","개":"","건":"","명":"","짬":"Seniority","회":" times",
+
+  "복사기는 사방으로 서류를 뿌리고, 쏟은 커피는 바닥에 장판을 깝니다.\n        조합해서 내 방식을 만듭니다.":"The copier sprays paper everywhere; spilled coffee lays a puddle. Combine them into your own style.",
+  "오늘 누구 때문에 힘드셨나요? 적어두면 상사들이 그 말을 합니다. 비워두면 게임이 알아서 고릅니다.":"Who made your day hard? Write it and your bosses will say it. Leave it blank and the game picks for you.",
+  "Abstraction · Kenney — CC0 1.0 (상업 이용 가능)":"Abstraction · Kenney — CC0 1.0 (commercial use permitted)",
+  "하루를 버틸 때마다 경력이 쌓입니다. 경력은 영구히 남습니다.":"Every day you survive builds career points. They stay with you forever.",
+  "18:00까지 회사 건물을 뚫고 정문으로 나가는 게임입니다.":"Cut through the office building and reach the main entrance by 18:00.",
+  "이 줄어듭니다.\n        0이 되면 출구가 나타납니다.":"goes down. At zero, the exit appears.",
+  "더 볼 것이 없습니다. 이제 기록을 깨는 일만 남았습니다.":"Nothing left to see. All that remains is beating your records.",
+  "공격은 자동입니다. 사장님이 하는 건 이동뿐입니다.":"Attacks are automatic. All you do is move.",
+  "지하주차장에서 출근해 아홉 개 구역을 지납니다.":"You clock in at the parking garage and pass through nine zones.",
+  "이겨야 하는 건 남이 아니라 어제의 나입니다.":"The one to beat isn't someone else — it's yesterday's you.",
+  "공격은 자동 · 음소거 M · 일시정지 P":"Attacks are automatic · Mute M · Pause P",
+  "레벨업 카드가 전투 방식을 정합니다":"Level-up cards decide how you fight",
+  "구역의 일을 끝내면 문이 열립니다":"Finish the zone's work and the door opens",
+  "몰려오는 사람들을 처리하면":"Clear the people coming at you and your","화면 드래그 · WASD":"Drag · WASD",
+  "되돌릴 수 없습니다":"Cannot be undone","화면 드래그로 이동":"Drag to move","· 공격 자동 ·":"· auto-attack ·",
+  "움직이기만 하세요":"Just move","잘해야 열립니다":"earned, not given","WASD 이동":"WASD to move","{0}번 출근":"{0} runs",
+  "{0}일 뒤":"in {0} days","← 돌아가기":"← Back","경력 {0}":"Career {0}","기록 초기화":"Erase records",
+  "보유 {0}":"Balance {0}","오늘의 경력":"Career earned today","{0}일차":"Day {0}","내 한 줄":"Your line",
+  "다시 출근":"Clock In Again","보유 경력":"Career balance","이야기 끝":"End of story","잠깐 멈춤":"Paused","{0}회":"{0}×",
+  "계속하기":"Resume","돌아가기":"Back","로 멈춤":"to pause","자기계발":"Self-Development"," 해금":" unlocked","음소거":"mute",
+  "기록":"Records","내일":"Tomorrow","또는":"or","레벨":"Level","소리":"Sound","출근":"Clock In",
+  "<b>{0}</b> 합류":"<b>{0}</b> joins","<b>{0}일</b> 뒤":"<b>{0}</b> days later",
+  "이야기를 끝까지 봤습니다":"You've seen the story through","반려 도장 시작 Lv":"Rejection Stamp starting Lv",
+  "이거 오늘 안에 되죠":"You can finish this today, right","공격 자동":"auto-attack","오늘 점수":"Today's score","최고":"Best",
+  "반려 도장 시작":"Rejection Stamp starting","조작 · 소리":"Controls · Sound",
+  "바꾸면 화면을 다시 읽습니다":"Changing this reloads the screen","언어 · Language":"Language · 언어",
+} };
+/* 원문 그대로 돌려주는 게 기본. 한국어면 표를 아예 안 본다.
+
+   숫자가 섞인 문장이 문제였다 — "최대 체력 +90"은 90이 매번 달라서
+   표에 통째로 넣을 수가 없다. 그래서 통째로 못 찾으면 아는 조각을
+   긴 것부터 갈아끼운다("최대 체력 +" → "Max health +"). 한 번 만든 답은
+   캐시에 남으니 매 프레임 비용은 0이다. */
+let _tSeg=null;
+const _tCache=new Map();
+/* 한글 덩어리 하나를 통째로 찾는다. 조각을 아무 데나 끼워 넣으면
+   「지하주차장」의 "차장"이 Deputy GM으로 바뀌는 사고가 난다 —
+   실제로 검사에서 그렇게 났다. 그래서 덩어리 경계가 맞을 때만 바꾼다. */
+const _trim = t => t.replace(/^[\s“"'(\[]+/,"").replace(/[\s+\-−·—.?!,:;”"')\]]+$/,"");
+function _segTable(d){
+  const m=Object.create(null);
+  for(const k in d){ const a=_trim(k); if(a && !(a in m)) m[a]=_trim(d[k]); }
+  return m;
+}
+function T(s){
+  if(LANG==="ko" || s==null) return s;
+  const d=L10N[LANG]; if(!d) return s;
+  const v=d[s]; if(v!==undefined) return v;
+  if(typeof s!=="string" || !/[가-힣]/.test(s)) return s;
+  const hit=_tCache.get(s); if(hit!==undefined) return hit;
+  if(!_tSeg) _tSeg=_segTable(d);
+  const r=s.replace(/[가-힣][가-힣 ·]*[가-힣]|[가-힣]/g, seg=>{
+    const t=_tSeg[seg]; if(t!==undefined) return t;
+    const t2=_tSeg[seg.trim()]; return t2!==undefined ? t2 : seg;
+  });
+  _tCache.set(s,r); return r;
+}
+/* 자리표시자가 있는 문장 — TF("{0} 구역", 3) */
+function TF(s,...a){
+  let r=T(s);
+  for(let i=0;i<a.length;i++) r=r.split("{"+i+"}").join(a[i]);
+  return r;
+}
+/* 글자 노드만 갈아끼운다. 앞뒤 공백은 지키고, 태그 구조는 안 건드린다. */
+function i18nDOM(root){
+  if(LANG==="ko" || !root) return root;
+  const w=document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  const jobs=[];
+  for(let n=w.nextNode(); n; n=w.nextNode()){
+    const raw=n.nodeValue, t=raw.trim();
+    if(!t || !/[가-힣]/.test(t)) continue;
+    const v=T(t);
+    if(v!==t) jobs.push([n, raw.replace(t,v)]);
+  }
+  for(const [n,v] of jobs) n.nodeValue=v;
+  for(const el of root.querySelectorAll("[aria-label],[placeholder],[title]")){
+    for(const a of ["aria-label","placeholder","title"]){
+      const v=el.getAttribute(a); if(v && /[가-힣]/.test(v)) el.setAttribute(a, T(v));
+    }
+  }
+  return root;
+}
+/* innerHTML 대신 이걸 쓰면 번역이 자동으로 따라온다 */
+function setHTML(el, html){ if(!el) return el; el.innerHTML=html; return i18nDOM(el); }
+/* 자료표를 통째로 갈아끼운다. 부팅 때 한 번만 — 그러면 그리는 쪽 코드는
+   T()를 몰라도 된다. 함수로 된 설명(desc:l=>…)은 결과를 감싼다. */
+function localizeTable(tbl, fields){
+  if(LANG==="ko" || !tbl) return;
+  const rows = Array.isArray(tbl) ? tbl : Object.keys(tbl).map(k=>tbl[k]);
+  for(const o of rows){
+    if(!o) continue;
+    for(const f of fields){
+      const v=o[f];
+      if(typeof v==="string") o[f]=T(v);
+      else if(typeof v==="function") o[f]=((fn)=>function(){ return T(fn.apply(this,arguments)); })(v);
+    }
+  }
+}
+function localizeData(){
+  if(LANG==="ko") return;
+  localizeTable(WEAPONS, ["name","desc","up"]);
+  localizeTable(EVOLVED, ["name","desc","up"]);
+  localizeTable(PERKS,   ["name","desc"]);
+  localizeTable(E,       ["name"]);
+  localizeTable(ZONES,   ["name","story"]);
+  localizeTable(RND,     ["name","desc"]);
+  localizeTable(DROPS,   ["name"]);
+  localizeTable(CAREER,  ["name","desc"]);
+  localizeTable(DAYS,    ["head","line","unlockName"]);
+  localizeTable(ACH,     ["name","d"]);
+  localizeTable(BOSSES,  ["msg"]);
+  for(const k in RANKS) RANKS[k]=T(RANKS[k]);
+  for(const k in SAY) SAY[k]=SAY[k].map(T);
+  for(const k in AFTER) if(typeof AFTER[k]==="string") AFTER[k]=T(AFTER[k]);
+}
 /* 소리 — 산 음원이 있으면 그걸 쓰고, 없으면 합성음.
    음원 이름은 효과음 이름 그대로다(hit·kill·killBoss·coin·levelup…). */
 /* 음량 — 파일들을 진피크 −3dBTP로 먼저 맞췄다(원래 평균이 26dB,
@@ -3237,8 +3608,8 @@ function drawBargain(g){
   ctx.strokeRect(x-w/2, y, w, h);
   const n=g.allies.filter(a=>a.id==="unionist").length;
   ctx.fillStyle="#57d98a"; ctx.font="700 13px 'Gothic A1',system-ui";
-  ctx.textAlign="left";  ctx.fillText("단체교섭", x-w/2, y-7);
-  ctx.textAlign="right"; ctx.fillText("조합원 "+n+"명 · "+Math.round(g.barP)+"%", x+w/2, y-7);
+  ctx.textAlign="left";  ctx.fillText(T("단체교섭"), x-w/2, y-7);
+  ctx.textAlign="right"; ctx.fillText(TF("조합원 {0}명", n)+" · "+Math.round(g.barP)+"%", x+w/2, y-7);
   ctx.restore();
 }
 
@@ -3793,7 +4164,7 @@ function drawSay(g,f,sx,sy){
   ctx.moveTo(sx-6,y+h-1); ctx.lineTo(sx,y+h+7); ctx.lineTo(sx+6,y+h-1);
   ctx.closePath(); ctx.fill();
   ctx.fillStyle="#171a21"; ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillText(f.say, sx, y+h/2+1, w-16);
+  ctx.fillText(T(f.say), sx, y+h/2+1, w-16);
   ctx.restore();
 }
 
@@ -4918,6 +5289,7 @@ function step(g,dt){
   if(TOUCH.on){ ix=TOUCH.dx; iy=TOUCH.dy; }      // 터치가 있으면 터치 우선
   P.x+=ix*P.spd*(g.rndSlow||1)*dt; P.y+=iy*P.spd*(g.rndSlow||1)*dt;
   if(ix) P.face=ix<0?-1:1;
+  P.vx=ix; P.vy=iy;                       // 발밑 방향 쐐기가 읽는다
   P.moving = !!(ix||iy);
   if(P.moving) P.walk += dt*7.5;
   { const pdx=P.x-P.px0, pdy=P.y-P.py0, pd=Math.hypot(pdx,pdy);
@@ -5232,7 +5604,8 @@ function revive(g){
   S("nuke"); flash(g,"비상금 — 다시 일어납니다");
   return true;
 }
-function flash(g,msg){ g.toast=msg; g.toastT=2.6; }
+/* 안내 문구 — 만드는 자리가 서른 곳이라 여기서 한 번에 번역한다 */
+function flash(g,msg){ g.toast=T(msg); g.toastT=2.6; }
 
 /* ── 일시정지 ──────────────────────────────────────────────────
    모바일에서 전화가 오면, PC에서 누가 부르면 멈출 방법이 있어야 한다.
@@ -5247,7 +5620,7 @@ function togglePause(){
 }
 function renderPause(g){
   const Z=zoneOf(g);
-  $("#card").innerHTML=`
+  setHTML($("#card"), `
     <div id="pausecard">
       <h1 class="ttl" style="font-size:30px;margin:0 0 6px">잠깐 멈춤</h1>
       <div class="sub" style="margin:0 0 4px">${clockStr(g.t)} · ${esc(Z.name)} (${g.zone+1}/${ZONES.length})</div>
@@ -5260,11 +5633,11 @@ function renderPause(g){
       ${loadoutHTML(g,"지금 구성")}
       <button class="primary" id="resume" style="margin-top:18px">계속하기</button>
       <div class="pr">
-        <span style="font-size:12px;color:var(--dim)">${isTouch?"화면 드래그로 이동":"WASD 이동"}
-          · 공격 자동 · <b style="color:var(--ink)">P</b> 또는 <b style="color:var(--ink)">Esc</b>로 멈춤
-          · <b style="color:var(--ink)">M</b> 음소거</span>
+        <span style="font-size:12px;color:var(--dim)">${isTouch?T("화면 드래그로 이동"):T("WASD 이동")}
+          · ${T("공격 자동")} · <b style="color:var(--ink)">P</b> ${T("또는")} <b style="color:var(--ink)">Esc</b>${T("로 멈춤")}
+          · <b style="color:var(--ink)">M</b> ${T("음소거")}</span>
       </div>
-    </div>`;
+    </div>`);
   $("#resume").onclick=()=>{ S("resume"); togglePause(); };
   openOverlay();
 }
@@ -5385,7 +5758,7 @@ function baked(kind,size,action,fi){
        처음 1.6배로 두니 3.6%밖에 안 돼서 있으나 마나였다.
        크기에 비례시키되 상한을 둔다 — 보스에 너무 두꺼우면 뭉개진다. */
     const w=c.width, h=c.height,
-          R=Math.max(2, Math.min(7, Math.round(size*0.055*BAKE)));
+          R=Math.max(2, Math.min(9, Math.round(size*(kind==="hero"?0.070:0.055)*BAKE)));
     const o=document.createElement("canvas"); o.width=w; o.height=h;
     const ox=o.getContext("2d");
     for(let i=0;i<8;i++){
@@ -5393,7 +5766,11 @@ function baked(kind,size,action,fi){
       ox.drawImage(c, Math.cos(a2)*R, Math.sin(a2)*R);
     }
     ox.globalCompositeOperation="source-in";
-    ox.fillStyle="#0a0d13"; ox.fillRect(0,0,w,h);      // 바닥보다 어두운 테두리
+    /* 테두리 색 — 적은 바닥보다 어둡게, 나는 밝게.
+       적 400명이 전부 검은 윤곽인 화면에서 나만 밝은 윤곽이면
+       색을 못 구별하는 사람도 「저 밝은 게 나」로 읽는다. */
+    ox.fillStyle = kind==="hero" ? "#ffd978" : "#0a0d13";
+    ox.fillRect(0,0,w,h);
     x.setTransform(1,0,0,1,0,0);
     x.globalCompositeOperation="destination-over";
     x.drawImage(o,0,0);
@@ -5497,7 +5874,7 @@ function drawEvent(g,X,Y){
     ctx.setLineDash([9,7]); ctx.beginPath(); ctx.ellipse(x,y,74,42,0,0,7); ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle="rgba(87,217,138,.9)"; ctx.font="700 13px 'Gothic A1',system-ui";
-    ctx.textAlign="center"; ctx.fillText("내 자리", x, y-50);
+    ctx.textAlign="center"; ctx.fillText(T("내 자리"), x, y-50);
   }
   if(ev==="present" && g.podSet){                    // 발표 자리
     const x=X(g.podX), y=Y(g.podY);
@@ -5510,7 +5887,7 @@ function drawEvent(g,X,Y){
     ctx.fillStyle="#e9ecf2"; ctx.fillRect(x-59,y-93,118,20);
     ctx.fillStyle=on?"rgba(245,196,81,.95)":"rgba(245,196,81,.6)";
     ctx.font="700 13px 'Gothic A1',system-ui"; ctx.textAlign="center";
-    ctx.fillText(on?"발표 중":"여기 서세요", x, y-104);
+    ctx.fillText(on?T("발표 중"):T("여기 서세요"), x, y-104);
   }
   if(ev==="printer" && g.prnSet && !g.prnDone){      // 고장난 복합기
     const x=X(g.prnX), y=Y(g.prnY);
@@ -5522,7 +5899,7 @@ function drawEvent(g,X,Y){
     ctx.fillStyle="#f2f5fa"; ctx.fillRect(x-13,y-20,26,12);
     ctx.fillStyle=pulse>0.5?"#ff6b6b":"#8a3b3b"; ctx.fillRect(x-6,y-2,12,5);
     ctx.fillStyle="rgba(255,107,107,.9)"; ctx.font="700 13px 'Gothic A1',system-ui";
-    ctx.textAlign="center"; ctx.fillText("용지 걸림", x, y-38);
+    ctx.textAlign="center"; ctx.fillText(T("용지 걸림"), x, y-38);
   }
   if(g.ambWarn>0){                                 // 기습 예고
     const x=X(g.ambX), y=Y(g.ambY);
@@ -5556,7 +5933,7 @@ function drawClients(g,X,Y){
     ctx.save();
     ctx.fillStyle="rgba(110,180,255,"+blink+")";
     ctx.font="700 12px 'Gothic A1',system-ui"; ctx.textAlign="center";
-    ctx.fillText(near?"건드리지 마세요!":"고객사", x, y-34);
+    ctx.fillText(near?T("건드리지 마세요!"):T("고객사"), x, y-34);
     ctx.restore();
   }
 }
@@ -5588,7 +5965,7 @@ function drawGate(g,X,Y){
     ctx.fillStyle="#57d98a"; ctx.fillRect(x-w/2,gy,w*Math.min(1,g.gate.p),h);
     ctx.strokeStyle="#57d98a"; ctx.lineWidth=1.5; ctx.strokeRect(x-w/2,gy,w,h);
     ctx.fillStyle="#57d98a"; ctx.font="700 12px 'Gothic A1',system-ui"; ctx.textAlign="center";
-    ctx.fillText("퇴근 중", x, gy-6);
+    ctx.fillText(T("퇴근 중"), x, gy-6);
   }
   // 위로 흐르는 화살표
   ctx.fillStyle="rgba(87,217,138,"+(0.55+pulse*0.4)+")";
@@ -5619,7 +5996,7 @@ function drawGateArrow(g){
   ctx.fillStyle="rgba(87,217,138,.92)";
   ctx.font="700 13px 'Gothic A1',system-ui,sans-serif";
   ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillText("출구 "+dist, ax-dx*26, ay-dy*26);
+  ctx.fillText(T("출구 ")+dist, ax-dx*26, ay-dy*26);
   ctx.restore();
 }
 
@@ -5708,21 +6085,71 @@ function drawAllies(g,X,Y){
   }
 }
 
+/* ── 주인공을 화면에서 찾을 수 있게 ──────────────────────────
+   적이 400명까지 차는 화면에서 주인공이 적과 체형·크기·외곽선이
+   같으면 자기를 못 찾는다. 실제로 한 판 돌려 보니 인파 한가운데선
+   내가 어디 있는지 모르는 구간이 생겼다.
+
+   2D 안에서 네 겹으로 갈랐다 — 3D는 쓰지 않기로 했으니까.
+     1) 크기   : 66 (흔한 적 52, 보스 76) — 보스 다음으로 크다
+     2) 외곽선 : 나만 밝은 금색, 적은 전부 어두운 색 (baked 안에서)
+     3) 발밑   : 도는 점선 링 + 진행 방향 쐐기
+     4) 머리 위: 붐빌 때만 뜨는 화살표 — 한산할 땐 화면을 안 어지럽힌다 */
+const HERO_SIZE = 66;
+/* 머리 위 화살표 — 항상 띄우면 화면이 어지럽고, 없으면 인파에서 나를 잃는다.
+   그래서 반경 90px 안에 적이 6명 넘게 몰렸을 때만 뜬다. 붐빌수록 진해진다. */
+function drawHeroMark(g,sx,sy){
+  let n=0;
+  for(const f of g.foes){
+    if(E[f.kind].prop) continue;
+    if(Math.abs(f.x-g.P.x)<90 && Math.abs(f.y-g.P.y)<90){ n++; if(n>14) break; }
+  }
+  if(n<6) return;
+  const a=clamp((n-6)/8,0,1)*0.85;
+  const bob=Math.sin(g.t*4.2)*2.5;
+  const y=sy-52+bob;
+  ctx.save();
+  ctx.globalAlpha=a;
+  ctx.fillStyle="#ffd978";
+  ctx.strokeStyle="rgba(10,13,19,.8)"; ctx.lineWidth=2.5; ctx.lineJoin="round";
+  ctx.beginPath(); ctx.moveTo(sx,y+9); ctx.lineTo(sx-7,y-3); ctx.lineTo(sx+7,y-3);
+  ctx.closePath(); ctx.stroke(); ctx.fill();
+  ctx.restore();
+}
 function drawPlayer(g,sx,sy){
   const P=g.P;
   // 바닥 그림자 — 회전/반전 밖에서 그린다
   ctx.save();
   ctx.fillStyle="rgba(0,0,0,.45)";
-  ctx.beginPath(); ctx.ellipse(sx,sy+19,14,5,0,0,7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(sx,sy+22,17,6,0,0,7); ctx.fill();
   ctx.restore();
-  /* 발밑 표식 — 적 400명 사이에서 내가 어디 있는지 한눈에 찾으려면
-     체형만으로는 부족하다. 얇은 링 하나면 충분하고, 색은 노랑(내 편) 고정. */
+  /* 발밑 표식 */
   ctx.save();
-  ctx.strokeStyle="rgba(245,196,81,.55)"; ctx.lineWidth=2;
-  ctx.beginPath(); ctx.ellipse(sx,sy+19,16.5,6,0,0,7); ctx.stroke();
-  ctx.strokeStyle="rgba(245,196,81,.16)"; ctx.lineWidth=5;
-  ctx.beginPath(); ctx.ellipse(sx,sy+19,16.5,6,0,0,7); ctx.stroke();
+  const rr=20, ry=7.4, spin=g.t*0.9;
+  // 번져 나오는 빛 — 어두운 바닥에서 「여기」를 만든다
+  const gl=ctx.createRadialGradient(sx,sy+22,2,sx,sy+22,rr*1.9);
+  gl.addColorStop(0,"rgba(245,196,81,.20)");
+  gl.addColorStop(1,"rgba(245,196,81,0)");
+  ctx.fillStyle=gl;
+  ctx.beginPath(); ctx.ellipse(sx,sy+22,rr*1.9,ry*1.9,0,0,7); ctx.fill();
+  // 도는 점선 링 — 멈춰 있어도 움직여서 눈이 잡는다
+  ctx.translate(sx,sy+22); ctx.scale(1,ry/rr); ctx.rotate(spin);
+  ctx.strokeStyle="rgba(255,217,120,.72)"; ctx.lineWidth=2.2;
+  ctx.setLineDash([7,6]);
+  ctx.beginPath(); ctx.arc(0,0,rr,0,7); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle="rgba(255,217,120,.18)"; ctx.lineWidth=6;
+  ctx.beginPath(); ctx.arc(0,0,rr,0,7); ctx.stroke();
   ctx.restore();
+  // 진행 방향 쐐기 — 어디로 가고 있는지가 링 위에 얹힌다
+  if(P.moving && (P.vx||P.vy)){
+    const a=Math.atan2((P.vy||0)*(ry/rr),(P.vx||0));
+    ctx.save(); ctx.translate(sx,sy+22); ctx.rotate(a);
+    ctx.fillStyle="rgba(255,217,120,.85)";
+    ctx.beginPath(); ctx.moveTo(rr+8,0); ctx.lineTo(rr-1,-5); ctx.lineTo(rr-1,5);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
   const R=window.SPRITES_RANK;
   if(R && R.hero){
     // 동작 선택: 공격 > 피격 > 걷기 > 대기
@@ -5732,8 +6159,9 @@ function drawPlayer(g,sx,sy){
     else if(P.moving){ a="walk"; pr=(P.walk/6.283)%1; }
     ctx.save(); ctx.translate(sx,sy);
     if(P.face>0) ctx.scale(-1,1);
-    if(!blit(ctx,"hero",56,a,pr,0,0)) R.hero(ctx,0,0,56,{a:a,p:pr,t:g.t});
+    if(!blit(ctx,"hero",HERO_SIZE,a,pr,0,0)) R.hero(ctx,0,0,HERO_SIZE,{a:a,p:pr,t:g.t});
     ctx.restore();
+    drawHeroMark(g,sx,sy);
     if(P.hurt>0){                       // 피격 플래시
       ctx.save(); ctx.globalCompositeOperation="lighter";
       ctx.globalAlpha=clamp(P.hurt/.3,0,1)*.6; ctx.fillStyle="#ff6b6b";
@@ -5803,7 +6231,7 @@ function drawBossBar(g){
   ctx.font="800 12px 'Gothic A1','Malgun Gothic',sans-serif";
   ctx.textAlign="left"; ctx.textBaseline="alphabetic";
   ctx.fillStyle=b.rage?"#ff6b6b":"#9ec8ff";
-  ctx.fillText(E[b.kind].name + (b.rage?" · 격노":"") + (bs.length>1?"  외 "+(bs.length-1):""), x, y-6);
+  ctx.fillText(E[b.kind].name + (b.rage?T(" · 격노"):"") + (bs.length>1?T("  외 ")+(bs.length-1):""), x, y-6);
   ctx.textAlign="right";
   ctx.fillStyle="#7d8699";
   ctx.fillText(Math.ceil(b.hp)+" / "+b.maxhp, x+w, y-6);
@@ -5830,7 +6258,7 @@ function drawCombo(g){
   ctx.fillText(g.combo,0,0);
   ctx.font="800 14px 'Gothic A1','Malgun Gothic',sans-serif";
   ctx.fillStyle="rgba(232,236,244,"+(a*.75)+")";
-  ctx.fillText("연속 처리",0,34);
+  ctx.fillText(T("연속 처리"),0,34);
   ctx.restore();
 }
 function drawWorld(g){
@@ -6031,9 +6459,9 @@ function drawWorld(g){
     const a=1-t.t/.45;
     ctx.font=(t.big?"800 17px":"800 12px")+" 'Gothic A1','Malgun Gothic',sans-serif";
     ctx.fillStyle="rgba(11,14,20,"+a+")";
-    ctx.fillText(t.v,X(t.x)+1,Y(t.y)-t.t*34+1);
+    ctx.fillText(T(t.v),X(t.x)+1,Y(t.y)-t.t*34+1);
     ctx.fillStyle=t.big?"rgba(245,196,81,"+a+")":"rgba(255,255,255,"+a+")";
-    ctx.fillText(t.v,X(t.x),Y(t.y)-t.t*34);
+    ctx.fillText(T(t.v),X(t.x),Y(t.y)-t.t*34);
   }
   // 화면 밖 보스 표시
   for(const f of g.foes){ if(!f.boss) continue;
@@ -6278,19 +6706,19 @@ function promoUp(g){
   g.paused=true; g.promoLv=g.lv; S("levelup");
   const now=rankOf(g), next=Math.min(RANK_MAX,now+1);
   const card=$("#card");
-  card.innerHTML='<div class="title" style="align-items:baseline;gap:10px">'
+  setHTML(card, '<div class="title" style="align-items:baseline;gap:10px">'
     +'<h1 class="ttl" style="font-size:30px;color:#c9a227">승진</h1>'
     +'<span style="font-size:13px;color:var(--dim)">'
     +esc(rankName(now))+' → '+esc(rankName(next))+' · 정답은 없습니다</span></div>'
-    +'<div class="picks" style="margin-top:16px"></div>';
+    +'<div class="picks" style="margin-top:16px"></div>');
   const box=card.querySelector(".picks");
   const opt=(name,lvl,desc,accent,fn)=>{
     const b=document.createElement("button");
     b.className="pick"; if(accent) b.style.borderColor="#c9a227";
     b.appendChild(icon(accent?"promo":"stay",40));
     const t=document.createElement("div");
-    t.innerHTML='<span class="n"'+(accent?' style="color:#c9a227"':'')+'>'+esc(name)+'</span>'
-      +'<span class="lvl">'+esc(lvl)+'</span><span class="d">'+desc+'</span>';
+    setHTML(t, '<span class="n"'+(accent?' style="color:#c9a227"':'')+'>'+esc(name)+'</span>'
+      +'<span class="lvl">'+esc(lvl)+'</span><span class="d">'+desc+'</span>');
     b.appendChild(t);
     b.onclick=()=>{ fn(); S("place"); closeOverlay(); g.paused=false;
                     levelUp(g); };            // 승진을 고른 뒤 평소의 레벨 카드
@@ -6322,12 +6750,12 @@ function levelUp(g){
   if(!list.length){ g.paused=false; return; }
   const card=$("#card");
   const isEvo = list.length===1 && list[0].kind==="e";
-  card.innerHTML='<div class="title" style="align-items:baseline;gap:10px">'
+  setHTML(card, '<div class="title" style="align-items:baseline;gap:10px">'
     +'<h1 class="ttl" style="font-size:30px">'+(isEvo?"진화":"레벨 "+g.lv)+'</h1>'
     +'<span style="font-size:13px;color:'+(isEvo?"var(--good)":"var(--dim)")+'">'
     +(isEvo?"조건이 맞았습니다":"하나를 고르세요")+'</span></div>'
     + (isEvo?"":loadoutHTML(g))
-    +'<div class="picks" style="margin-top:16px"></div>';
+    +'<div class="picks" style="margin-top:16px"></div>');
   const box=card.querySelector(".picks");
   list.forEach(o=>{
     const D = o.kind==="p"?PERKS[o.id]:WEAPONS[o.id];
@@ -6338,8 +6766,8 @@ function levelUp(g){
     const lvl = o.kind==="e" ? ("진화 — "+WEAPONS[o.base].name+"을 대체합니다")
               : o.lv===0 ? "신규" : ("Lv "+o.lv+" → "+(o.lv+1));
     const desc = o.kind==="p" ? D.desc : (o.lv===0?D.desc:D.up(o.lv+1));
-    txt.innerHTML='<span class="n">'+esc(D.name)+'</span>'
-      +'<span class="lvl">'+lvl+'</span><span class="d">'+esc(desc)+'</span>';
+    setHTML(txt, '<span class="n">'+esc(D.name)+'</span>'
+      +'<span class="lvl">'+lvl+'</span><span class="d">'+esc(desc)+'</span>');
     b.appendChild(txt);
     b.onclick=()=>{
         if(o.kind==="e"){
@@ -6393,11 +6821,11 @@ function syncHud(g){
   if(g.ot){
     const oh=(g.otT/DAY)*(H1-H0);                 // 야근 경과(게임 시간)
     const hh=Math.floor(oh), mm=Math.floor((oh-hh)*60);
-    $("#clock").innerHTML="야근 <small>"
-      +(hh>0?hh+"시간 ":"")+String(Math.floor(mm/5)*5)+"분째</small>";
+    setHTML($("#clock"), "야근 <small>"
+      +(hh>0?hh+"시간 ":"")+String(Math.floor(mm/5)*5)+"분째</small>");
   }else{
-    $("#clock").innerHTML=clockStr(g.t)+"<small>"
-      +(hourOf(g.t)>=17?"곧 퇴근":"근무 중")+"</small>";
+    setHTML($("#clock"), clockStr(g.t)+"<small>"
+      +(hourOf(g.t)>=17?"곧 퇴근":"근무 중")+"</small>");
   }
   $("#daybar i").style.width=Math.min(100,g.t/DAY*100).toFixed(1)+"%";
   $("#daybar").classList.toggle("ot",g.ot);
@@ -6410,7 +6838,7 @@ function syncHud(g){
     if(g.rndName && (g.rndT>0 || g.rndShow>0)){
       re2.style.display="";
       re2.className=g.rndKind||"";
-      re2.innerHTML=esc(g.rndName)+(g.rndT>0?"<small>"+Math.ceil(g.rndT)+"초</small>":"");
+      setHTML(re2, esc(g.rndName)+(g.rndT>0?"<small>"+Math.ceil(g.rndT)+"초</small>":""));
     } else re2.style.display="none";
   }
   const rb=$("#repl");
@@ -6424,7 +6852,7 @@ function syncHud(g){
   }
   const zn=$("#zone");
   if(zn){
-    zn.innerHTML=(g.zone+1)+" / "+ZONES.length+" <b>"+esc(Z.name)+"</b>";
+    setHTML(zn, (g.zone+1)+" / "+ZONES.length+" <b>"+esc(Z.name)+"</b>");
     zn.classList.toggle("open", !!g.gate);
   }
   $("#lv b").textContent=g.lv;
@@ -6653,9 +7081,9 @@ function unlockHTML(){
   const d=SAVE.days|0, NX=nextStage(d);
   const dots=DAYS.filter(x=>x.unlock).map(x=>`<i class="${d>=x.d?"on":""}"></i>`).join("");
   if(!NX) return `<div class="unl"><div class="dots">${dots}</div>
-    <span style="color:var(--good)">이야기를 끝까지 봤습니다</span></div>`;
+    <span style="color:var(--good)">${T("이야기를 끝까지 봤습니다")}</span></div>`;
   return `<div class="unl"><div class="dots">${dots}</div>
-    <span><b>${NX.d-d}일</b> 뒤 — ${NX.unlockName?"<b>"+esc(NX.unlockName)+"</b> 합류":"다음 이야기"}</span></div>`;
+    <span>${TF("<b>{0}일</b> 뒤", NX.d-d)} — ${NX.unlockName?TF("<b>{0}</b> 합류", esc(NX.unlockName)):T("다음 이야기")}</span></div>`;
 }
 
 function renderStart(){
@@ -6670,7 +7098,7 @@ function renderStart(){
     M.stampLv?"도장 Lv+"+M.stampLv:"",
   ].filter(Boolean).map(t=>'<span class="chip">'+esc(t)+'</span>').join("")
     + (M.revive?'<span class="chip gold">비상금</span>':"");
-  $("#card").innerHTML=`
+  setHTML($("#card"), `
     <div class="title">
       <h1 class="ttl">정시 퇴근</h1>
       <span class="when">09:00 — 18:00</span>
@@ -6679,7 +7107,7 @@ function renderStart(){
       <b style="color:var(--ink);font-size:15px">18:00까지 회사 건물을 뚫고 정문으로 나가는 게임입니다.</b><br>
       지하주차장에서 출근해 아홉 개 구역을 지납니다.</div>`
      :`<div class="hi"><b>${(SAVE.score|0).toLocaleString()}</b><span>최고 점수</span>
-        <span style="margin-left:auto">${SAVE.days}일차 · ${esc(rankName(SAVE.rank|0))}</span></div>`}
+        <span style="margin-left:auto">${TF("{0}일차", SAVE.days)} · ${esc(rankName(SAVE.rank|0))}</span></div>`}
     <div class="story" style="margin-top:14px">
       <div class="sd">${esc(ST.head)}</div>
       <div class="sl">${SAVE.days>0&&AFTER[SAVE.last]?esc(AFTER[SAVE.last])+"<br>":""}${esc(ST.line)}</div>
@@ -6700,11 +7128,11 @@ function renderStart(){
     <div class="dock">
       <button class="primary" id="go">출근</button>
       <div class="nav">
-        <button id="shop">자기계발<small>경력 ${SAVE.career.toLocaleString()}</small></button>
-        <button id="recs">기록<small>${SAVE.runs|0}번 출근</small></button>
+        <button id="shop">자기계발<small>${TF("경력 {0}", SAVE.career.toLocaleString())}</small></button>
+        <button id="recs">기록<small>${TF("{0}번 출근", SAVE.runs|0)}</small></button>
         <button id="opts">설정<small>${first?"조작 · 소리":"도움말 · 소리"}</small></button>
       </div>
-    </div>`;
+    </div>`);
   /* 매 판 타이핑을 시키지 않는다 — 폰에서 키보드를 여는 게 플레이를
      막는 문턱이었다. 대사는 게임이 주고(103줄), 내 한 줄은 설정에
      한 번만 적어두면 계속 쓰인다. */
@@ -6730,24 +7158,24 @@ function renderRecords(){
     ["최고 점수",  (SAVE.score|0).toLocaleString(), "var(--accent)"],
     ["가장 빠른 퇴근", SAVE.clear?clockOfT(SAVE.clear):"—", SAVE.clear?"var(--good)":"var(--dim)"],
     ["정시 퇴근",  (SAVE.wins|0)+"회", (SAVE.wins|0)?"var(--good)":"var(--dim)"],
-    ["단체협약",   (SAVE.unions|0)+"회", (SAVE.unions|0)?"#5fe0c0":"var(--dim)"],
+    ["단체협약",   TF("{0}회", SAVE.unions|0), (SAVE.unions|0)?"#5fe0c0":"var(--dim)"],
     ["최다 처리",  (SAVE.best|0).toLocaleString(), "var(--ink)"],
     ["최고 연속",  (SAVE.combo|0).toLocaleString(), "var(--ink)"],
-    ["최고 도달",  (SAVE.zone|0)?((SAVE.zone|0)+" / "+ZONES.length+" 구역"):"—", "var(--ink)"],
+    ["최고 도달",  (SAVE.zone|0)?((SAVE.zone|0)+" / "+ZONES.length+T(" 구역")):"—", "var(--ink)"],
     ["최고 직급",  rankName(SAVE.rank|0), (SAVE.rank|0)?"#c9a227":"var(--dim)"],
   ];
-  $("#card").innerHTML=`
+  setHTML($("#card"), `
     <div class="title"><h1 class="ttl" style="font-size:30px">기록</h1>
-      <span class="when">${SAVE.runs|0}번 출근 · ${SAVE.days|0}일차</span></div>
+      <span class="when">${TF("{0}번 출근", SAVE.runs|0)} · ${TF("{0}일차", SAVE.days|0)}</span></div>
     <div class="sub" style="margin:6px 0 0">이겨야 하는 건 남이 아니라 어제의 나입니다.</div>
     <div class="crow four">${R.map(r=>
       `<div class="cstat"><b class="num" style="color:${r[2]};font-size:${r[1].length>7?20:26}px">${
         esc(r[1])}</b><span>${esc(r[0])}</span></div>`).join("")}</div>
     ${zmapHTML()}
     <div class="sub" style="margin:18px 0 0">업적 <b style="color:var(--accent)">${
-      ACH.filter(a=>achDone(a.id)).length}</b> / ${ACH.length} — 잘해야 열립니다</div>
+      ACH.filter(a=>achDone(a.id)).length}</b> / ${ACH.length} — ${T("잘해야 열립니다")}</div>
     <div class="achgrid" id="achg"></div>
-    <div class="dock"><button class="primary" id="back">돌아가기</button></div>`;
+    <div class="dock"><button class="primary" id="back">돌아가기</button></div>`);
   const box=$("#achg");
   for(const a of ACH){
     const on=achDone(a.id), rw=achReward(a);
@@ -6755,8 +7183,8 @@ function renderRecords(){
     d.className="achcard"+(on?" on":"");
     d.appendChild(icon(a.icon,30));
     const t=document.createElement("div");
-    t.innerHTML='<span class="n">'+esc(a.name)+'</span><span class="d">'+esc(a.d)+'</span>'
-      +(rw?'<span class="r">'+(on?"해금됨 — ":"보상 ")+esc(rw)+'</span>':"");
+    setHTML(t, '<span class="n">'+esc(a.name)+'</span><span class="d">'+esc(a.d)+'</span>'
+      +(rw?'<span class="r">'+(on?"해금됨 — ":"보상 ")+esc(rw)+'</span>':""));
     d.appendChild(t); box.appendChild(d);
   }
   $("#back").onclick=()=>{ S("select"); renderStart(); };
@@ -6769,7 +7197,7 @@ function renderRecords(){
    살 때마다 그게 눈에 들어온다. */
 const OPT_DEF={ bgm:1, sfx:1, shake:1 };
 /* 내가 적어둔 한 줄. 없으면 게임이 알아서 고른다 */
-const myGrudge = () => (SAVE.grudge||"").trim() || "이거 오늘 안에 되죠?";
+const myGrudge = () => (SAVE.grudge||"").trim() || T("이거 오늘 안에 되죠?");
 function opt(k){ const v=(SAVE.opt||{})[k]; return v===undefined?OPT_DEF[k]:!!v; }
 function setOpt(k,v){ SAVE.opt=SAVE.opt||{}; SAVE.opt[k]=v?1:0; writeSave(SAVE);
   if(k==="bgm"){ if(v){ if(G&&!G.over) S("bgmStart"); } else S("bgmStop"); } }
@@ -6777,8 +7205,11 @@ function renderOptions(){
   lobbyOn(true);
   const row=(k,name,desc)=>`<div class="setrow"><div class="k">${esc(name)}<small>${desc}</small></div>
     <button class="tg${opt(k)?" on":""}" data-k="${k}" role="switch" aria-checked="${opt(k)}"><i></i></button></div>`;
-  $("#card").innerHTML=`
+  setHTML($("#card"), `
     <div class="title"><h1 class="ttl" style="font-size:30px">설정</h1></div>
+    <div class="setrow"><div class="k">언어 · Language<small>${T("바꾸면 화면을 다시 읽습니다")}</small></div>
+      <div class="langpick">${Object.keys(LANGS).map(k=>
+        `<button class="lang${k===LANG?" on":""}" data-lang="${k}">${LANGS[k]}</button>`).join("")}</div></div>
     ${row("bgm","배경음","하루가 갈수록 조여 오는 음악")}
     ${row("sfx","효과음","타격·처치·획득")}
     ${row("shake","화면 흔들림","보스와 큰 타격에 화면이 흔들립니다. 어지러우면 끄세요")}
@@ -6787,17 +7218,20 @@ function renderOptions(){
       <input id="mygr" maxlength="40" placeholder="이거 오늘 안에 되죠?" autocomplete="off"
              value="${esc(SAVE.grudge||"")}" style="margin-top:9px">
     </div>
-    <div class="setrow"><div class="k">조작<small>${isTouch?"화면 드래그 · WASD":"WASD · 마우스 드래그"} · 공격은 자동 · 음소거 M · 일시정지 P</small></div></div>
+    <div class="setrow"><div class="k">조작<small>${isTouch?T("화면 드래그 · WASD"):T("WASD · 마우스 드래그")} · ${T("공격은 자동 · 음소거 M · 일시정지 P")}</small></div></div>
     <div class="setrow"><div class="k">소리<small>Abstraction · Kenney — CC0 1.0 (상업 이용 가능)</small></div></div>
     <div class="dock">
       <button class="primary" id="back">돌아가기</button>
       <div class="nav" style="grid-template-columns:1fr">
         <button id="wipe" style="color:var(--bad);border-color:#3a2530">기록 초기화<small>되돌릴 수 없습니다</small></button>
       </div>
-    </div>`;
+    </div>`);
   $("#card").querySelectorAll(".tg").forEach(b=>{
     b.onclick=()=>{ const k=b.dataset.k, v=!opt(k); setOpt(k,v);
       b.classList.toggle("on",v); b.setAttribute("aria-checked",String(v)); S("select"); };
+  });
+  $("#card").querySelectorAll(".lang").forEach(b=>{
+    b.onclick=()=>{ S("select"); setLang(b.dataset.lang); };
   });
   const gi=$("#mygr");
   if(gi) gi.oninput=()=>{ SAVE.grudge=(gi.value||"").slice(0,40); writeSave(SAVE); };
@@ -6827,7 +7261,7 @@ function renderShop(){
       <span class="bar"><i style="width:${(l/C.max*100).toFixed(0)}%"></i></span>
     </button>`;
   }).join("");
-  card.innerHTML=`
+  setHTML(card, `
     <div class="shead">
       <div>
         <h1 class="ttl">자기계발</h1>
@@ -6837,7 +7271,7 @@ function renderShop(){
     </div>
     <div class="rule"></div>
     <div class="shop">${rows}</div>
-    <div class="dock"><button class="primary" id="back">← 돌아가기</button></div>`;
+    <div class="dock"><button class="primary" id="back">← 돌아가기</button></div>`);
   card.querySelectorAll("[data-k]").forEach(b=>{
     b.onclick=()=>{
       const k=b.dataset.k, C=CAREER[k], l=SAVE.lv[k]|0;
@@ -6882,7 +7316,7 @@ function renderEnd(g){
   /* 업적 — 오늘 뭘 해냈나. 이게 「한 판 더」의 두 번째 이유다 */
   const GOT=gradeAch(g); writeSave(SAVE);
   const NXT=nextStage(SAVE.days|0);      // 다음 이야기 — 「한 판 더」가 여기서 나온다
-  $("#card").innerHTML=`
+  setHTML($("#card"), `
     <div class="rhead">
       <span class="rbar" style="background:${acc}"></span>
       <div>
@@ -6919,7 +7353,7 @@ function renderEnd(g){
         :repl?"이제 아무도 이 말을 하지 않습니다.":"내일 또 듣습니다."}</div>
     </div>
     ${NXT ? `<div class="nextday">
-      <div class="nd">${NXT.d-(SAVE.days)<=0?"내일":(NXT.d-SAVE.days)+"일 뒤"}</div>
+      <div class="nd">${NXT.d-(SAVE.days)<=0?T("내일"):TF("{0}일 뒤", NXT.d-SAVE.days)}</div>
       <div class="nt">${esc(NXT.head)}${NXT.unlockName?` — <b>${esc(NXT.unlockName)}</b>`:""}</div>
      </div>` : `<div class="nextday" style="border-left-color:var(--good)">
       <div class="nd" style="color:var(--good)">이야기 끝</div>
@@ -6927,13 +7361,13 @@ function renderEnd(g){
      </div>`}
     <div class="earnrow">
       <span class="k">오늘의 경력</span>
-      <div><b class="num">+${earn.toLocaleString()}</b><span class="num">보유 ${SAVE.career.toLocaleString()}</span></div>
+      <div><b class="num">+${earn.toLocaleString()}</b><span class="num">${TF("보유 {0}", SAVE.career.toLocaleString())}</span></div>
     </div>
     <button class="primary" id="again" style="background:${acc};color:#17191f">다시 출근</button>
     <button class="ghost" id="toShop" style="color:var(--ink);font-size:14px;padding:13px;
       display:flex;align-items:center;justify-content:center;gap:8px">
-      <span>자기계발</span><span style="color:var(--accent);font-weight:800">경력 ${SAVE.career.toLocaleString()}</span>
-    </button>`;
+      <span>자기계발</span><span style="color:var(--accent);font-weight:800">${TF("경력 {0}", SAVE.career.toLocaleString())}</span>
+    </button>`);
   $("#again").onclick=()=>{ S("select"); start(myGrudge()); };
   $("#toShop").onclick=()=>{ S("select"); renderShop(); };
   openOverlay();
@@ -7115,7 +7549,10 @@ window.__killFoe=killFoe;            // 처치 연출 검증용
 window.spawnWall=spawnWall; window.spawnClose=spawnClose; window.spawnSpiral=spawnSpiral;  // 대형 검증용             // 레벨업·승진 검증용                     // 아이콘 검증용
 window.__RND=RND;                       // 무작위 사건 검증용
 window.__api={WEAPONS,PERKS,E,ZONES,DAY,hourOf,clockStr,spawnRing,start,todoOf,zoneOf,gateReady,
-             RANKS,rankOf,rankName,quotaOf,promoDue,stats,SAVE:()=>SAVE};
+             RANKS,rankOf,rankName,quotaOf,promoDue,stats,SAVE:()=>SAVE,
+             LANG:()=>LANG, setLang, T, L10N};
+localizeData();                         // 자료표 먼저 — 화면은 그 뒤에 짠다
+i18nDOM(document.body);                 // 정적 HTML(버튼·라벨)도 한 번 훑는다
 renderStart();
 
 </script>
