@@ -319,6 +319,32 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
 #mute[aria-pressed="true"]{color:var(--bad)}
 #mute[aria-pressed="true"] .wave{display:none}
 #mute[aria-pressed="true"] .x{display:block}
+/* 레벨 숫자가 같이 튄다 — 어디가 올랐는지 눈이 따라간다 */
+@keyframes lvpop{0%{transform:scale(1)}28%{transform:scale(1.45)}100%{transform:scale(1)}}
+@keyframes lvpopbig{0%{transform:scale(1)}18%{transform:scale(2.0);filter:brightness(2)}
+  100%{transform:scale(1);filter:none}}
+#lv.pop{animation:lvpop .42s cubic-bezier(.22,1.4,.36,1) both}
+#lv.pop.big{animation:lvpopbig .72s cubic-bezier(.22,1.4,.36,1) both;color:var(--accent)}
+@media (prefers-reduced-motion:reduce){#lv.pop,#lv.pop.big{animation:none}}
+/* 직군 줄 — 가로로 늘어놓고, 잠긴 건 흐리게 + 남은 날짜 */
+.chrow{margin-top:14px;border:1px solid var(--line);border-radius:13px;padding:11px 12px 12px;
+  background:rgba(255,255,255,.02)}
+.chhead{display:flex;align-items:baseline;gap:9px;margin-bottom:9px;min-width:0}
+.chhead .k{font-size:12px;font-weight:800;color:var(--dim);flex-shrink:0}
+.chhead .chd{font-size:11.5px;color:var(--accent);font-weight:700;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chlist{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.chcard{flex:1 0 auto;min-width:76px;padding:9px 10px;border-radius:10px;cursor:pointer;
+  border:1px solid var(--line);background:transparent;font:inherit;text-align:left;
+  display:flex;flex-direction:column;gap:2px}
+.chcard .chn{font-size:13.5px;font-weight:800;color:var(--ink);white-space:nowrap}
+.chcard .cht{font-size:10.5px;color:var(--dim);white-space:nowrap}
+.chcard.on{border-color:var(--accent);background:rgba(201,162,39,.12)}
+.chcard.on .chn{color:var(--accent)}
+.chcard.lock{opacity:.42;cursor:default}
+.chcard.lock .cht{color:var(--accent)}
+.chcard:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:560px){ .chcard{min-width:70px;padding:8px} .chcard .chn{font-size:12.5px} }
 #toast{position:absolute;left:50%;top:110px;transform:translateX(-50%);z-index:6;
   font-weight:800;font-size:15px;color:var(--accent);text-shadow:0 2px 10px #000;pointer-events:none}
 /* 첫 판 안내 — 화면 아래에 한 줄. 게임은 뒤에서 계속 돌아간다.
@@ -3392,6 +3418,18 @@ const L10N = { ko:null, en:{
   "카드가 싸우는 방식을 정합니다":"Cards decide how you fight","이 숫자를 0으로 만드세요":"Get this number to zero",
   "공격은 알아서 나갑니다":"Attacks fire on their own","움직이기만 하면 됩니다":"All you do is move",
   "문이 열리면 그리로":"When the door opens, head for it","건너뛰기":"Skip",
+  "Lv {0}":"Lv {0}","Lv {0} !":"Lv {0} !","Lv {0} !!":"Lv {0} !!",
+  "사람 얘기는 다 내 귀로 들어온다. 그게 힘이 될 때도 있다.":"Everything people say reaches my ears. Sometimes that's power.",
+  "밖으로 도는 게 편하다. 자리에 앉아 있는 게 더 힘들다.":"I'd rather be out on the road. Sitting at a desk is the hard part.",
+  "경험치 +28% · 레벨업 선택지 4개 · 피해 −12%":"XP +28% · four level-up cards · damage −12%",
+  "공격 속도 +15% · 설치기 오래 간다 · 이동 −9%":"Attack speed +15% · placements last longer · move −9%",
+  "최대 체력 +45% · 밀어내기 +55% · 이동 −7%":"Max health +45% · knockback +55% · move −7%",
+  "한 번 만들어 두면 알아서 돌아간다. 그게 내 방식이다.":"Build it once and it runs itself. That's how I work.",
+  "이동 +18% · 수집 범위 +45% · 체력 −18%":"Move +18% · pickup radius +45% · health −18%",
+  "책상에서 되는 일이 아니다. 몸으로 하는 거다.":"This doesn't get done at a desk. You do it with your body.",
+  "모든 것이 평균. 처음이면 이걸로.":"Average at everything. Start here.","{0}일 더":"{0} more days",
+  "두고 쓴다":"set and forget","먼저 안다":"knows first","발이 넓다":"well connected","버틴다":"endures","사무직":"Office",
+  "개발":"Dev","균형":"balanced","영업":"Sales","인사":"HR","직군":"Role","현장":"Field",
 } };
 /* 원문 그대로 돌려주는 게 기본. 한국어면 표를 아예 안 본다.
 
@@ -3477,6 +3515,7 @@ function localizeData(){
   localizeTable(DAYS,    ["head","line","unlockName"]);
   localizeTable(ACH,     ["name","d"]);
   localizeTable(BOSSES,  ["msg"]);
+  localizeTable(CHARS,   ["name","tag","desc","line"]);
   for(const k in RANKS) RANKS[k]=T(RANKS[k]);
   for(const k in SAY) SAY[k]=SAY[k].map(T);
   for(const k in AFTER) if(typeof AFTER[k]==="string") AFTER[k]=T(AFTER[k]);
@@ -4358,15 +4397,20 @@ function tutPaint(g){
 }
 function newGame(grudge){
   const M=metaBonus();
+  const C=myChar();
   return {
-    meta:M, revives:M.revive,
+    meta:M, revives:M.revive, charId:C.id,
     t:0, over:null, grudge,
     P:{ x:0, y:0, vx:0, vy:0, r:14, face:-1, walk:0,
         px0:0, py0:0, hx:-1, hy:0,          // 지연 추적 진행 방향
         hp:160, maxhp:160, spd:168, haste:1, range:1, xpMul:1, magnet:1,
         inv:0, hurt:0, atk:0, moving:false },
     lv:1+M.startLv, xp:0, next:6, kills:0, dmgDealt:0, pendingLv:M.startLv,
-    weapons:{ stamp:1+M.stampLv }, perks:{},
+    /* 시작 무기 — 직군이 정한다. 「요령」으로 올린 시작 Lv은 그 무기에 얹힌다.
+       사무직이 아니어도 반려 도장은 늘 한 칸 쥐고 시작한다 — 그게 이 게임의 손이다 */
+    weapons: C.w==="stamp" ? { stamp:1+M.stampLv }
+                           : { stamp:1+M.stampLv, [C.w]:1 },
+    perks:{},
     cds:{}, foes:[], shots:[], orbs:[], pools:[], fx:[], floats:[], bodies:[], drops:[],
     shocks:[], vortex:[], cards:[], builds:[], allies:[], stains:[], paper:[], eshots:[],
     blinkCd:0, annualCd:0, annualT:0,
@@ -4384,7 +4428,7 @@ function newGame(grudge){
     rndName:"", rndKind:"", rndShow:0, barOn:0, barP:0,
     ot:false, otT:0, warned:false,
     combo:0, comboT:0, comboBest:0, comboPop:0, flash:0,
-    toast:"", toastT:0, paused:false, best:0, tut:null,
+    toast:"", toastT:0, paused:false, best:0, tut:null, lvWait:0,
   };
 }
 
@@ -4393,7 +4437,11 @@ function stats(g){
   const M=g.meta||metaBonus();
   const P={ spd:168*(1+M.spd), haste:1*(1-M.haste), range:1,
             xpMul:1+M.xp, magnet:1+M.magnet, maxhp:160+M.hp,
-            inv0:0, late:1, work:1, blink:0, annual:0, allyDmg:1, fatigue:1, meddleR:1 };
+            inv0:0, late:1, work:1, blink:0, annual:0, allyDmg:1, fatigue:1, meddleR:1,
+            dmgMul:1, push:1, buildLife:1, offers:3 };
+  /* 직군 먼저 — 카드로 쌓는 것들보다 앞에 온다. 그래야 「영업으로 시작해
+     체력을 채워 간다」 같은 판이 성립한다. */
+  charOf(g.charId).f(P);
   for(const k in g.perks){ const p=PERKS[k]; for(let i=0;i<g.perks[k];i++) p.f(P,i+1); }
   /* 직급 — 올라간 만큼 능력이 오른다. 몫도 같이 오른다(quotaOf) */
   const r=rankOf(g);
@@ -4409,6 +4457,7 @@ function applyPerks(g){
   // 제도 — 이 줄이 없으면 이어폰·주52시간·근로계약서·재택·연차·노조가 전부 무효가 된다
   p.inv0=P.inv0; p.late=P.late; p.work=P.work; p.blink=P.blink;
   p.annual=P.annual; p.allyDmg=P.allyDmg; p.fatigue=P.fatigue; p.meddleR=P.meddleR;
+  p.dmgMul=P.dmgMul; p.push=P.push; p.buildLife=P.buildLife; p.offers=P.offers;
   p.maxhp=P.maxhp; if(dh>0) p.hp=Math.min(p.maxhp,p.hp+dh);
   p.hp=Math.min(p.hp,p.maxhp);
 }
@@ -4978,8 +5027,11 @@ function fireWeapons(g,dt){
         const side=(mine.length%2)?1:-1;
         bx=P.x-uy*34*side; by=P.y+ux*34*side;
       }
-      g.builds.push({id, x:bx, y:by, t:0, life:L.life, L,
-                     hp:L.hp||0, maxhp:L.hp||0, tick:0, a:ang});
+      /* 개발은 「한 번 만들어 두면 오래 간다」 — 설치기 수명과 내구도가 함께 는다 */
+      const bl=P.buildLife||1;
+      g.builds.push({id, x:bx, y:by, t:0, life:L.life*bl, L,
+                     hp:Math.round((L.hp||0)*bl), maxhp:Math.round((L.hp||0)*bl),
+                     tick:0, a:ang});
       S("place"); g.fx.push({type:"ring",x:bx,y:by,t:0,r0:8,r1:(L.r||L.w||60),c:"#9ec8ff"});
       g.cds[id]=L.cd*haste; continue;
     }
@@ -5148,6 +5200,7 @@ function fireWeapons(g,dt){
 
 /* ── 피해 / 처치 ─────────────────────────────────────────────── */
 /* 타격 방향으로 카메라를 민다 — 무작위 진동보다 "어디서 맞았는지"가 읽힌다 */
+/* 밀어내기 — 현장직은 더 세게 민다(P.push). 손맛이 직군마다 달라야 한다 */
 function kick(g,dx,dy,power){
   const d=Math.hypot(dx,dy)||1;
   g.shakeX+=dx/d*power; g.shakeY+=dy/d*power;
@@ -5162,9 +5215,12 @@ function damage(g,f,dmg,sx,sy,kb){
       g.floats.push({x:f.x,y:f.y-f.r-4,v:"교섭 중",t:0});
     return;
   }
+  /* 직군이 손맛을 바꾼다 — 인사는 덜 아프게 때리고(dmgMul),
+     현장은 더 멀리 민다(push). 무기 코드는 그대로 두고 여기서 한 번에 건다. */
+  dmg *= (g.P.dmgMul||1);
   f.hp-=dmg; g.dmgDealt+=dmg; f.hit=.12;
-  if(kb){ const dx=f.x-sx, dy=f.y-sy, d=Math.hypot(dx,dy)||1;
-          f.kbx=dx/d*kb; f.kby=dy/d*kb; f.kb=.14; }
+  if(kb){ const dx=f.x-sx, dy=f.y-sy, d=Math.hypot(dx,dy)||1, k=kb*(g.P.push||1);
+          f.kbx=dx/d*k; f.kby=dy/d*k; f.kb=.14; }
   // 숫자가 수십 개 뜨면 화면이 안 읽힌다. 큰 타격만, 최대 14개.
   if(dmg>=25 && g.floats.length<14)
     g.floats.push({x:f.x,y:f.y-f.r-4,v:Math.round(dmg),t:0,big:dmg>=120});
@@ -5389,6 +5445,10 @@ function step(g,dt){
   if(g.toastT>0){ g.toastT-=dt; if(g.toastT<=0) g.toast=""; }
   if(g.shake>0) g.shake=Math.max(0,g.shake-dt*34);
   g.shakeX*=Math.max(0,1-dt*11); g.shakeY*=Math.max(0,1-dt*11);
+  if(g.lvWait>0){                      // 불꽃이 끝나면 카드가 온다
+    g.lvWait-=dt;
+    if(g.lvWait<=0){ g.lvWait=0; levelUp(g); }
+  }
   if(g.tut) tutStep(g,dt);
   if(g.comboT>0){ g.comboT-=dt; if(g.comboT<=0) g.combo=0; }
   if(g.comboPop>0) g.comboPop=Math.max(0,g.comboPop-dt*4.5);
@@ -5691,17 +5751,77 @@ function step(g,dt){
     if(bd.t>bd.life) g.bodies.splice(i,1);
   }
   // 이펙트
-  for(let i=g.fx.length-1;i>=0;i--){ g.fx[i].t+=dt; if(g.fx[i].t>.55) g.fx.splice(i,1); }
+  for(let i=g.fx.length-1;i>=0;i--){ const e=g.fx[i]; e.t+=dt;
+    if(e.t > (e.life || .55)) g.fx.splice(i,1); }
   for(let i=g.stains.length-1;i>=0;i--){ g.stains[i].t+=dt; if(g.stains[i].t>16) g.stains.splice(i,1); }
   for(let i=g.floats.length-1;i>=0;i--){ g.floats[i].t+=dt; if(g.floats[i].t>.45) g.floats.splice(i,1); }
 }
 
+/* ══════════════ 레벨업 연출 ══════════════════════════════════
+   레벨업에 화면 연출이 아예 없었다. 소리 한 번 나고 카드가 떴다.
+   한 판에 스무 번 오르는 건데 스무 번 다 똑같으면 그냥 「메뉴가 뜬다」다.
+
+   세 단계로 올린다.
+     0 보통      — 금색 링 하나 + 서류가 흩날린다
+     1 5의 배수  — 링 세 겹 + 빛살 + 화면 번쩍 + 카메라가 튄다
+     2 10의 배수 — 거기에 사방으로 밀어내기. 「다들 한 발 물러선다」
+   같은 단계 안에서도 레벨이 오를수록 조금씩 커진다(grow) — 20레벨의
+   「보통」이 3레벨의 「보통」보다 굵다.
+
+   그리고 카드를 바로 안 띄운다. 히트스톱을 걸어 화면이 기어가는 동안
+   불꽃을 보여 주고, 그 다음에 카드가 온다. 바로 띄우면 연출을 카드가
+   덮어서 아무도 못 본다. 기다리는 동안은 무적이다 — 구경하다 죽으면 안 된다. */
+const LV_TIER = lv => lv%10===0 ? 2 : lv%5===0 ? 1 : 0;
+const LV_WAIT = [0.26, 0.48, 0.72];
+function levelBurst(g){
+  const P=g.P, lv=g.lv, tier=LV_TIER(lv);
+  const grow = 1 + Math.min(1, (lv-1)/18) * 0.7;     // 레벨이 오를수록 굵어진다
+  const gold="#f5c451", warm="#ffd978";
+
+  g.fx.push({type:"lvring", x:P.x, y:P.y, t:0, r0:tier?42:24, r1:(tier?210:130)*grow,
+             c:warm, w:(tier?7:4.5)*grow, dl:0, life:0.9});
+  if(tier){
+    g.fx.push({type:"lvring", x:P.x, y:P.y, t:0, r0:46, r1:320*grow, c:gold, w:4*grow, dl:0.10, life:1.0});
+    g.fx.push({type:"lvring", x:P.x, y:P.y, t:0, r0:50, r1:430*grow, c:gold, w:3*grow, dl:0.20, life:1.1});
+    g.fx.push({type:"ray",    x:P.x, y:P.y, t:0, n:tier===2?16:10, len:300*grow, c:warm, life:0.85});
+  }
+  /* 흩날리는 것 — 종이·클립·도장. 단계가 오를수록 많아진다 */
+  for(let i=0;i<(tier===2?5:tier?3:1);i++)
+    g.fx.push({type:"burst", x:P.x, y:P.y-10, t:0, r:34*grow,
+               bits:burstBits(tier===2?16:tier?11:7, Math.random()*6.283, true, "rookie")});
+
+  g.flash = Math.max(g.flash, tier===2 ? 1 : tier ? 0.7 : 0.34);
+  g.hitstop = Math.max(g.hitstop, LV_WAIT[tier]);
+  if(opt("shake")) kick(g, Math.random()-0.5, -1, tier===2?14:tier?9:4);
+  P.inv = Math.max(P.inv, LV_WAIT[tier]+0.25);        // 구경하다 맞으면 안 된다
+
+  if(tier===2){                                      // 다들 한 발 물러선다
+    for(const f of g.foes){
+      if(E[f.kind].prop || f.boss) continue;
+      const dx=f.x-P.x, dy=f.y-P.y, d=Math.hypot(dx,dy)||1;
+      if(d>340) continue;
+      f.kb=Math.max(f.kb||0,0.22);
+      f.x+=dx/d*(340-d)*0.30; f.y+=dy/d*(340-d)*0.30;
+    }
+  }
+  S("levelup");
+  if(tier) S("nuke");
+  g.floats.push({x:P.x, y:P.y-46, t:0, big:true,
+                 v: tier===2 ? TF("Lv {0} !!", lv) : tier ? TF("Lv {0} !", lv) : TF("Lv {0}", lv)});
+  /* HUD 레벨 숫자도 같이 튄다 — 어디가 올랐는지 눈이 따라간다 */
+  const el=$("#lv");
+  if(el){
+    el.classList.remove("pop","big"); void el.offsetWidth;   // 애니메이션을 처음부터 다시
+    el.classList.add("pop"); if(tier) el.classList.add("big");
+  }
+}
 function gainXp(g,n){
   g.xp += n*g.P.xpMul; S("coin");
-  if(g.xp>=g.next && !g.paused){    // 오버레이는 한 번에 하나만
+  if(g.xp>=g.next && !g.paused && !(g.lvWait>0)){    // 오버레이는 한 번에 하나만
     g.xp-=g.next; g.lv++;
     g.next=Math.round(g.next*1.34+3);
-    levelUp(g);
+    levelBurst(g);                                    // 불꽃 먼저, 카드는 그 다음
+    g.lvWait = LV_WAIT[LV_TIER(g.lv)];
   }
 }
 /* 비상금 — 한 번은 다시 일어난다 */
@@ -5850,7 +5970,7 @@ function baked(kind,size,action,fi){
   const R=window.SPRITES_RANK, SP=window.SPRITES;
   const fn=(R&&R[kind])||(SP&&SP.foes&&SP.foes[kind]);
   if(!fn){ _cache.set(key,null); return null; }
-  const pad=Math.ceil(size*0.62);
+  const pad=Math.ceil(size*(kind==="hero"?0.74:0.62));   // 주인공은 빛이 번질 여백이 더 든다
   const c=document.createElement("canvas");
   c.width=c.height=Math.ceil(pad*2*BAKE);
   const x=c.getContext("2d");
@@ -5872,15 +5992,22 @@ function baked(kind,size,action,fi){
        크기에 비례시키되 상한을 둔다 — 보스에 너무 두꺼우면 뭉개진다. */
     const w=c.width, h=c.height,
           R=Math.max(2, Math.min(7, Math.round(size*0.055*BAKE)));
-    /* 적은 어두운 테두리 한 겹. 주인공은 그 바깥에 밝은 테를 한 겹 더 두른다.
-       처음엔 주인공 테두리를 통째로 금색으로 두껍게 했더니 캐릭터가
-       노란 덩어리가 돼서 얼굴도 도장도 안 보였다 — 실제로 찍어 보고 알았다.
-       어두운 테는 형체를 잡고, 바깥 밝은 테만 「저게 나」를 맡는다. */
+    /* 적은 어두운 테두리 한 겹. 주인공은 그 바깥으로 빛이 번진다.
+
+       두 번 고쳤다. 처음엔 주인공 테두리를 통째로 금색으로 두껍게 했더니
+       노란 덩어리가 돼서 얼굴도 도장도 안 보였다. 다음엔 단단한 금색 테를
+       한 겹 둘렀는데 이번엔 스티커처럼 도려낸 것처럼 보였다.
+       지금은 옅은 세 겹을 겹쳐 바깥으로 갈수록 흐려지게 한다 —
+       테두리를 그린 게 아니라 캐릭터가 빛을 내는 것으로 읽힌다.
+       한 번만 굽고 캐시하니 매 프레임 비용은 0이다. */
     const passes = kind==="hero"
-      ? [[R, "#0a0d13"], [R+3*BAKE, "#ffd978"]]     // 어두운 것 먼저 → 밝은 게 더 뒤로
-      : [[R, "#0a0d13"]];
+      ? [[R, "#0a0d13", 1],                         // 형체를 잡는 어두운 테
+         [R+2*BAKE, "#ffd978", .42],                // 그 바깥으로 번지는 빛
+         [R+5*BAKE, "#ffd978", .22],
+         [R+9*BAKE, "#f5c451", .11]]
+      : [[R, "#0a0d13", 1]];
     x.setTransform(1,0,0,1,0,0);
-    for(const [rad,col] of passes){
+    for(const [rad,col,al] of passes){
       const o=document.createElement("canvas"); o.width=w; o.height=h;
       const ox=o.getContext("2d");
       for(let i=0;i<8;i++){
@@ -5890,7 +6017,7 @@ function baked(kind,size,action,fi){
       ox.globalCompositeOperation="source-in";
       ox.fillStyle=col; ox.fillRect(0,0,w,h);
       x.globalCompositeOperation="destination-over";      // 뒤로 깔린다
-      x.drawImage(o,0,0);
+      x.globalAlpha=al; x.drawImage(o,0,0); x.globalAlpha=1;
     }
     x.globalCompositeOperation="source-over";
   }catch(e){}
@@ -6211,8 +6338,9 @@ function drawAllies(g,X,Y){
    2D 안에서 네 겹으로 갈랐다 — 3D는 쓰지 않기로 했으니까.
      1) 크기   : 66 (흔한 적 52, 보스 76) — 보스 다음으로 크다
      2) 외곽선 : 나만 밝은 금색, 적은 전부 어두운 색 (baked 안에서)
-     3) 발밑   : 도는 점선 링 + 진행 방향 쐐기
-     4) 머리 위: 붐빌 때만 뜨는 화살표 — 한산할 땐 화면을 안 어지럽힌다 */
+     3) 머리 위: 붐빌 때만 뜨는 화살표 — 한산할 땐 화면을 안 어지럽힌다
+   발밑 링도 달아 봤다가 뺐다. 외곽선이 이미 하고 있는 일을 한 번 더 해서
+   화면만 시끄러웠다. 표식은 한 겹이면 된다. */
 const HERO_SIZE = 66;
 /* 머리 위 화살표 — 항상 띄우면 화면이 어지럽고, 없으면 인파에서 나를 잃는다.
    그래서 반경 90px 안에 적이 6명 넘게 몰렸을 때만 뜬다. 붐빌수록 진해진다. */
@@ -6241,31 +6369,8 @@ function drawPlayer(g,sx,sy){
   ctx.fillStyle="rgba(0,0,0,.38)";
   ctx.beginPath(); ctx.ellipse(sx,sy+22,15,5,0,0,7); ctx.fill();
   ctx.restore();
-  /* 발밑 표식 */
-  ctx.save();
-  const rr=20, ry=7.4, spin=g.t*0.9;
-  // 번져 나오는 빛 — 어두운 바닥에서 「여기」를 만든다
-  const gl=ctx.createRadialGradient(sx,sy+22,2,sx,sy+22,rr*1.9);
-  gl.addColorStop(0,"rgba(245,196,81,.20)");
-  gl.addColorStop(1,"rgba(245,196,81,0)");
-  ctx.fillStyle=gl;
-  ctx.beginPath(); ctx.ellipse(sx,sy+22,rr*1.9,ry*1.9,0,0,7); ctx.fill();
-  /* 도는 점선 링 — 멈춰 있어도 링이 돌아서 눈이 잡는다.
-     스케일로 눌러 그리면 위아래 선이 얇아져 찌그러 보인다. 타원으로 직접 그린다. */
-  ctx.strokeStyle="rgba(255,217,120,.78)"; ctx.lineWidth=2;
-  ctx.setLineDash([7,6]); ctx.lineDashOffset=-spin*rr;
-  ctx.beginPath(); ctx.ellipse(sx,sy+22,rr,ry,0,0,7); ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.restore();
-  // 진행 방향 쐐기 — 어디로 가고 있는지가 링 위에 얹힌다
-  if(P.moving && (P.vx||P.vy)){
-    const a=Math.atan2((P.vy||0)*(ry/rr),(P.vx||0));
-    ctx.save(); ctx.translate(sx,sy+22); ctx.rotate(a);
-    ctx.fillStyle="rgba(255,217,120,.85)";
-    ctx.beginPath(); ctx.moveTo(rr+8,0); ctx.lineTo(rr-1,-5); ctx.lineTo(rr-1,5);
-    ctx.closePath(); ctx.fill();
-    ctx.restore();
-  }
+  /* 발밑 표식은 뺐다 — 외곽선이 이미 「저게 나」를 하고 있는데
+     링에 번지는 빛까지 얹으니 과했다. 그림자 하나면 바닥에 붙는다. */
   const R=window.SPRITES_RANK;
   if(R && R.hero){
     // 동작 선택: 공격 > 피격 > 걷기 > 대기
@@ -6539,7 +6644,7 @@ function drawWorld(g){
   for(const e of g.fx){
     const a=1-e.t/.55;
     const busy=g.fx.length>14;
-    if(busy && (e.type==="spark"||e.type==="stamp")) continue;
+    if(busy && (e.type==="spark"||e.type==="stamp")) continue;   // 레벨업 고리는 안 자른다
     if(e.type==="spark"){ ctx.fillStyle="rgba(255,255,255,"+a+")";
       ctx.beginPath(); ctx.arc(X(e.x),Y(e.y),3+(1-a)*7,0,7); ctx.fill(); }
     else if(e.type==="stamp"){
@@ -6568,6 +6673,32 @@ function drawWorld(g){
       ctx.globalAlpha=1; }
     else if(e.type==="quit"){
       ctx.fillStyle="rgba(245,196,81,"+(a*.5)+")"; ctx.fillRect(0,0,VWz,VHz); }
+    else if(e.type==="lvring"){
+      /* 레벨업 고리 — 굵게 시작해 얇아지며 퍼진다. dl 만큼 늦게 출발해
+         여러 겹이 차례로 번진다(한꺼번에 나가면 한 겹으로 보인다) */
+      const u=(e.t-(e.dl||0))/(e.life||.9); if(u<0||u>1) continue;
+      const ease=1-Math.pow(1-u,2.6);
+      const rad=e.r0+(e.r1-e.r0)*ease, al=(1-u)*(1-u);
+      ctx.save(); ctx.globalCompositeOperation="lighter";
+      ctx.strokeStyle=e.c; ctx.globalAlpha=al*.85; ctx.lineWidth=e.w*(1-u*.72)+0.6;
+      ctx.beginPath(); ctx.arc(X(e.x),Y(e.y),rad,0,7); ctx.stroke();
+      ctx.restore(); }
+    else if(e.type==="ray"){
+      /* 빛살 — 천천히 돌면서 뻗었다 사라진다 */
+      const u=e.t/(e.life||.9); if(u>1) continue;
+      const ease=1-Math.pow(1-u,2.2), al=(1-u)*(1-u)*.55;
+      ctx.save(); ctx.globalCompositeOperation="lighter";
+      ctx.translate(X(e.x),Y(e.y)); ctx.rotate(e.t*0.9);
+      ctx.strokeStyle=e.c; ctx.globalAlpha=al; ctx.lineCap="round";
+      for(let k=0;k<e.n;k++){
+        const ang=k/e.n*6.2832, i0=52, i1=52+e.len*ease;   // 주인공 바깥에서 뻗는다
+        ctx.lineWidth=(k%2?2.5:5)*(1-u*.6)+0.5;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(ang)*i0, Math.sin(ang)*i0);
+        ctx.lineTo(Math.cos(ang)*i1, Math.sin(ang)*i1);
+        ctx.stroke();
+      }
+      ctx.restore(); }
   }
   // 데미지 숫자
   ctx.textAlign="center"; ctx.textBaseline="middle";
@@ -6753,6 +6884,8 @@ function evoReady(g){
   return out;
 }
 function offers(g){
+  /* 인사는 넷을 본다 — 「먼저 안다」가 이 직군의 고유 규칙이다 */
+  const _n = (g.P && g.P.offers) || 3;
   const ev=evoReady(g);
   if(ev.length) return [ev[0]];            // 진화가 가능하면 그것만 보여준다
   const out=[];
@@ -6782,7 +6915,7 @@ function offers(g){
   const pool=[];
   for(const o of out){ pool.push(o); if(o.lv>0) pool.push(o); }
   const pick=[],seen=new Set();
-  while(pick.length<3 && pool.length){
+  while(pick.length<_n && pool.length){
     const i=(Math.random()*pool.length)|0, o=pool[i];
     pool.splice(i,1);
     const key=o.kind+o.id; if(seen.has(key)) continue;
@@ -6994,7 +7127,8 @@ const CAREER={
   revive:{name:"비상금",    max:1, cost:l=>600,      desc:l=>"쓰러져도 한 번 일어난다", f:(M,l)=>M.revive+=l},
 };
 const BLANK_SAVE = () => ({career:0, lv:{}, best:0, days:0, cleared:false, rank:0, last:null,
-  score:0, clear:0, wins:0, unions:0, runs:0, zone:0, combo:0, opt:{}, ach:{}, grudge:""});
+  score:0, clear:0, wins:0, unions:0, runs:0, zone:0, combo:0, opt:{}, ach:{},
+  char:"office", grudge:""});
 function loadSave(){
   try{ const j=JSON.parse(localStorage.getItem(SAVE_KEY)||"{}");
        return {career:+j.career||0, lv:j.lv&&typeof j.lv==="object"?j.lv:{},
@@ -7006,12 +7140,55 @@ function loadSave(){
                runs:+j.runs||0, zone:+j.zone||0, combo:+j.combo||0,
                opt:j.opt&&typeof j.opt==="object"?j.opt:{},
                ach:j.ach&&typeof j.ach==="object"?j.ach:{},
+               /* 고른 직군 — loadSave 는 항목을 하나씩 적어서 읽는다.
+                  여기 안 적으면 저장은 되는데 다시 읽을 때 조용히 사라진다.
+                  실제로 그렇게 났다: 영업을 골라도 다음 판은 사무직이었다. */
+               char:typeof j.char==="string"?j.char:"office",
                grudge:typeof j.grudge==="string"?j.grudge.slice(0,40):""}; }
   catch(e){ return BLANK_SAVE(); }
 }
 function writeSave(sv){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(sv)); }catch(e){} }
 let SAVE=loadSave();
 /* 저장된 등급을 실제 보너스로 */
+/* ══════════════ 직군 (캐릭터 선택) ═══════════════════════════
+   참조로 연 게임 여덟 개 중 캐릭터 선택이 있는 건 둘이고, 그 둘에서
+   가장 다시 하게 만드는 게 이거였다 — 같은 맵인데 손에 쥔 게 달라서
+   첫 30초부터 다른 판이 된다.
+
+   우리 것으로는 「직군」이다. 무기만 바꾸면 스킨에 불과하니 넷을 다르게 한다.
+     ① 시작 무기  — 판을 여는 손이 다르다
+     ② 능력 성향  — 빠른 대신 약하거나, 튼튼한 대신 느리거나
+     ③ 고유 규칙  — 그 직군만 가진 한 줄
+     ④ 첫 대사    — 로비에서 내가 누구인지
+   전부 불리한 면을 하나씩 진다. 상위 호환이 있으면 고를 이유가 없어진다.
+
+   해금은 출근 일수로 — 「내일 또 켤 이유」를 여기에 둔다. */
+const CHARS=[
+  { id:"office", day:0,  name:"사무직",  w:"stamp",
+    line:"오늘은 다르다. 6시에 나갈 거다.",
+    tag:"균형", desc:"모든 것이 평균. 처음이면 이걸로.",
+    f:P=>P },
+  { id:"sales",  day:2,  name:"영업",    w:"card",
+    line:"밖으로 도는 게 편하다. 자리에 앉아 있는 게 더 힘들다.",
+    tag:"발이 넓다", desc:"이동 +18% · 수집 범위 +45% · 체력 −18%",
+    f:P=>{ P.spd*=1.18; P.magnet*=1.45; P.maxhp=Math.round(P.maxhp*0.82); } },
+  { id:"dev",    day:4,  name:"개발",    w:"attend",
+    line:"한 번 만들어 두면 알아서 돌아간다. 그게 내 방식이다.",
+    tag:"두고 쓴다", desc:"공격 속도 +15% · 설치기 오래 간다 · 이동 −9%",
+    f:P=>{ P.haste*=0.85; P.spd*=0.91; P.buildLife=1.6; } },
+  { id:"hr",     day:7,  name:"인사",    w:"mail",
+    line:"사람 얘기는 다 내 귀로 들어온다. 그게 힘이 될 때도 있다.",
+    tag:"먼저 안다", desc:"경험치 +28% · 레벨업 선택지 4개 · 피해 −12%",
+    f:P=>{ P.xpMul*=1.28; P.dmgMul=0.88; P.offers=4; } },
+  { id:"field",  day:10, name:"현장",    w:"elev",
+    line:"책상에서 되는 일이 아니다. 몸으로 하는 거다.",
+    tag:"버틴다", desc:"최대 체력 +45% · 밀어내기 +55% · 이동 −7%",
+    f:P=>{ P.maxhp=Math.round(P.maxhp*1.45); P.push=1.55; P.spd*=0.93; } },
+];
+const charOf = id => CHARS.find(c=>c.id===id) || CHARS[0];
+const charOpen = c => (SAVE.days|0) >= c.day;
+const myChar = () => { const c=charOf(SAVE.char); return charOpen(c) ? c : CHARS[0]; };
+
 function metaBonus(){
   const M={hp:0, spd:0, haste:0, xp:0, magnet:0, startLv:0, stampLv:0, revive:0};
   for(const k in CAREER){ const l=SAVE.lv[k]|0; if(l>0) CAREER[k].f(M,l); }
@@ -7185,6 +7362,23 @@ function lobbyBackdrop(){
   }catch(e){}
 }
 
+/* 직군 고르기 — 로비 한 줄. 잠긴 것도 보여 준다.
+   「3일 더 나오면 개발이 열린다」가 보여야 내일 또 켠다. */
+function charHTML(){
+  const cur=myChar();
+  const cards=CHARS.map(c=>{
+    const on=charOpen(c), sel=on&&c.id===cur.id;
+    const need=c.day-(SAVE.days|0);
+    return `<button class="chcard${sel?" on":""}${on?"":" lock"}" data-ch="${c.id}"
+       ${on?"":"disabled"} aria-pressed="${sel}">
+      <span class="chn">${esc(c.name)}</span>
+      <span class="cht">${on?esc(c.tag):TF("{0}일 더", need)}</span></button>`;
+  }).join("");
+  return `<div class="chrow">
+    <div class="chhead"><span class="k">${T("직군")}</span>
+      <span class="chd">${esc(cur.desc)}</span></div>
+    <div class="chlist">${cards}</div></div>`;
+}
 function zmapHTML(){
   const mx=Math.min(SAVE.zone|0, ZONES.length);
   const cells=ZONES.map((z,i)=>`<i class="${i<mx?"on":""}${i===mx-1?" now":""}"></i>`).join("");
@@ -7226,9 +7420,11 @@ function renderStart(){
         <span style="margin-left:auto">${TF("{0}일차", SAVE.days)} · ${esc(rankName(SAVE.rank|0))}</span></div>`}
     <div class="story" style="margin-top:14px">
       <div class="sd">${esc(ST.head)}</div>
-      <div class="sl">${SAVE.days>0&&AFTER[SAVE.last]?esc(AFTER[SAVE.last])+"<br>":""}${esc(ST.line)}</div>
+      <div class="sl">${SAVE.days>0&&AFTER[SAVE.last]?esc(AFTER[SAVE.last])+"<br>":""}${
+        esc(SAVE.days>0 ? ST.line : myChar().line)}</div>
       ${unlockHTML()}
     </div>
+    ${charHTML()}
     ${zmapHTML()}
     ${first?`<div class="how">
       <div class="hw"><b>1</b><div><span>움직이기만 하세요</span>
@@ -7252,6 +7448,9 @@ function renderStart(){
   /* 매 판 타이핑을 시키지 않는다 — 폰에서 키보드를 여는 게 플레이를
      막는 문턱이었다. 대사는 게임이 주고(103줄), 내 한 줄은 설정에
      한 번만 적어두면 계속 쓰인다. */
+  for(const b of $("#card").querySelectorAll(".chcard")){
+    b.onclick=()=>{ SAVE.char=b.dataset.ch; writeSave(SAVE); S("select"); renderStart(); };
+  }
   $("#go").onclick=()=>{ S("resume"); start(myGrudge()); };
   $("#shop").onclick=()=>{ S("resume"); S("select"); renderShop(); };
   $("#recs").onclick=()=>{ S("resume"); S("select"); renderRecords(); };
@@ -7666,7 +7865,7 @@ window.spawnWall=spawnWall; window.spawnClose=spawnClose; window.spawnSpiral=spa
 window.__RND=RND;                       // 무작위 사건 검증용
 window.__api={WEAPONS,PERKS,E,ZONES,DAY,hourOf,clockStr,spawnRing,start,todoOf,zoneOf,gateReady,
              RANKS,rankOf,rankName,quotaOf,promoDue,stats,SAVE:()=>SAVE,
-             LANG:()=>LANG, setLang, T, L10N};
+             LANG:()=>LANG, setLang, T, L10N, CHARS, myChar, charOpen};
 $("#tutskip").onclick=()=>{ S("select"); tutStop(G); };
 window.__tut=()=>G&&G.tut;              // 안내 검증용
 window.__TUT=TUT;
