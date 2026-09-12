@@ -3555,10 +3555,12 @@ const WEAPONS = {
     desc:"발밑에 장판. 밟는 적이 계속 닳는다",
     lv:l=>({cd:3.2-l*.18, dps:16+l*8, r:62+l*9, life:3.6}),
     up:l=>"범위 +9, 초당 피해 +8" },
+  /* 퇴근 시계 — 감속만 했다. 무기 칸을 먹는데 아무도 안 죽으면
+     플레이어는 「공격이 안 나간다」고 읽는다. 느려지면서 닳는다. */
   clock:{ id:"clock", name:"퇴근 시계", max:6,
-    desc:"주변 적을 느리게 만든다",
-    lv:l=>({r:96+l*14, slow:.62-l*.05}),
-    up:l=>"범위 +14, 감속 강화" },
+    desc:"주변이 느려지고 계속 닳는다",
+    lv:l=>({r:96+l*14, slow:.62-l*.05, dps:13+l*8}),
+    up:l=>"범위 +14, 감속 강화, 초당 피해 +8" },
   /* 사직서 — 「던지면 폭탄 터지듯이」. 화면 전체를 조용히 쓸던 패시브를
      실제로 던지는 것으로 바꿨다. 날아가서 터지는 게 보여야 시원하다. */
   quit:{ id:"quit", name:"사직서", max:5,
@@ -3624,10 +3626,14 @@ const WEAPONS = {
     desc:"따라다니며 같이 처리한다",
     lv:l=>({n:1+Math.floor(l/3), dmg:20+l*11, cd:1.5-l*.09, range:150+l*14, hp:60+l*30}),
     up:l=>l%3===0?("동시에 "+(1+Math.floor(l/3))+"명"):"피해 +11, 간격 −0.09초" },
+  /* 동기 — 원래 회복만 했다. 무기 칸이 여섯뿐인데 공격을 안 하는 걸 뽑으면
+     그 판이 통째로 약해진다. 실제로 키로 돌려 보니 다섯 칸 중 둘이 그랬다.
+     이제 같이 싸우면서 회복도 한다 — 「같이 무기 던지고」가 이 자리다. */
   peer:{ id:"peer", name:"동기", max:6, ally:true,
     desc:"곁에 붙어 체력을 채워준다",
-    lv:l=>({n:1, heal:7+l*3.5, cd:4.2-l*.3, hp:80+l*36, range:0}),
-    up:l=>"회복 +3.5, 간격 −0.3초" },
+    lv:l=>({n:1+Math.floor(l/4), heal:7+l*3.5, cd:4.2-l*.3, hp:80+l*36,
+            range:170+l*16, dmg:16+l*9, acd:1.35-l*.08}),
+    up:l=>l%4===0?"동시에 +1명":"피해 +9, 회복 +3.5" },
   unionist:{ id:"unionist", name:"노조원", max:6, ally:true,
     desc:"앞에 서서 대신 맞는다. 주변 적을 끌어당긴다",
     lv:l=>({n:1+Math.floor(l/4), taunt:150+l*18, dmg:12+l*7, cd:1.9, hp:180+l*90, range:120}),
@@ -3660,8 +3666,8 @@ const EVOLVED={
     desc:"지나간 자리마다 남는다",
     lv:l=>({cd:.22, dps:70, r:56, life:2.4}), up:l=>"" },
   ontime:{ id:"ontime", name:"정시 퇴근", max:1, evo:true,
-    desc:"6시다. 주변이 멈춘다",
-    lv:l=>({r:210, slow:.12}), up:l=>"" },
+    desc:"6시다. 주변이 멈추고 정리된다",
+    lv:l=>({r:210, slow:.12, dps:135}), up:l=>"" },
   resign:{ id:"resign", name:"퇴사", max:1, evo:true,
     desc:"전부 밀어내고 전부 정리한다",
     lv:l=>({cd:11, dmg:900, push:520}), up:l=>"" },
@@ -4393,8 +4399,17 @@ function stepAllies(g,dt){
 
     al.cd-=dt;
     if(al.id==="peer"){
+      /* 회복 — 다쳤을 때만 */
       if(al.cd<=0 && P.hp<P.maxhp){ al.cd=L.cd; P.hp=Math.min(P.maxhp,P.hp+L.heal);
         g.floats.push({x:P.x,y:P.y-18,t:0,v:"+"+Math.round(L.heal),c:"#57d98a"}); S("coin"); }
+      /* 그리고 같이 싸운다 */
+      al.acd=(al.acd||0)-dt;
+      if(al.acd<=0){
+        const t=nearest(g,al.x,al.y,L.range);
+        if(t){ al.acd=L.acd;
+          damage(g,t,L.dmg*(P.allyDmg||1),al.x,al.y,5);
+          g.fx.push({type:"stamp",x:t.x,y:t.y,t:0}); }
+      }
     } else {
       if(al.cd<=0){
         const t=nearest(g,al.x,al.y,L.range);
@@ -4934,6 +4949,7 @@ function step(g,dt){
   const CK = g.weapons.ontime ? WEAPONS.ontime.lv(1)
            : g.weapons.clock ? WEAPONS.clock.lv(g.weapons.clock) : null;
   const ckR=CK?CK.r*P.range:0;
+  const ckDps=CK?(CK.dps||0):0;
 
   // 적
   for(let i=g.foes.length-1;i>=0;i--){
@@ -4943,7 +4959,9 @@ function step(g,dt){
     const dx=P.x-f.x, dy=P.y-f.y, d=Math.hypot(dx,dy)||1;
     /* 점심시간은 여기서 곱한다 — 적 루프가 매 프레임 slow를 되돌리기 때문에
        stepEvent에서 미리 넣어 둔 값은 지워진다 */
-    f.slow = ((CK && d<ckR) ? CK.slow : 1) * (g.lunchT>0 ? 0.42 : 1) * (g.rndSpd||1);
+    const inCk = CK && d<ckR;
+    f.slow = (inCk ? CK.slow : 1) * (g.lunchT>0 ? 0.42 : 1) * (g.rndSpd||1);
+    if(inCk && ckDps) damage(g,f,ckDps*dt,0,0,0);   // 느려지면서 닳는다
     f.face = dx<0 ? -1 : 1;
     if(E[f.kind].eatXp){                     // 인사팀 — 경험치를 가로챈다
       for(let k=g.orbs.length-1;k>=0;k--){
