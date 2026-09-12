@@ -2582,7 +2582,7 @@ function newGame(grudge){
     t:0, over:null, grudge,
     P:{ x:0, y:0, vx:0, vy:0, r:14, face:-1, walk:0,
         px0:0, py0:0, hx:-1, hy:0,          // 지연 추적 진행 방향
-        hp:100, maxhp:100, spd:168, haste:1, range:1, xpMul:1, magnet:1,
+        hp:160, maxhp:160, spd:168, haste:1, range:1, xpMul:1, magnet:1,
         inv:0, hurt:0, atk:0, moving:false },
     lv:1+M.startLv, xp:0, next:6, kills:0, dmgDealt:0, pendingLv:M.startLv,
     weapons:{ stamp:1+M.stampLv }, perks:{},
@@ -2601,7 +2601,7 @@ function newGame(grudge){
 function stats(g){
   const M=g.meta||metaBonus();
   const P={ spd:168*(1+M.spd), haste:1*(1-M.haste), range:1,
-            xpMul:1+M.xp, magnet:1+M.magnet, maxhp:100+M.hp,
+            xpMul:1+M.xp, magnet:1+M.magnet, maxhp:160+M.hp,
             inv0:0, late:1, work:1, blink:0, annual:0, allyDmg:1, fatigue:1 };
   for(const k in g.perks){ const p=PERKS[k]; for(let i=0;i<g.perks[k];i++) p.f(P,i+1); }
   return P;
@@ -2633,7 +2633,7 @@ function schedFor(h){
    잘라먹는 건 과하고, 특히 피해 배수가 셌다(4대에 100→25).
    체력 위주로 조이고 피해는 약하게 둔다. */
 function foeHpScale(g){ const u=Math.min(1,g.t/DAY); return 1+u*u*3.2; }
-function foeDmgScale(g){ return 1+Math.min(1,g.t/DAY)*0.45; }
+function foeDmgScale(g){ return 1+Math.min(1,g.t/DAY)*0.30; }
 function spawnAt(g,kind,x,y){
   const d=E[kind];
   const shp=d.boss ? d.hp : Math.round(d.hp*foeHpScale(g));
@@ -2777,7 +2777,7 @@ function nextZone(g){
     finish(g, g.ot?"late":"win"); return true;
   }
   // 구역 통과 보상 — 긴장 뒤에 한숨 한 번. 이 리듬이 있어야 하루가 읽힌다
-  P.hp=Math.min(P.maxhp, P.hp+P.maxhp*0.15);
+  P.hp=Math.min(P.maxhp, P.hp+P.maxhp*0.22);
   P.inv=Math.max(P.inv,1.6);
   for(let i=g.foes.length-1;i>=0;i--) if(!g.foes[i].boss) g.foes.splice(i,1);
   g.bossOut=false;
