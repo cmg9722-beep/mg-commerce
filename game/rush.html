@@ -196,6 +196,25 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
 .mbon{margin-top:12px;padding:10px 12px;border:1px solid #2a3a2f;border-radius:8px;
   background:#101a14;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .mbon>.k{font-size:11px;font-weight:800;color:var(--good);letter-spacing:.5px;flex:none}
+/* 업적 — 오늘 해낸 것 */
+.achrow{margin-top:12px;padding:10px 12px;border:1px solid #3a3320;border-radius:8px;
+  background:#191507;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.achrow>.k{font-size:11px;font-weight:800;color:var(--accent);letter-spacing:.5px;flex:none}
+.achs{display:flex;gap:6px;flex-wrap:wrap}
+.achip{font-size:12px;font-weight:700;color:var(--accent);background:#2a2210;
+  border:1px solid #4a3c18;border-radius:999px;padding:4px 10px}
+.achip b{color:var(--good);font-weight:800;margin-left:6px}
+/* 업적 갤러리 */
+.achgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-top:14px}
+.achcard{display:flex;gap:10px;align-items:flex-start;background:var(--cell);
+  border:1px solid var(--line);border-radius:10px;padding:11px}
+.achcard.on{border-color:#4a3c18;background:#191507}
+.achcard canvas{position:static;width:30px;height:30px;flex:none;opacity:.35}
+.achcard.on canvas{opacity:1}
+.achcard .n{font-weight:800;font-size:13px;display:block;color:var(--dim)}
+.achcard.on .n{color:var(--accent)}
+.achcard .d{font-size:11.5px;color:var(--dim);line-height:1.4;display:block;margin-top:2px}
+.achcard .r{font-size:11px;color:var(--good);font-weight:700;display:block;margin-top:3px}
 .mbon .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{font-size:12px;color:var(--chip-gt);background:var(--chip-g);border:1px solid var(--chip-gb);
   border-radius:999px;padding:3px 9px;white-space:nowrap}
@@ -3721,6 +3740,7 @@ function newGame(grudge){
     zone:0, zoneK0:0, zoneT:0, zoneBonus:0, gate:null, cleared:0, sayCd:2.5,
     rank0:Math.min(RANK_MAX,SAVE.rank|0), rank:0, promoLv:0, lowT:0,
     meddle:0, meddleSrc:null, meddleSaid:0,
+    bossKill:{}, noonZone:0, cleanZone:0, zoneHit:0, declined:0,
     robotWork:0, robotCd:16, robotSeen:false, robotWarn:false, userPaused:false,
     evT:0, evPhase:0, lunchT:0, killHold:0, deskX:0, deskY:0, deskOn:false, deskSaid:0,
     ambCd:6, ambWarn:0, ambX:0, ambY:0, podX:0, podY:0, podOn:false,
@@ -3984,6 +4004,10 @@ function openGate(g){
 }
 function nextZone(g){
   const P=g.P;
+  /* 업적 — 이 구역을 한 대도 안 맞고 지났나. 12시 전에 어디까지 갔나 */
+  if(!g.zoneHit) g.cleanZone=1;
+  g.zoneHit=0;
+  if(hourOf(g.t)<12) g.noonZone=Math.max(g.noonZone, g.zone+1);
   g.zone++; g.cleared++;
   g.gate=null; g.zoneK0=g.kills; g.zoneT=0; g.zoneBonus=0;
   g.evT=0; g.evPhase=0; g.lunchT=0; g.killHold=0; g.deskX=0; g.deskSaid=0; g.ambCd=6; g.ambWarn=0;
@@ -4555,6 +4579,7 @@ function killFoe(g,f,i){
     g.killHold=(g.killHold||0)+(g.P.work||1);           // 근로계약서 — 유입 감소
   // 보스 처치는 그 구역 몫을 크게 깎는다 — 큰 걸 잡았으면 그만큼 일한 것이다
   if(f.boss){ g.zoneBonus=(g.zoneBonus||0)+45;
+              g.bossKill[f.kind]=1;                    // 업적 — 누구를 넘었나
               flash(g, E[f.kind].name+" 처리 — 미결 45건"); }
   if(f.boss){                            // 보스 처치 — 경험치가 쏟아진다
     for(let k=0;k<14;k++){
@@ -4933,7 +4958,7 @@ function hurtPlayer(g,dmg,kx,ky,power){
   P.hp -= dmg*late;
   P.inv = .62 + (P.inv0||0);
   P.hurt = .30;
-  kick(g,kx,ky,power); S("hurt");
+  kick(g,kx,ky,power); S("hurt"); g.zoneHit=1;
   /* 퇴근 중에 붙잡히면 그만큼 밀린다 — 「5분이면 됩니다」가 5분이 아니다 */
   if(g.gate && g.gate.p>0){ g.gate.p=Math.max(0,g.gate.p-0.16); flash(g,"붙잡혔습니다"); }
   /* 야근엔 시간이 곧 체력이라, 경고가 없으면 갑자기 죽는다 */
@@ -5905,7 +5930,7 @@ function promoUp(g){
       '능력 그대로 · 직급 그대로<br>'
       +'<b style="color:var(--good)">오늘 미결 −'+PROMO_EASE+'</b> · 내일도 오늘만큼만 합니다',
       false, ()=>{
-        g.zoneBonus=(g.zoneBonus||0)+PROMO_EASE;
+        g.zoneBonus=(g.zoneBonus||0)+PROMO_EASE; g.declined=1;
         flash(g,"받는 만큼만 — 미결 −"+PROMO_EASE);
       });
   openOverlay();
@@ -6046,7 +6071,7 @@ const CAREER={
   revive:{name:"비상금",    max:1, cost:l=>600,      desc:l=>"쓰러져도 한 번 일어난다", f:(M,l)=>M.revive+=l},
 };
 const BLANK_SAVE = () => ({career:0, lv:{}, best:0, days:0, cleared:false, rank:0, last:null,
-  score:0, clear:0, wins:0, unions:0, runs:0, zone:0, combo:0, opt:{}});
+  score:0, clear:0, wins:0, unions:0, runs:0, zone:0, combo:0, opt:{}, ach:{}});
 function loadSave(){
   try{ const j=JSON.parse(localStorage.getItem(SAVE_KEY)||"{}");
        return {career:+j.career||0, lv:j.lv&&typeof j.lv==="object"?j.lv:{},
@@ -6056,7 +6081,8 @@ function loadSave(){
                   그동안 최다 처리 하나만 남기고 나머지는 판이 끝나면 사라졌다 */
                score:+j.score||0, clear:+j.clear||0, wins:+j.wins||0, unions:+j.unions||0,
                runs:+j.runs||0, zone:+j.zone||0, combo:+j.combo||0,
-               opt:j.opt&&typeof j.opt==="object"?j.opt:{}}; }
+               opt:j.opt&&typeof j.opt==="object"?j.opt:{},
+               ach:j.ach&&typeof j.ach==="object"?j.ach:{}}; }
   catch(e){ return BLANK_SAVE(); }
 }
 function writeSave(sv){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(sv)); }catch(e){} }
@@ -6121,10 +6147,76 @@ function dayStage(days){
 }
 function nextStage(days){ return DAYS.find(s=>s.d>days)||null; }
 /* 이야기로 풀리는 것들 — 그 전에는 아예 없는 셈 친다 */
+/* ── 업적 ──────────────────────────────────────────────────────
+   「계속하면 목표가 뭐야?」에 답이 없었다. 해금이 출근 일수에만
+   묶여 있어서, 잘하든 못하든 판 수만 채우면 열렸다. 실력과 무관했다.
+
+   같은 장르 오픈소스를 여덟 개 받아 코드를 열어 보니 구조가 분명했다 —
+   ACHIEVEMENTS(조건) → UNLOCKS(무기 보상). 「한 판에 1000명」이면 무기
+   하나, 「보스 처치」면 무기 하나. 잘해야 열린다. 그게 다음 판을
+   시작하는 이유가 된다.
+
+   이야기 해금(일수)은 그대로 둔다 — 그건 「내일도 출근한다」는
+   서사고, 업적은 「오늘 잘했다」는 실력이다. 둘은 다른 축이다. */
+const ACH=[
+  {id:"first",  name:"첫 결재",     icon:"stamp",   d:"한 명 처리",              f:(r)=>r.kills>=1},
+  {id:"k100",   name:"백 건",       icon:"attend",  d:"한 판에 100명 처리",      f:(r)=>r.kills>=100,  w:"mail"},
+  {id:"k500",   name:"오백 건",     icon:"copy",    d:"한 판에 500명 처리",      f:(r)=>r.kills>=500,  w:"printer"},
+  {id:"k1500",  name:"천오백 건",   icon:"nuke",    d:"한 판에 1,500명 처리",    f:(r)=>r.kills>=1500, w:"elev"},
+  {id:"combo50",name:"몰아치기",    icon:"msg",     d:"50연속 처리",             f:(r)=>r.combo>=50},
+  {id:"combo150",name:"쓸어담기",   icon:"quit",    d:"150연속 처리",            f:(r)=>r.combo>=150,  w:"card"},
+  {id:"noon",   name:"점심 전에",   icon:"coffee",  d:"12:00 전에 4구역 도달",   f:(r)=>r.noonZone>=3, p:"earphone"},
+  {id:"chief",  name:"보고 끝",     icon:"meeting", d:"본부장 처리",             f:(r)=>!!r.boss.chief, w:"quit"},
+  {id:"audit",  name:"점검 통과",   icon:"clock",   d:"점검단 처리",             f:(r)=>!!r.boss.audit, p:"law52"},
+  {id:"ceo",    name:"마지막 문",   icon:"elev",    d:"대표이사 처리",           f:(r)=>!!r.boss.ceo,   a:"unionist"},
+  {id:"win",    name:"정시 퇴근",   icon:"attend",  d:"18:00 전에 정문",         f:(r)=>r.over==="win", a:"junior"},
+  {id:"union",  name:"단체협약",    icon:"union",   d:"교섭으로 하루를 끝내기",  f:(r)=>r.over==="union", p:"union"},
+  {id:"clean",  name:"무결점",      icon:"annual",  d:"한 구역을 한 대도 안 맞고",f:(r)=>!!r.cleanZone, p:"annual"},
+  {id:"maxw",   name:"숙련",        icon:"jeongyeol",d:"무기 하나를 끝까지",     f:(r)=>!!r.maxed},
+  {id:"promo",  name:"대리 명함",   icon:"promo",   d:"대리 이상 승진",          f:(r)=>r.rank>=2,     p:"contract"},
+  {id:"stay",   name:"받는 만큼만", icon:"stay",    d:"승진을 한 번 거절",       f:(r)=>!!r.declined},
+  {id:"robot",  name:"자리 지키기", icon:"remote",  d:"로봇을 본 판을 대체율 20% 아래로 끝내기",
+                                                    f:(r)=>r.sawRobot&&r.repl<0.20, p:"remote"},
+  {id:"late",   name:"그래도 끝냈다",icon:"overtime",d:"야근 끝에 정문",         f:(r)=>r.over==="late"},
+  {id:"z9",     name:"대표이사실",  icon:"part",    d:"9구역 도달",              f:(r)=>r.zone>=8,     w:"meeting"},
+  {id:"score1", name:"만 점",       icon:"card",    d:"한 판 10,000점",          f:(r)=>r.score>=10000, p:"union"},
+];
+const achDone = id => !!(SAVE.ach&&SAVE.ach[id]);
+/* 업적이 연 것들 — 이야기 해금과 따로 모은다 */
+function achUnlocked(id){
+  for(const a of ACH){
+    if(!achDone(a.id)) continue;
+    if(a.w===id||a.p===id||a.a===id) return true;
+  }
+  return false;
+}
 function unlocked(id){
   const d=SAVE.days|0;
-  for(const s of DAYS) if(s.unlock===id) return d>=s.d;
+  for(const s of DAYS) if(s.unlock===id) return d>=s.d || achUnlocked(id);
   return true;
+}
+/* 판이 끝나면 한 번에 판정한다. 진행 중 판정은 화면을 시끄럽게 만든다 */
+function gradeAch(g){
+  const r={ kills:g.kills, combo:g.comboBest|0, over:g.over, zone:g.zone,
+            rank:rankOf(g), score:scoreOf(g), repl:replaceRate(g),
+            sawRobot:!!g.robotSeen, boss:g.bossKill||{}, noonZone:g.noonZone|0,
+            cleanZone:!!g.cleanZone, declined:!!g.declined,
+            maxed:Object.keys(g.weapons).some(k=>WEAPONS[k]&&g.weapons[k]>=WEAPONS[k].max) };
+  SAVE.ach=SAVE.ach||{};
+  const got=[];
+  for(const a of ACH){
+    if(SAVE.ach[a.id]) continue;
+    let ok=false; try{ ok=!!a.f(r); }catch(e){}
+    if(!ok) continue;
+    SAVE.ach[a.id]=1;
+    got.push(a);
+  }
+  return got;
+}
+function achReward(a){
+  const id=a.w||a.p||a.a; if(!id) return "";
+  const W=WEAPONS[id]||PERKS[id];
+  return W?W.name:"";
 }
 /* 어제 어떻게 끝났는지가 오늘 첫 줄을 바꾼다 */
 const AFTER={
@@ -6274,7 +6366,21 @@ function renderRecords(){
       `<div class="cstat"><b class="num" style="color:${r[2]};font-size:${r[1].length>7?20:26}px">${
         esc(r[1])}</b><span>${esc(r[0])}</span></div>`).join("")}</div>
     ${zmapHTML()}
+    <div class="sub" style="margin:18px 0 0">업적 <b style="color:var(--accent)">${
+      ACH.filter(a=>achDone(a.id)).length}</b> / ${ACH.length} — 잘해야 열립니다</div>
+    <div class="achgrid" id="achg"></div>
     <div class="dock"><button class="primary" id="back">돌아가기</button></div>`;
+  const box=$("#achg");
+  for(const a of ACH){
+    const on=achDone(a.id), rw=achReward(a);
+    const d=document.createElement("div");
+    d.className="achcard"+(on?" on":"");
+    d.appendChild(icon(a.icon,30));
+    const t=document.createElement("div");
+    t.innerHTML='<span class="n">'+esc(a.name)+'</span><span class="d">'+esc(a.d)+'</span>'
+      +(rw?'<span class="r">'+(on?"해금됨 — ":"보상 ")+esc(rw)+'</span>':"");
+    d.appendChild(t); box.appendChild(d);
+  }
   $("#back").onclick=()=>{ S("select"); renderStart(); };
   openOverlay();
 }
@@ -6386,6 +6492,8 @@ function renderEnd(g){
   if(uni) SAVE.unions=(SAVE.unions|0)+1;
   if(win||late||uni) SAVE.cleared=true;
   writeSave(SAVE);
+  /* 업적 — 오늘 뭘 해냈나. 이게 「한 판 더」의 두 번째 이유다 */
+  const GOT=gradeAch(g); writeSave(SAVE);
   const NXT=nextStage(SAVE.days|0);      // 다음 이야기 — 「한 판 더」가 여기서 나온다
   $("#card").innerHTML=`
     <div class="rhead">
@@ -6413,6 +6521,9 @@ function renderEnd(g){
         g.robotSeen?Math.round(replaceRate(g)*100)+"%":Math.round(g.dmgDealt).toLocaleString()}</b><span>${
         g.robotSeen?"대체율":"누적 피해"}</span></div>
     </div>
+    ${GOT.length?`<div class="achrow"><span class="k">오늘 해낸 것</span><div class="achs">${
+      GOT.map(a=>`<span class="achip">${esc(a.name)}${
+        achReward(a)?'<b>'+esc(achReward(a))+' 해금</b>':''}</span>`).join("")}</div></div>`:""}
     ${loadoutHTML(g,"마지막 구성")}
     <div class="quote">
       <div class="q">“${esc(g.grudge)}”</div>
