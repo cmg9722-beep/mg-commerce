@@ -3688,20 +3688,55 @@ const PERKS = {
    이 게임을 친구에게 보여주고 싶게 만드는 건 화력이 아니라 이 한 줄이다.
    직급마다 하는 말이 다르고, 플레이어가 입력한 원한은 그 말을 할 법한
    사람(과장·부장·본부장) 입에 넣는다. */
+/* ── 대사 ──────────────────────────────────────────────────────
+   이 게임을 친구에게 보여주고 싶게 만드는 건 화력이 아니라 이 한 줄이다.
+
+   원래 직급당 세 줄이었다. 한 판에 수백 명이 나오는데 세 줄이면 1분이면
+   외워진다. 그래서 「오늘 누구 때문에 힘드셨나요?」를 매 판 타이핑하게
+   만들어 그 구멍을 메우고 있었다 — 순서가 틀렸다. 폰에서 매번 키보드를
+   여는 건 플레이를 막는 문턱이고, 대사는 원래 게임이 줘야 하는 것이다.
+
+   직급당 여덟에서 열 줄로 늘린다. 실제로 회사에서 듣는 말들이라
+   웃기면서 아프다 — 그게 이 게임의 카타르시스다. */
 const SAY={
-  intern :["저... 이거 어떻게 하는지...","죄송한데 잠깐만요","제가 아직 잘 몰라서"],
-  rookie :["이거 먼저 봐주시면 안 될까요","급한 건이라서요!","금방 끝나는 거예요"],
-  staff  :["확인 부탁드립니다","메일 보내드렸는데요","회신이 없으셔서"],
-  senior :["그건 제 업무가 아닌데요","위에서 그렇게 하래요","저도 받은 거예요"],
-  manager:["이거 오늘까지 되죠?","간단한 거니까 금방 될 거야","어려운 거 아니잖아"],
-  gm     :["요즘 젊은 사람들은 말이야","내가 자네 나이 때는","오늘 저녁에 한잔 어때"],
-  drunk  :["한 잔만 더!","2차 가자 2차","벌써 가려고?"],
-  hrteam :["면담 좀 할까요","평가 시즌이라서요","이거 기록에 남습니다"],
-  vendor :["단가 좀 맞춰주시면","이번만 좀 부탁드립니다","사장님이 꼭 뵙재요"],
-  chief  :["보고서 다시 써와","이게 최선인가?","내일 아침까지 가져와"],
-  audit  :["이 서류 언제 거죠?","규정대로 하셔야죠","근거 자료 주시겠어요"],
-  ceo    :["회사가 어렵습니다","주인의식을 가지세요","가족 같은 회사잖아요"],
+  intern :["저... 이거 어떻게 하는지...","죄송한데 잠깐만요","제가 아직 잘 몰라서",
+           "이거 어디다 올리면 돼요?","혹시 파일 어디 있는지...","제가 해도 되는 건가요",
+           "선배 지금 바쁘세요?","아 이거 제가 안 배운 건데"],
+  rookie :["이거 먼저 봐주시면 안 될까요","급한 건이라서요!","금방 끝나는 거예요",
+           "5분이면 됩니다","오늘까지만 부탁드려요","제가 급해서 그런데",
+           "지금 안 되면 언제 되세요?","딱 하나만요!","죄송한데 이것만요"],
+  staff  :["확인 부탁드립니다","메일 보내드렸는데요","회신이 없으셔서",
+           "참조 걸어드렸습니다","읽으셨다고 떠서요","리마인드 드립니다",
+           "언제쯤 될까요?","혹시 놓치신 건 아니죠?"],
+  senior :["그건 제 업무가 아닌데요","위에서 그렇게 하래요","저도 받은 거예요",
+           "저한테 물어보셔도...","담당이 바뀌었어요","전달만 드리는 겁니다",
+           "그건 위에 여쭤보셔야","저도 몰라요 저도"],
+  manager:["이거 오늘까지 되죠?","간단한 거니까 금방 될 거야","어려운 거 아니잖아",
+           "잠깐이면 되는 거야","이거 하는 김에 저것도","내가 하면 5분인데",
+           "왜 이렇게 오래 걸려?","어제 말한 거 어떻게 됐어?","이번만 좀 해줘"],
+  gm     :["요즘 젊은 사람들은 말이야","내가 자네 나이 때는","오늘 저녁에 한잔 어때",
+           "나 때는 주말도 나왔어","열정이 있어야지","벌써 가? 6시밖에 안 됐는데",
+           "우리 팀은 가족이야","시키면 좀 해","자네 요즘 왜 그래"],
+  drunk  :["한 잔만 더!","2차 가자 2차","벌써 가려고?",
+           "야 우리 팀 막내가","내가 쏠게 앉아","분위기 좀 맞춰라",
+           "딱 한 잔만! 진짜 한 잔만","택시비 줄게","내일 늦게 와도 돼"],
+  hrteam :["면담 좀 할까요","평가 시즌이라서요","이거 기록에 남습니다",
+           "잠깐 얘기 좀","작년 목표 기억하시죠?","동료 평가가 좀...",
+           "회사 방침입니다","서명만 하시면 됩니다","다들 그렇게 하세요"],
+  vendor :["단가 좀 맞춰주시면","이번만 좀 부탁드립니다","사장님이 꼭 뵙재요",
+           "샘플 놓고 갈게요","식사라도 한번","계약서 검토만 좀",
+           "저희가 손해 보는 겁니다","다음에 꼭 갚겠습니다"],
+  chief  :["보고서 다시 써와","이게 최선인가?","내일 아침까지 가져와",
+           "이걸 보고라고 가져왔나","방향이 틀렸어 처음부터","숫자가 이게 맞아?",
+           "내가 언제 그렇게 말했나","한 장으로 줄여","결론이 뭔데"],
+  audit  :["이 서류 언제 거죠?","규정대로 하셔야죠","근거 자료 주시겠어요",
+           "결재선이 이게 맞나요","원본 있으신가요","소명해 주셔야 합니다",
+           "작년 것도 같이 주세요","이 항목은 왜 비었죠"],
+  ceo    :["회사가 어렵습니다","주인의식을 가지세요","가족 같은 회사잖아요",
+           "조금만 더 버팁시다","여러분이 회사의 주인입니다","성과가 나면 보상은 따라옵니다",
+           "다 같이 고생하는 겁니다","내년엔 다를 겁니다","지금이 중요한 시기예요"],
 };
+
 const GRUDGE_KINDS=["manager","gm","chief"];      // 입력한 원한을 말할 사람들
 function pickSay(g,f){
   const pool=SAY[f.kind]||["…"];
@@ -6215,7 +6250,7 @@ const CAREER={
   revive:{name:"비상금",    max:1, cost:l=>600,      desc:l=>"쓰러져도 한 번 일어난다", f:(M,l)=>M.revive+=l},
 };
 const BLANK_SAVE = () => ({career:0, lv:{}, best:0, days:0, cleared:false, rank:0, last:null,
-  score:0, clear:0, wins:0, unions:0, runs:0, zone:0, combo:0, opt:{}, ach:{}});
+  score:0, clear:0, wins:0, unions:0, runs:0, zone:0, combo:0, opt:{}, ach:{}, grudge:""});
 function loadSave(){
   try{ const j=JSON.parse(localStorage.getItem(SAVE_KEY)||"{}");
        return {career:+j.career||0, lv:j.lv&&typeof j.lv==="object"?j.lv:{},
@@ -6226,7 +6261,8 @@ function loadSave(){
                score:+j.score||0, clear:+j.clear||0, wins:+j.wins||0, unions:+j.unions||0,
                runs:+j.runs||0, zone:+j.zone||0, combo:+j.combo||0,
                opt:j.opt&&typeof j.opt==="object"?j.opt:{},
-               ach:j.ach&&typeof j.ach==="object"?j.ach:{}}; }
+               ach:j.ach&&typeof j.ach==="object"?j.ach:{},
+               grudge:typeof j.grudge==="string"?j.grudge.slice(0,40):""}; }
   catch(e){ return BLANK_SAVE(); }
 }
 function writeSave(sv){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(sv)); }catch(e){} }
@@ -6461,8 +6497,6 @@ function renderStart(){
         조합해서 내 방식을 만듭니다.</div></div>
     </div>`:""}
     ${bon?`<div class="mbon" style="margin-top:14px"><span class="k">적용 중</span><div class="chips">${bon}</div></div>`:""}
-    <label>오늘 누구 때문에 힘드셨나요? <span style="color:#59627a">적 대사가 됩니다</span></label>
-    <input id="grudge" maxlength="40" placeholder="이거 오늘 안에 되죠?" autocomplete="off">
     <div class="dock">
       <button class="primary" id="go">출근</button>
       <div class="nav">
@@ -6471,10 +6505,10 @@ function renderStart(){
         <button id="opts">설정<small>${first?"조작 · 소리":"도움말 · 소리"}</small></button>
       </div>
     </div>`;
-  $("#go").onclick=()=>{
-    S("resume");
-    start(($("#grudge").value||"").trim()||"이거 오늘 안에 되죠?");
-  };
+  /* 매 판 타이핑을 시키지 않는다 — 폰에서 키보드를 여는 게 플레이를
+     막는 문턱이었다. 대사는 게임이 주고(103줄), 내 한 줄은 설정에
+     한 번만 적어두면 계속 쓰인다. */
+  $("#go").onclick=()=>{ S("resume"); start(myGrudge()); };
   $("#shop").onclick=()=>{ S("resume"); S("select"); renderShop(); };
   $("#recs").onclick=()=>{ S("resume"); S("select"); renderRecords(); };
   $("#opts").onclick=()=>{ S("resume"); S("select"); renderOptions(); };
@@ -6534,6 +6568,8 @@ function renderRecords(){
    기록 초기화도 여기로 옮긴다 — 상점 첫 화면에 「지우기」가 있으면
    살 때마다 그게 눈에 들어온다. */
 const OPT_DEF={ bgm:1, sfx:1, shake:1 };
+/* 내가 적어둔 한 줄. 없으면 게임이 알아서 고른다 */
+const myGrudge = () => (SAVE.grudge||"").trim() || "이거 오늘 안에 되죠?";
 function opt(k){ const v=(SAVE.opt||{})[k]; return v===undefined?OPT_DEF[k]:!!v; }
 function setOpt(k,v){ SAVE.opt=SAVE.opt||{}; SAVE.opt[k]=v?1:0; writeSave(SAVE);
   if(k==="bgm"){ if(v){ if(G&&!G.over) S("bgmStart"); } else S("bgmStop"); } }
@@ -6546,6 +6582,11 @@ function renderOptions(){
     ${row("bgm","배경음","하루가 갈수록 조여 오는 음악")}
     ${row("sfx","효과음","타격·처치·획득")}
     ${row("shake","화면 흔들림","보스와 큰 타격에 화면이 흔들립니다. 어지러우면 끄세요")}
+    <div class="setrow" style="display:block">
+      <div class="k">내 한 줄<small>오늘 누구 때문에 힘드셨나요? 적어두면 상사들이 그 말을 합니다. 비워두면 게임이 알아서 고릅니다.</small></div>
+      <input id="mygr" maxlength="40" placeholder="이거 오늘 안에 되죠?" autocomplete="off"
+             value="${esc(SAVE.grudge||"")}" style="margin-top:9px">
+    </div>
     <div class="setrow"><div class="k">조작<small>${isTouch?"화면 드래그 · WASD":"WASD · 마우스 드래그"} · 공격은 자동 · 음소거 M · 일시정지 P</small></div></div>
     <div class="setrow"><div class="k">소리<small>Abstraction · Kenney — CC0 1.0 (상업 이용 가능)</small></div></div>
     <div class="dock">
@@ -6558,6 +6599,8 @@ function renderOptions(){
     b.onclick=()=>{ const k=b.dataset.k, v=!opt(k); setOpt(k,v);
       b.classList.toggle("on",v); b.setAttribute("aria-checked",String(v)); S("select"); };
   });
+  const gi=$("#mygr");
+  if(gi) gi.oninput=()=>{ SAVE.grudge=(gi.value||"").slice(0,40); writeSave(SAVE); };
   $("#back").onclick=()=>{ S("select"); renderStart(); };
   $("#wipe").onclick=()=>{
     if(!confirm("경력과 기록을 전부 지웁니다. 되돌릴 수 없습니다.")) return;
@@ -6691,7 +6734,7 @@ function renderEnd(g){
       display:flex;align-items:center;justify-content:center;gap:8px">
       <span>자기계발</span><span style="color:var(--accent);font-weight:800">경력 ${SAVE.career.toLocaleString()}</span>
     </button>`;
-  $("#again").onclick=()=>{ S("select"); start(g.grudge); };
+  $("#again").onclick=()=>{ S("select"); start(myGrudge()); };
   $("#toShop").onclick=()=>{ S("select"); renderShop(); };
   openOverlay();
 }
