@@ -2298,14 +2298,14 @@ const ZONES=[
   {h:11, name:"사무실",          quota:60,  kinds:["staff","senior","hrteam"],            rate:0.95, n:4},
   {h:12, name:"구내식당",        quota:85,  kinds:["drunk","vendor","staff"],             rate:0.82, n:5},
   {h:13, name:"소회의실 복도",   quota:110, kinds:["senior","manager","hrteam","rookie"], rate:0.70, n:7},
-  {h:14, name:"대회의실",        quota:140, kinds:["manager","gm","staff"],               rate:0.58, n:9,  boss:"chief"},
+  {h:14, name:"대회의실",        quota:85,  kinds:["manager","gm","staff"],               rate:0.58, n:9,  boss:"chief"},
   {h:15, name:"탕비실 · 복사실", quota:170, kinds:["drunk","senior","vendor","rookie"],   rate:0.48, n:11},
-  {h:16, name:"임원층 복도",     quota:205, kinds:["manager","gm","hrteam","drunk"],      rate:0.40, n:13, boss:"audit"},
-  {h:17, name:"대표이사실",      quota:240, kinds:["gm","manager","drunk","rookie"],      rate:0.32, n:16, boss:"ceo"},
+  {h:16, name:"임원층 복도",     quota:125, kinds:["manager","gm","hrteam","drunk"],      rate:0.40, n:13, boss:"audit"},
+  {h:17, name:"대표이사실",      quota:150, kinds:["gm","manager","drunk","rookie"],      rate:0.32, n:16, boss:"ceo"},
 ];
 const zoneOf = g => ZONES[Math.min(g.zone,ZONES.length-1)];
 /* 이 구역에 남은 미결 */
-const todoOf = g => Math.max(0, zoneOf(g).quota - (g.kills-g.zoneK0));
+const todoOf = g => Math.max(0, zoneOf(g).quota - (g.kills-g.zoneK0) - (g.zoneBonus||0));
 /* 문이 열릴 조건 — 몫을 끝내고, 보스가 남아 있으면 그것도 끝내야 한다 */
 const gateReady = g => todoOf(g)<=0 && !g.foes.some(f=>f.boss);
 
@@ -2464,6 +2464,68 @@ const PERKS = {
              f:(P,l)=>{P.allyDmg*=1.25; P.fatigue*=0.85;} },
 };
 
+/* ── 대사 ──────────────────────────────────────────────────────
+   이 게임을 친구에게 보여주고 싶게 만드는 건 화력이 아니라 이 한 줄이다.
+   직급마다 하는 말이 다르고, 플레이어가 입력한 원한은 그 말을 할 법한
+   사람(과장·부장·본부장) 입에 넣는다. */
+const SAY={
+  intern :["저... 이거 어떻게 하는지...","죄송한데 잠깐만요","제가 아직 잘 몰라서"],
+  rookie :["이거 먼저 봐주시면 안 될까요","급한 건이라서요!","금방 끝나는 거예요"],
+  staff  :["확인 부탁드립니다","메일 보내드렸는데요","회신이 없으셔서"],
+  senior :["그건 제 업무가 아닌데요","위에서 그렇게 하래요","저도 받은 거예요"],
+  manager:["이거 오늘까지 되죠?","간단한 거니까 금방 될 거야","어려운 거 아니잖아"],
+  gm     :["요즘 젊은 사람들은 말이야","내가 자네 나이 때는","오늘 저녁에 한잔 어때"],
+  drunk  :["한 잔만 더!","2차 가자 2차","벌써 가려고?"],
+  hrteam :["면담 좀 할까요","평가 시즌이라서요","이거 기록에 남습니다"],
+  vendor :["단가 좀 맞춰주시면","이번만 좀 부탁드립니다","사장님이 꼭 뵙재요"],
+  chief  :["보고서 다시 써와","이게 최선인가?","내일 아침까지 가져와"],
+  audit  :["이 서류 언제 거죠?","규정대로 하셔야죠","근거 자료 주시겠어요"],
+  ceo    :["회사가 어렵습니다","주인의식을 가지세요","가족 같은 회사잖아요"],
+};
+const GRUDGE_KINDS=["manager","gm","chief"];      // 입력한 원한을 말할 사람들
+function pickSay(g,f){
+  const pool=SAY[f.kind]||["…"];
+  if(g.grudge && GRUDGE_KINDS.includes(f.kind) && Math.random()<0.4) return g.grudge;
+  return pool[(Math.random()*pool.length)|0];
+}
+function stepSay(g,dt){
+  for(const f of g.foes) if(f.sayT>0) f.sayT-=dt;
+  g.sayCd-=dt;
+  if(g.sayCd>0) return;
+  g.sayCd=1.6+Math.random()*1.4;
+  const live=g.foes.filter(f=>f.sayT>0).length;
+  if(live>=3) return;                             // 한 번에 셋까지 — 더 뜨면 소음이다
+  const P=g.P, near=[];
+  for(const f of g.foes){
+    if(f.sayT>0) continue;
+    const d=Math.hypot(f.x-P.x,f.y-P.y);
+    if(d<430) near.push(f);
+  }
+  if(!near.length) return;
+  const f=near[(Math.random()*near.length)|0];
+  f.say=pickSay(g,f); f.sayT=f.boss?3.4:2.6; f.sayT0=f.sayT;
+}
+function drawSay(g,f,sx,sy){
+  if(!(f.sayT>0) || !f.say) return;
+  const a=clamp(Math.min(f.sayT, f.sayT0-f.sayT)*3.2, 0, 1);   // 들고 남
+  if(a<=0.01) return;
+  ctx.save();
+  ctx.globalAlpha=a;
+  ctx.font="600 13px 'Gothic A1',\"Malgun Gothic\",system-ui,sans-serif";
+  const w=Math.min(ctx.measureText(f.say).width+20, 260);
+  const h=25, x=sx-w/2, y=sy-f.r-h-16;
+  ctx.fillStyle="rgba(232,236,244,.95)";
+  ctx.beginPath();
+  if(ctx.roundRect) ctx.roundRect(x,y,w,h,7); else ctx.rect(x,y,w,h);
+  ctx.fill();
+  ctx.beginPath();                                 // 꼬리
+  ctx.moveTo(sx-6,y+h-1); ctx.lineTo(sx,y+h+7); ctx.lineTo(sx+6,y+h-1);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle="#171a21"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(f.say, sx, y+h/2+1, w-16);
+  ctx.restore();
+}
+
 /* ── 적 ──────────────────────────────────────────────────────── */
 const E = {
   intern :{name:"인턴", hp:22,  spd:78, dmg:5,  xp:1, r:15},
@@ -2528,7 +2590,7 @@ function newGame(grudge){
     shocks:[], vortex:[], cards:[], builds:[], allies:[],
     blinkCd:0, annualCd:0, annualT:0,
     spawnAcc:0, bossOut:false, shake:0, shakeX:0, shakeY:0, hitstop:0,
-    zone:0, zoneK0:0, zoneT:0, gate:null, cleared:0,
+    zone:0, zoneK0:0, zoneT:0, zoneBonus:0, gate:null, cleared:0, sayCd:2.5,
     ot:false, otT:0, warned:false,
     combo:0, comboT:0, comboBest:0, comboPop:0, flash:0,
     toast:"", toastT:0, paused:false, best:0,
@@ -2611,7 +2673,9 @@ function doSpawns(g,dt){
   const CAP=420;                       // 폭주 방지 상한 (성능·가독성 둘 다)
   // 야근은 시간이 갈수록 조여 온다 — 미결을 빨리 비우는 것 말고 답이 없게
   const otk = g.ot ? Math.max(0.55, 1-g.otT*0.012) : 1;
-  if(g.foes.length<CAP && g.spawnAcc>=s.rate*otk){
+  // 보스가 살아 있으면 물량을 늦춘다. 보스전과 물량전이 겹치면 이중 부담이 된다
+  const bk = g.foes.some(f=>f.boss) ? 1.7 : 1;
+  if(g.foes.length<CAP && g.spawnAcc>=s.rate*otk*bk){
     g.spawnAcc=0;
     const k=s.kinds[(Math.random()*s.kinds.length)|0];
     spawnRing(g,k,s.n);
@@ -2708,7 +2772,7 @@ function openGate(g){
 function nextZone(g){
   const P=g.P;
   g.zone++; g.cleared++;
-  g.gate=null; g.zoneK0=g.kills; g.zoneT=0;
+  g.gate=null; g.zoneK0=g.kills; g.zoneT=0; g.zoneBonus=0;
   if(g.zone>=ZONES.length){                    // 정문을 나왔다
     finish(g, g.ot?"late":"win"); return true;
   }
@@ -3125,6 +3189,9 @@ function burstBits(bn,away,big){
 }
 function killFoe(g,f,i){
   g.foes.splice(i,1); g.kills++;
+  // 보스 처치는 그 구역 몫을 크게 깎는다 — 큰 걸 잡았으면 그만큼 일한 것이다
+  if(f.boss){ g.zoneBonus=(g.zoneBonus||0)+45;
+              flash(g, E[f.kind].name+" 처리 — 미결 45건"); }
   if(f.boss){                            // 보스 처치 — 경험치가 쏟아진다
     for(let k=0;k<14;k++){
       const a=Math.random()*6.283, r=30+Math.random()*90;
@@ -3208,6 +3275,7 @@ function step(g,dt){
   fireWeapons(g,dt);
   stepAllies(g,dt);
   stepPolicy(g,dt);
+  stepSay(g,dt);
 
   // 퇴근 시계(지속형 감속)
   const CK = g.weapons.ontime ? WEAPONS.ontime.lv(1)
@@ -3869,6 +3937,7 @@ function drawWorld(g){
     const sx=X(f.x), sy=Y(f.y);
     if(sx<-90||sx>VWz+90||sy<-90||sy>VHz+90) continue;
     drawFoe(g,f,sx,sy);
+    if(f.sayT>0) drawSay(g,f,sx,sy);
   }
   drawAllies(g,X,Y);
   drawPlayer(g,X(P.x),Y(P.y));
