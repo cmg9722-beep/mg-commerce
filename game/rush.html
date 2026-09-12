@@ -2104,27 +2104,190 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
 
   /* ── 매크로 타일 베이크 (1056×1056, 최초 1회) ───────────────── */
 
-  var baked = null;                             // { cv, pattern }
-  function getTile() {
-    if (baked) return baked;
+  var tiles = {};                               // 구역별 { cv, pattern }
+  /* ── 구역별 생김새 ────────────────────────────────────────────
+     아홉 구역이 전부 같은 사무실이면 HUD만 「지하 주차장」이고 화면은
+     나무 책상이다. 구역이 바뀌었다는 걸 화면이 말해야 한다.
+     바닥색·패턴·소품 세트 셋을 구역마다 바꾼다. */
+  var LOOKS = [
+    { f:"#45454a", f2:"#4c4c51", grid:"lot",    line:"rgba(230,230,235,.10)", set:"cars"     },
+    { f:"#605a50", f2:"#6a6459", grid:"slab",   line:"rgba(255,250,235,.09)", set:"lobby"    },
+    { f:"#4a443b", f2:"#524c42", grid:"carpet", line:"rgba(120,150,200,.045)",set:"desks"    },
+    { f:"#4f4e49", f2:"#575651", grid:"tile",   line:"rgba(255,255,255,.06)", set:"canteen"  },
+    { f:"#3f4450", f2:"#464c58", grid:"carpet", line:"rgba(150,175,215,.05)", set:"corridor" },
+    { f:"#3e4a42", f2:"#45524a", grid:"carpet", line:"rgba(150,200,170,.05)", set:"meeting"  },
+    { f:"#57554f", f2:"#5f5d57", grid:"tile",   line:"rgba(255,255,255,.07)", set:"pantry"   },
+    { f:"#4a3c3c", f2:"#524343", grid:"carpet", line:"rgba(220,180,170,.045)",set:"exec"     },
+    { f:"#54402c", f2:"#5c4732", grid:"plank",  line:"rgba(255,220,170,.06)", set:"ceo"      },
+  ];
+  var lookOf = function (z) { return LOOKS[Math.max(0, Math.min(LOOKS.length - 1, z | 0))]; };
+
+  /* ── 구역 소품 원형 ── */
+  function pillar(c, x, y, r) {                       // 기둥
+    frr(c, x - 22, y - 22, 44, 44, 4, "#5b5b60");
+    frr(c, x - 18, y - 18, 36, 36, 3, "#6a6a70");
+    c.fillStyle = "rgba(0,0,0,.22)"; c.fillRect(x + 6, y - 18, 12, 36);
+  }
+  function car(c, x, y, rot, col) {                   // 차 — 위에서 본 실루엣
+    c.save(); c.translate(x, y); c.rotate(rot);
+    frr(c, -26, -50, 52, 100, 12, col);
+    frr(c, -21, -34, 42, 34, 7, "#20242c");           // 앞유리
+    frr(c, -21, 10, 42, 28, 7, "#20242c");            // 뒷유리
+    frr(c, -27, -40, 5, 18, 2, "#1a1d23"); frr(c, 22, -40, 5, 18, 2, "#1a1d23");
+    c.fillStyle = "rgba(255,255,255,.14)"; c.fillRect(-26, -50, 52, 6);
+    c.restore();
+  }
+  function longTable(c, x, y, w, h, top, leg) {       // 긴 테이블
+    c.fillStyle = "rgba(0,0,0,.20)"; frr(c, x - w / 2 + 4, y - h / 2 + 6, w, h, 6); c.fill();
+    frr(c, x - w / 2, y - h / 2, w, h, 6, top);
+    c.strokeStyle = "rgba(0,0,0,.28)"; c.lineWidth = 1.5;
+    rr(c, x - w / 2, y - h / 2, w, h, 6); c.stroke();
+    c.fillStyle = "rgba(255,255,255,.10)"; c.fillRect(x - w / 2 + 3, y - h / 2 + 3, w - 6, 4);
+    var n = Math.max(2, Math.round(w / 70));          // 의자
+    for (var i = 0; i < n; i++) {
+      var cx = x - w / 2 + (i + 0.5) * (w / n);
+      frr(c, cx - 12, y - h / 2 - 26, 24, 22, 5, leg);
+      frr(c, cx - 12, y + h / 2 + 4, 24, 22, 5, leg);
+    }
+  }
+  function counter(c, x, y, w, h, col, top) {         // 카운터·배식대·싱크대
+    c.fillStyle = "rgba(0,0,0,.20)"; frr(c, x - w / 2 + 4, y - h / 2 + 6, w, h, 4); c.fill();
+    frr(c, x - w / 2, y - h / 2, w, h, 4, col);
+    frr(c, x - w / 2, y - h / 2, w, 12, 4, top);
+    c.strokeStyle = "rgba(0,0,0,.26)"; c.lineWidth = 1.5;
+    rr(c, x - w / 2, y - h / 2, w, h, 4); c.stroke();
+  }
+  function planter(c, x, y, big) {                    // 화분
+    var r = big ? 20 : 14;
+    c.fillStyle = "rgba(0,0,0,.22)";
+    c.beginPath(); c.ellipse(x + 3, y + 5, r, r * .5, 0, 0, 6.3); c.fill();
+    frr(c, x - r, y - r * .5, r * 2, r, 4, "#8a5a3c");
+    c.fillStyle = "#3f7a4a";
+    for (var i = 0; i < 7; i++) {
+      var a = i / 7 * 6.283, rr2 = r * (0.9 + (i % 3) * .2);
+      c.beginPath();
+      c.ellipse(x + Math.cos(a) * r * .4, y - r * .5 + Math.sin(a) * r * .3, rr2 * .5, rr2 * .28, a, 0, 6.3);
+      c.fill();
+    }
+  }
+  function sofa(c, x, y, w, col) {
+    c.fillStyle = "rgba(0,0,0,.20)"; frr(c, x - w / 2 + 4, y - 18 + 6, w, 44, 8); c.fill();
+    frr(c, x - w / 2, y - 26, w, 22, 8, col);          // 등받이
+    frr(c, x - w / 2, y - 10, w, 34, 8, col);          // 방석
+    c.fillStyle = "rgba(255,255,255,.09)"; c.fillRect(x - w / 2 + 5, y - 24, w - 10, 4);
+  }
+  function doorway(c, x, y, horiz) {                  // 유리문 — 복도용
+    c.save(); c.translate(x, y); if (!horiz) c.rotate(Math.PI / 2);
+    frr(c, -46, -9, 92, 18, 2, "#6d6d74");
+    frr(c, -42, -6, 40, 12, 1, "rgba(200,225,255,.22)");
+    frr(c, 2, -6, 40, 12, 1, "rgba(200,225,255,.22)");
+    c.strokeStyle = "rgba(0,0,0,.3)"; c.lineWidth = 1.4; rr(c, -46, -9, 92, 18, 2); c.stroke();
+    c.restore();
+  }
+  function board(c, x, y) {                           // 화이트보드
+    frr(c, x - 60, y - 12, 120, 24, 2, "#2f3138");
+    frr(c, x - 57, y - 9, 114, 18, 1, "#e9ecf2");
+    c.strokeStyle = "#9fb4d2"; c.lineWidth = 2; c.lineCap = "round";
+    c.beginPath(); c.moveTo(x - 44, y - 3); c.lineTo(x - 6, y - 3);
+    c.moveTo(x - 44, y + 3); c.lineTo(x + 22, y + 3); c.stroke();
+  }
+  function cabinet(c, x, y) {
+    c.fillStyle = "rgba(0,0,0,.2)"; frr(c, x - 26, y - 16, 56, 40, 3); c.fill();
+    frr(c, x - 30, y - 20, 60, 40, 3, "#7a756c");
+    c.strokeStyle = "rgba(0,0,0,.25)"; c.lineWidth = 1.4;
+    c.beginPath(); c.moveTo(x - 30, y); c.lineTo(x + 30, y); c.stroke();
+    c.fillStyle = "#bdb7ac"; c.fillRect(x - 6, y - 13, 12, 3); c.fillRect(x - 6, y + 7, 12, 3);
+  }
+  function frame(c, x, y) {                           // 액자 — 임원층
+    frr(c, x - 24, y - 16, 48, 32, 2, "#8a7346");
+    frr(c, x - 20, y - 12, 40, 24, 1, "#39424f");
+    c.fillStyle = "rgba(255,255,255,.10)"; c.fillRect(x - 18, y - 10, 36, 6);
+  }
+
+  /* 구역 소품 배치 — 쿼드런트 하나를 채운다 */
+  function fillQuad(c, set, qx, qy, rb) {
+    if (set === "cars") {
+      c.strokeStyle = "rgba(240,240,245,.20)"; c.lineWidth = 3;          // 주차 구획선
+      for (var i = -1; i <= 1; i++) {
+        c.beginPath(); c.moveTo(qx + i * 62, qy - 58); c.lineTo(qx + i * 62, qy + 58); c.stroke();
+      }
+      if (rb() < 0.72) car(c, qx - 31, qy, 0, ["#5a6b86", "#7a5a5a", "#4f5f52", "#6a6a72"][(rb() * 4) | 0]);
+      if (rb() < 0.55) car(c, qx + 31, qy, Math.PI, ["#5a6b86", "#7a5a5a", "#4f5f52"][(rb() * 3) | 0]);
+      if (rb() < 0.4) pillar(c, qx + 90, qy - 80);
+    } else if (set === "lobby") {
+      if (rb() < 0.5) counter(c, qx, qy, 150, 44, "#6b5a44", "#8a7a5e");
+      else { sofa(c, qx - 40, qy, 96, "#5a5f6e"); planter(c, qx + 70, qy + 10, true); }
+      if (rb() < 0.45) pillar(c, qx + 92, qy - 86);
+    } else if (set === "canteen") {
+      longTable(c, qx, qy, 170, 46, "#8a7a5e", "#5c5f68");
+      if (rb() < 0.35) counter(c, qx, qy - 96, 150, 34, "#6d6f76", "#9aa0a8");
+    } else if (set === "corridor") {
+      doorway(c, qx, qy - 92, true); doorway(c, qx, qy + 92, true);
+      if (rb() < 0.4) planter(c, qx + 80, qy, false);
+    } else if (set === "meeting") {
+      longTable(c, qx, qy, 190, 74, "#7a5f3f", "#4f545e");
+      if (rb() < 0.5) board(c, qx, qy - 104);
+    } else if (set === "pantry") {
+      counter(c, qx, qy - 80, 160, 38, "#8d8a83", "#c9c6bd");
+      if (rb() < 0.6) cabinet(c, qx - 60, qy + 40);
+      if (rb() < 0.6) planter(c, qx + 60, qy + 40, false);
+    } else if (set === "exec") {
+      frame(c, qx - 70, qy - 96); frame(c, qx + 10, qy - 96);
+      if (rb() < 0.6) planter(c, qx + 80, qy + 20, true);
+      if (rb() < 0.4) sofa(c, qx - 30, qy + 40, 110, "#6b4f4f");
+    } else if (set === "ceo") {
+      if (rb() < 0.45) { longTable(c, qx, qy, 150, 66, "#6b4a2c", "#4a4038"); }
+      else { sofa(c, qx - 20, qy, 120, "#4f4236"); planter(c, qx + 80, qy - 10, true); }
+      if (rb() < 0.35) frame(c, qx, qy - 100);
+    }
+  }
+
+  function getTile(zone) {
+    var key = zone | 0;
+    if (tiles[key]) return tiles[key];
+    var LK = lookOf(key);
+    var FLOOR = LK.f, FLOOR2 = LK.f2;
     var cv = document.createElement("canvas");
     cv.width = TS; cv.height = TS;
     var c = cv.getContext("2d");
     var i, j, x, y;
 
-    /* 1. 바닥 + 카펫타일 체커 */
+    /* 1. 바닥 — 구역마다 패턴이 다르다 */
     c.fillStyle = FLOOR; c.fillRect(0, 0, TS, TS);
-    c.fillStyle = FLOOR2;
-    for (j = 0; j < TS / CARPET; j++)
-      for (i = 0; i < TS / CARPET; i++)
-        if ((i + j) & 1) c.fillRect(i * CARPET, j * CARPET, CARPET, CARPET);
-    c.strokeStyle = "rgba(120,150,200,.045)"; c.lineWidth = 1;
-    c.beginPath();
-    for (i = 0; i <= TS / CARPET; i++) {
-      c.moveTo(i * CARPET + 0.5, 0); c.lineTo(i * CARPET + 0.5, TS);
-      c.moveTo(0, i * CARPET + 0.5); c.lineTo(TS, i * CARPET + 0.5);
+    var U = LK.grid === "slab" ? 132 : LK.grid === "plank" ? 176 : CARPET;
+    if (LK.grid === "plank") {                       // 마루 — 긴 널
+      c.fillStyle = FLOOR2;
+      for (j = 0; j < TS / 44; j++) if (j & 1) c.fillRect(0, j * 44, TS, 44);
+      c.strokeStyle = LK.line; c.lineWidth = 1; c.beginPath();
+      for (j = 0; j <= TS / 44; j++) { c.moveTo(0, j * 44 + 0.5); c.lineTo(TS, j * 44 + 0.5); }
+      for (j = 0; j < TS / 44; j++)                  // 널 이음매를 엇갈리게
+        for (i = 0; i <= TS / U; i++) {
+          var ox2 = (j & 1) ? U / 2 : 0;
+          c.moveTo(m(i * U + ox2, TS) + 0.5, j * 44); c.lineTo(m(i * U + ox2, TS) + 0.5, j * 44 + 44);
+        }
+      c.stroke();
+    } else if (LK.grid === "lot") {                  // 주차장 — 이음매 없는 콘크리트 판
+      c.fillStyle = FLOOR2;
+      for (j = 0; j < TS / 264; j++)
+        for (i = 0; i < TS / 264; i++) if ((i + j) & 1) c.fillRect(i * 264, j * 264, 264, 264);
+      c.strokeStyle = LK.line; c.lineWidth = 1.5; c.beginPath();
+      for (i = 0; i <= TS / 264; i++) {
+        c.moveTo(i * 264 + 0.5, 0); c.lineTo(i * 264 + 0.5, TS);
+        c.moveTo(0, i * 264 + 0.5); c.lineTo(TS, i * 264 + 0.5);
+      }
+      c.stroke();
+    } else {                                         // 카펫타일 · 대리석 · 타일 — 체커
+      c.fillStyle = FLOOR2;
+      for (j = 0; j < TS / U; j++)
+        for (i = 0; i < TS / U; i++) if ((i + j) & 1) c.fillRect(i * U, j * U, U, U);
+      c.strokeStyle = LK.line; c.lineWidth = LK.grid === "slab" ? 1.6 : 1;
+      c.beginPath();
+      for (i = 0; i <= TS / U; i++) {
+        c.moveTo(i * U + 0.5, 0); c.lineTo(i * U + 0.5, TS);
+        c.moveTo(0, i * U + 0.5); c.lineTo(TS, i * U + 0.5);
+      }
+      c.stroke();
     }
-    c.stroke();
 
     /* 2. 카펫 얼룩 — 결정적 배치, 반경 ≤ 안쪽 여백이라 랩 불필요 */
     var rd = rng(0x5eed);
@@ -2159,6 +2322,7 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
         for (var qi = 0; qi < 4; qi++) {
           var qq = order[qi];
           var qx = (qq & 1) * Q + 132, qy = (qq >> 1) * Q + 132;
+          if (LK.set !== "desks") { fillQuad(c, LK.set, qx, qy, rb); continue; }
           if (qi < nClu) {
             cluster(c, qx, qy, rb() < 0.5, rb() < 0.45 ? 2 : 3, rb);
           } else if (rb() < 0.8) {
@@ -2186,8 +2350,8 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
       }
 
     var pat = c.createPattern(cv, "repeat");
-    baked = { cv: cv, pattern: pat };
-    return baked;
+    tiles[key] = { cv: cv, pattern: pat };
+    return tiles[key];
   }
 
   /* ── 비네트 (뷰포트 크기별 캐시, 최대 4개) ───────────────────── */
@@ -2209,8 +2373,8 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
   }
 
   /* ── 매 프레임 ─────────────────────────────────────────────── */
-  function office(ctx, W, H, camX, camY, t) {
-    var tile = getTile();
+  function office(ctx, W, H, camX, camY, t, zone) {
+    var tile = getTile(zone);
 
     /* rush.html은 ZOOM(≥1.15) 스케일 변환 아래에서 줌 미적용 VW/VH를 넘긴다.
        채우기는 W×H로 해도 안전하게 넘치지만(잘림), 화면 고정인 비네트는
@@ -2262,7 +2426,7 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     ctx.restore();
   }
 
-  window.BACKDROP = { office: office };
+  window.BACKDROP = { office: office, floorOf: function (z) { return lookOf(z).f; } };
 })();
 </script>
 
@@ -2783,7 +2947,8 @@ function nextZone(g){
     finish(g, g.ot?"late":"win"); return true;
   }
   // 구역 통과 보상 — 긴장 뒤에 한숨 한 번. 이 리듬이 있어야 하루가 읽힌다
-  P.hp=Math.min(P.maxhp, P.hp+P.maxhp*0.22);
+  // 야근에는 한숨 돌릴 틈이 없다. 회복이 피로보다 크면 야근이 안 끝난다
+  if(!g.ot) P.hp=Math.min(P.maxhp, P.hp+P.maxhp*0.22);
   P.inv=Math.max(P.inv,1.6);
   for(let i=g.foes.length-1;i>=0;i--) if(!g.foes[i].boss) g.foes.splice(i,1);
   g.bossOut=false;
@@ -3251,7 +3416,7 @@ function step(g,dt){
     g.otT+=dt;
     // 야근 피로 — 버티기만 해선 끝나지 않는다. 시간이 그대로 체력이다.
     // 이게 없으면 계속 도망치는 플레이가 야근에서 영영 안 끝난다(무한 루프).
-    P.hp -= (0.4 + g.otT*0.02)*dt*(P.fatigue||1);           // 노동조합 — 야근 피로 감소
+    P.hp -= (0.8 + g.otT*0.045)*dt*(P.fatigue||1);           // 노동조합 — 야근 피로 감소
     if(P.hp<=0 && !revive(g)){ finish(g,"lose"); return; }
   }
   if(g.toastT>0){ g.toastT-=dt; if(g.toastT<=0) g.toast=""; }
@@ -3514,9 +3679,10 @@ function finish(g,how){
 /* ── 그리기 ──────────────────────────────────────────────────── */
 function drawFloor(g,camX,camY,VW,VH){
   const B=window.BACKDROP;
-  if(B && B.office){ try{ B.office(ctx,VW,VH,camX,camY,g.t); return; }catch(e){} }
+  if(B && B.office){ try{ B.office(ctx,VW,VH,camX,camY,g.t,g.zone); return; }catch(e){} }
   // 폴백 — 배경 모듈이 없어도 게임은 돈다
-  ctx.fillStyle="#4a443b"; ctx.fillRect(0,0,VW,VH);
+  ctx.fillStyle=(window.BACKDROP&&window.BACKDROP.floorOf&&window.BACKDROP.floorOf(g.zone))||"#4a443b";
+  ctx.fillRect(0,0,VW,VH);
   const T=96, ox=-((camX%T)+T)%T, oy=-((camY%T)+T)%T;
   ctx.strokeStyle="rgba(158,200,255,.055)"; ctx.lineWidth=1;
   ctx.beginPath();
@@ -4165,8 +4331,15 @@ function markBossTicks(){
 }
 function syncHud(g){
   const P=g.P;
-  $("#clock").innerHTML=clockStr(g.t)+"<small>"
-    +(g.ot?"야근":hourOf(g.t)>=17?"곧 퇴근":"근무 중")+"</small>";
+  if(g.ot){
+    const oh=(g.otT/DAY)*(H1-H0);                 // 야근 경과(게임 시간)
+    const hh=Math.floor(oh), mm=Math.floor((oh-hh)*60);
+    $("#clock").innerHTML="야근 <small>"
+      +(hh>0?hh+"시간 ":"")+String(Math.floor(mm/5)*5)+"분째</small>";
+  }else{
+    $("#clock").innerHTML=clockStr(g.t)+"<small>"
+      +(hourOf(g.t)>=17?"곧 퇴근":"근무 중")+"</small>";
+  }
   $("#daybar i").style.width=Math.min(100,g.t/DAY*100).toFixed(1)+"%";
   $("#daybar").classList.toggle("ot",g.ot);
   const td=todoOf(g), te=$("#todo"), Z=zoneOf(g);
@@ -4333,8 +4506,8 @@ function renderEnd(g){
           win?"정시 퇴근":late?"야근 퇴근":"자리에서 쓰러짐"}</h1>
         <div class="sub" style="margin:6px 0 0">${
           win ?"18:00. 가방 들고 나왔습니다."
-        : late?clockStr(g.t)+". 결재함 비우고 나왔습니다."
-        :      clockStr(g.t)+" — 미결 "+todoOf(g)+"건을 남기고 쓰러졌습니다."}</div>
+        : late?"야근 "+Math.max(1,Math.round((g.otT/DAY)*(H1-H0)*60))+"분. 끝내고 나왔습니다."
+        :      (g.ot?"야근 중":clockStr(g.t))+" — "+zoneOf(g).name+"에서 쓰러졌습니다."}</div>
       </div>
     </div>
     <div class="crow">
