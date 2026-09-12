@@ -2730,10 +2730,11 @@ const quotaOf = g => Math.round(zoneOf(g).quota*(1+rankOf(g)*RANK_LOAD));
 /* 이 구역에 남은 미결 */
 /* 처리한 만큼 줄지만, 구역 사건이 그걸 막기도 한다.
    점심시간엔 아무도 일을 안 하고, 발표 중엔 자리에 서 있어야 진도가 나간다. */
-/* load — 이 구역에 따로 얹힌 몫(승진 등). killHold는 「처리가 진도에 안 잡힌다」는
-   뜻이라 Math.max(0,…)에 걸려 아직 한 건도 안 잡은 상태에선 아무 일도 안 한다.
-   순수한 추가 업무는 여기로 들어와야 한다. */
-const todoOf = g => Math.max(0, Math.ceil(quotaOf(g) + (g.load||0)
+/* 두 항의 뜻이 다르다. 섞으면 조용히 아무 일도 안 일어난다.
+   killHold — 「이 처치는 진도에 안 잡힌다」. Math.max(0,…) 안쪽이라
+              아직 한 건도 안 잡았으면 아무 효과가 없다(점심·발표용).
+   zoneBonus — 「일이 얹혔다/덜어졌다」. 음수가 업무 추가다(감사·고객사·승진용). */
+const todoOf = g => Math.max(0, Math.ceil(quotaOf(g)
   - Math.max(0,(g.kills-g.zoneK0)-(g.killHold||0)) - (g.zoneBonus||0)));
 /* 문이 열릴 조건 — 몫을 끝내고, 보스가 남아 있으면 그것도 끝내야 한다 */
 const gateReady = g => todoOf(g)<=0 && !g.foes.some(f=>f.boss);
@@ -2799,6 +2800,75 @@ function drawBargain(g){
   ctx.textAlign="left";  ctx.fillText("단체교섭", x-w/2, y-7);
   ctx.textAlign="right"; ctx.fillText("조합원 "+n+"명 · "+Math.round(g.barP)+"%", x+w/2, y-7);
   ctx.restore();
+}
+
+/* ── 간섭 ──────────────────────────────────────────────────────
+   정시에 나가는 걸 막는 건 넷이다 — 야근·회식·진급·간섭.
+   앞의 셋은 규칙이 있는데 이것만 없었다.
+
+   상사 반경 안에 있으면 「지금 뭐 하고 있나?」 손이 느려진다.
+   때려서 푸는 게 아니라 걸어 나와서 푸는 것이라, 이 적은 체력이 아니라
+   서 있는 자리로 위협한다. 원이 보이고, 벗어나면 바로 풀린다.
+   노동조합을 올리면 반경이 준다 — 뭉치면 덜 쪼인다.
+
+   반경 크기를 나눈 이유: 부장은 임원층에 여럿 깔린다. 보스급 반경을 주면
+   그 구역 내내 손이 느린 채로 걷게 된다. 부장은 「옆에 서 있지 마라」 정도의
+   개인 반경(118)이고, 판을 바꿀 만큼 넓은 건 보스 셋뿐이다 — 그건 자리를
+   골라 들락거리는 문제가 되어야 재미가 된다. */
+const MEDDLE_SLOW = 0.55;                     // 최대 쿨타임 +55%
+function stepMeddle(g,dt){
+  const P=g.P, R=P.meddleR||1;
+  let hit=0, src=null, nd=1e9;
+  for(const f of g.foes){
+    const r=E[f.kind].meddle; if(!r) continue;
+    const rr=r*R, d=Math.hypot(f.x-P.x,f.y-P.y);
+    if(d<rr){ hit=1; if(d<nd){ nd=d; src=f; } }
+  }
+  /* 켜고 끄는 걸 부드럽게 — 경계에서 깜빡이면 읽히지 않는다 */
+  g.meddle += ((hit?1:0)-g.meddle)*Math.min(1,dt*5);
+  if(g.meddle<0.01) g.meddle=0;
+  g.meddleSrc = hit ? src : null;
+  if(hit && !g.meddleSaid){ g.meddleSaid=1;
+    flash(g,"간섭 — 상사 곁에서는 손이 느려집니다"); }
+}
+function drawMeddle(g,X,Y){
+  const P=g.P, R=P.meddleR||1;
+  /* 가까운 것만 그린다. 부장이 여럿이면 화면이 원으로 덮인다 */
+  const near=[];
+  for(const f of g.foes){
+    const r=E[f.kind].meddle; if(!r) continue;
+    const rr=r*R, d=Math.hypot(f.x-P.x,f.y-P.y);
+    if(d<rr*1.7) near.push({f,rr,d});
+  }
+  if(!near.length) return;
+  near.sort((a,b)=>a.d-b.d);
+  ctx.save(); ctx.setLineDash([7,7]); ctx.lineWidth=2;
+  for(const n of near.slice(0,3)){
+    const inside=n.d<n.rr;
+    ctx.strokeStyle = inside ? "rgba(255,107,107,.55)" : "rgba(255,107,107,.20)";
+    ctx.beginPath(); ctx.arc(X(n.f.x),Y(n.f.y),n.rr,0,6.2832); ctx.stroke();
+  }
+  ctx.restore();
+  if(g.meddle>0.15){
+    /* 머리 위는 적 말풍선 자리다. 발밑에 짧게 — 길면 화면이 시끄러워진다 */
+    const a=Math.min(1,g.meddle);
+    const pct=Math.round(MEDDLE_SLOW*100*g.meddle/(1+MEDDLE_SLOW*g.meddle));
+    const t="간섭 −"+pct+"%";
+    ctx.save();
+    ctx.font="800 13px 'Gothic A1',system-ui"; ctx.textAlign="center";
+    const w=ctx.measureText(t).width+14, x=X(P.x), y=Y(P.y)+30;
+    ctx.fillStyle="rgba(11,14,20,"+(a*.78)+")";
+    F2(x-w/2, y-13, w, 18, 5);
+    ctx.fillStyle="rgba(255,107,107,"+a+")";
+    ctx.fillText(t, x, y);
+    ctx.restore();
+  }
+}
+/* 둥근 채움 — drawMeddle 전용 */
+function F2(x,y,w,h,r){
+  ctx.beginPath(); r=Math.min(r,w/2,h/2);
+  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); ctx.fill();
 }
 
 /* ── 오늘의 사건 ────────────────────────────────────────────────
@@ -2891,9 +2961,9 @@ function stepEvent(g,dt){
     g.deskOn = d<74;
     if(g.deskOn){
       P.hp=Math.min(P.maxhp,P.hp+7*dt);
-      /* 서 있으면 진도가 뒤로 간다. zoneBonus는 0에서 시작해 Math.max(0,…)에
-         걸리는 값이라 여기에 쓰면 한 건도 안 쌓인다 — 유입은 killHold로 */
-      g.killHold=(g.killHold||0)+2.2*dt*(P.work||1);
+      /* 서 있는 동안 일이 얹힌다. 원래 Math.max(0,…)로 감싸 0 아래로 못 내려가서
+         한 건도 안 쌓였다 — 음수가 곧 업무 추가라 그 clamp가 기능을 죽이고 있었다 */
+      g.zoneBonus=(g.zoneBonus||0)-2.2*dt*(P.work||1);
       if(!g.deskSaid){ g.deskSaid=1; flash(g,"내 자리 — 체력이 찹니다. 대신 일이 쌓입니다"); }
     }
   }
@@ -3163,8 +3233,8 @@ const PERKS = {
              f:(P,l)=>P.blink+=1 },
   annual  :{ id:"annual",   name:"연차",        max:3, desc:"주기적으로 3초 무적",
              f:(P,l)=>P.annual+=1 },
-  union   :{ id:"union",    name:"노동조합",    max:4, desc:"동료 피해 +25%, 야근 피로 −15%",
-             f:(P,l)=>{P.allyDmg*=1.25; P.fatigue*=0.85;} },
+  union   :{ id:"union",    name:"노동조합",    max:4, desc:"동료 피해 +25%, 야근 피로 −15%, 간섭 반경 −20%",
+             f:(P,l)=>{P.allyDmg*=1.25; P.fatigue*=0.85; P.meddleR*=0.80;} },
 };
 
 /* ── 대사 ──────────────────────────────────────────────────────
@@ -3236,15 +3306,15 @@ const E = {
   senior :{name:"대리", hp:96,  spd:55, dmg:11, xp:3, r:17},
   manager:{name:"과장", hp:130, spd:70, dmg:14, xp:5, r:18},
   drunk  :{name:"회식조",hp:74, spd:138,dmg:11, xp:4, r:17},
-  gm     :{name:"부장", hp:340, spd:44, dmg:22, xp:12,r:22},
-  audit  :{name:"점검단",hp:3400,spd:36, dmg:34, xp:160,r:30, boss:true,
+  gm     :{name:"부장", hp:340, spd:44, dmg:22, xp:12,r:22, meddle:118},
+  audit  :{name:"점검단",hp:3400,spd:36, dmg:34, xp:160,r:30, boss:true, meddle:210,
             atk:"shock", atkCd:3.6, summon:"staff", summonN:7, summonCd:7.5},
-  chief  :{name:"본부장", hp:1500,spd:46, dmg:28, xp:70, r:26, boss:true,
+  chief  :{name:"본부장", hp:1500,spd:46, dmg:28, xp:70, r:26, boss:true, meddle:190,
             atk:"charge", atkCd:4.2},
   rookie :{name:"신입", hp:16,  spd:182,dmg:5,  xp:1, r:13},
   hrteam :{name:"인사팀",hp:120, spd:58, dmg:12, xp:4, r:17, eatXp:true},
   vendor :{name:"협력사",hp:190, spd:118,dmg:13, xp:5, r:17},
-  ceo    :{name:"대표이사",hp:9000,spd:32,dmg:44,xp:400,r:36, boss:true,
+  ceo    :{name:"대표이사",hp:9000,spd:32,dmg:44,xp:400,r:36, boss:true, meddle:240,
             atk:"shock", atkCd:2.8, summon:"manager", summonN:9, summonCd:6},
   /* 자동화 로봇 — 이 게임에서 유일하게 나를 때리지 않는 적.
      쫓아오지도 않는다. 조용히 내 일을 대신 한다.
@@ -3298,7 +3368,8 @@ function newGame(grudge){
     blinkCd:0, annualCd:0, annualT:0,
     spawnAcc:0, bossOut:false, shake:0, shakeX:0, shakeY:0, hitstop:0,
     zone:0, zoneK0:0, zoneT:0, zoneBonus:0, gate:null, cleared:0, sayCd:2.5,
-    rank0:Math.min(RANK_MAX,SAVE.rank|0), rank:0, promoLv:0, load:0,
+    rank0:Math.min(RANK_MAX,SAVE.rank|0), rank:0, promoLv:0,
+    meddle:0, meddleSrc:null, meddleSaid:0,
     robotWork:0, robotCd:16, robotSeen:false, robotWarn:false, userPaused:false,
     evT:0, evPhase:0, lunchT:0, killHold:0, deskX:0, deskY:0, deskOn:false, deskSaid:0,
     ambCd:6, ambWarn:0, ambX:0, ambY:0, podX:0, podY:0, podOn:false,
@@ -3317,7 +3388,7 @@ function stats(g){
   const M=g.meta||metaBonus();
   const P={ spd:168*(1+M.spd), haste:1*(1-M.haste), range:1,
             xpMul:1+M.xp, magnet:1+M.magnet, maxhp:160+M.hp,
-            inv0:0, late:1, work:1, blink:0, annual:0, allyDmg:1, fatigue:1 };
+            inv0:0, late:1, work:1, blink:0, annual:0, allyDmg:1, fatigue:1, meddleR:1 };
   for(const k in g.perks){ const p=PERKS[k]; for(let i=0;i<g.perks[k];i++) p.f(P,i+1); }
   /* 직급 — 올라간 만큼 능력이 오른다. 몫도 같이 오른다(quotaOf) */
   const r=rankOf(g);
@@ -3332,7 +3403,7 @@ function applyPerks(g){
   p.spd=P.spd; p.haste=P.haste; p.range=P.range; p.xpMul=P.xpMul; p.magnet=P.magnet;
   // 제도 — 이 줄이 없으면 이어폰·주52시간·근로계약서·재택·연차·노조가 전부 무효가 된다
   p.inv0=P.inv0; p.late=P.late; p.work=P.work; p.blink=P.blink;
-  p.annual=P.annual; p.allyDmg=P.allyDmg; p.fatigue=P.fatigue;
+  p.annual=P.annual; p.allyDmg=P.allyDmg; p.fatigue=P.fatigue; p.meddleR=P.meddleR;
   p.maxhp=P.maxhp; if(dh>0) p.hp=Math.min(p.maxhp,p.hp+dh);
   p.hp=Math.min(p.hp,p.maxhp);
 }
@@ -3494,7 +3565,7 @@ function nextZone(g){
   const P=g.P;
   g.zone++; g.cleared++;
   g.gate=null; g.zoneK0=g.kills; g.zoneT=0; g.zoneBonus=0;
-  g.evT=0; g.evPhase=0; g.lunchT=0; g.killHold=0; g.load=0; g.deskX=0; g.deskSaid=0; g.ambCd=6; g.ambWarn=0;
+  g.evT=0; g.evPhase=0; g.lunchT=0; g.killHold=0; g.deskX=0; g.deskSaid=0; g.ambCd=6; g.ambWarn=0;
   g.podX=0; g.podOn=false; g.podSet=0; g.deskSet=0; g.prnX=0; g.prnDone=0; g.prnSet=0;
   g.quietSaid=0; g.quietK=1;
   g.clients.length=0; g.cliCd=9;
@@ -3684,7 +3755,8 @@ function stepPolicy(g,dt){
 
 function fireWeapons(g,dt){
   const P=g.P;
-  const haste = P.haste * (1-(g.baristaOn||0));   // 커피머신 곁이면 손이 빨라진다
+  // 커피머신 곁이면 손이 빨라지고, 상사 곁이면 느려진다
+  const haste = P.haste * (1-(g.baristaOn||0)) * (1 + MEDDLE_SLOW*(g.meddle||0));
   for(const id in g.weapons){
     const W=WEAPONS[id], L=W.lv(g.weapons[id]);
     if(id==="clock"||id==="ontime"||id==="overtime") continue;   // 지속형
@@ -4027,6 +4099,7 @@ function step(g,dt){
   stepRobots(g,dt);
   stepEvent(g,dt);
   stepRnd(g,dt);
+  stepMeddle(g,dt);
   stepBargain(g,dt);
 
   // 퇴근 시계(지속형 감속)
@@ -4795,6 +4868,7 @@ function drawWorld(g){
     gr.addColorStop(1,"rgba(217,169,78,0)");
     ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(X(p.x),Y(p.y),p.r,0,7); ctx.fill();
   }
+  drawMeddle(g,X,Y);              // 상사 반경 — 바닥에 깔아야 적에 안 가린다
   // 퇴근 시계 범위
   if(g.weapons.clock){
     const L=WEAPONS.clock.lv(g.weapons.clock), r=L.r*P.range;
@@ -5058,6 +5132,15 @@ const IC=(function(){
   union:c=>{ D(c,22,24,9,"#e8d3bd"); D(c,42,24,9,"#e8d3bd");
              R(c,0,10,32,20,22,4,"#4b7d72"); R(c,0,34,32,20,22,4,"#4b7d72");
              L(c,GOLD,3.4,k=>{k.moveTo(18,50);k.lineTo(46,50);}); },
+  /* ── 승진 딜레마 ── 명패가 한 칸 올라가느냐, 시계가 여섯 시에 서느냐 */
+  promo:c=>{ F(c,10,44,44,8,2,"#3f4a63");                 // 받침
+             R(c,0,14,30,36,16,2,"#4a3f22"); F(c,19,35,26,3,1,GOLD);
+             L(c,GOLD,4,k=>{k.moveTo(32,26);k.lineTo(32,10);
+                            k.moveTo(24,18);k.lineTo(32,10);k.lineTo(40,18);}); },
+  stay :c=>{ D(c,32,34,21,PAPER);
+             L(c,INK,3.2,k=>{k.moveTo(32,34);k.lineTo(32,20);k.moveTo(32,34);k.lineTo(32,46);});
+             D(c,32,34,3,INK,false);
+             L(c,GREEN,3.4,k=>{k.moveTo(12,12);k.lineTo(20,12);k.moveTo(44,12);k.lineTo(52,12);}); },
   };
 })();
 function icon(id,size,kind){
@@ -5166,6 +5249,7 @@ function promoUp(g){
   const opt=(name,lvl,desc,accent,fn)=>{
     const b=document.createElement("button");
     b.className="pick"; if(accent) b.style.borderColor="#c9a227";
+    b.appendChild(icon(accent?"promo":"stay",40));
     const t=document.createElement("div");
     t.innerHTML='<span class="n"'+(accent?' style="color:#c9a227"':'')+'>'+esc(name)+'</span>'
       +'<span class="lvl">'+esc(lvl)+'</span><span class="d">'+desc+'</span>';
@@ -5179,7 +5263,7 @@ function promoUp(g){
       +'<b style="color:var(--bad)">오늘 미결 +'+PROMO_LOAD+'</b> · 이 직급은 내일도 따라옵니다',
       true, ()=>{
         g.rank++; applyPerks(g);
-        g.load=(g.load||0)+PROMO_LOAD;
+        g.zoneBonus=(g.zoneBonus||0)-PROMO_LOAD;
         flash(g, rankName(rankOf(g))+" 승진 — 미결 +"+PROMO_LOAD);
         g.flash=Math.max(g.flash,.7); kick(g,0,-1,10);
       });
@@ -5187,7 +5271,7 @@ function promoUp(g){
       '능력 그대로 · 직급 그대로<br>'
       +'<b style="color:var(--good)">오늘 미결 −'+PROMO_EASE+'</b> · 내일도 오늘만큼만 합니다',
       false, ()=>{
-        g.load=(g.load||0)-PROMO_EASE;
+        g.zoneBonus=(g.zoneBonus||0)+PROMO_EASE;
         flash(g,"받는 만큼만 — 미결 −"+PROMO_EASE);
       });
   openOverlay();
@@ -5347,7 +5431,9 @@ function careerEarned(g){
   const hours=(Math.min(g.t,DAY)/DAY)*(H1-H0);
   const bonus = g.over==="union" ? 400 : g.over==="win" ? 150
               : g.over==="late" ? 60 : g.over==="replaced" ? 25 : 0;
-  return Math.round(hours*12 + g.kills*0.22 + bonus);
+  /* 직급 배수 — 승진이 순수한 함정이면 그건 선택이 아니라 실수다.
+     몫이 8% 늘면 하루가 남기는 것도 12% 늘어야 어려운 쪽을 고를 이유가 생긴다 */
+  return Math.round((hours*12 + g.kills*0.22 + bonus)*(1+rankOf(g)*0.12));
 }
 
 /* ── 이야기 ────────────────────────────────────────────────────
