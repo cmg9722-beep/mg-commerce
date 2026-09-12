@@ -2041,8 +2041,8 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     c.save(); c.translate(132, 132);
     /* 바닥 빛 웅덩이 — 상한 아래에 머무는 저알파, 관 방향으로 긴 타원 */
     var g = c.createRadialGradient(0, 0, 6, 0, 0, 126);
-    g.addColorStop(0, la(0.10));
-    g.addColorStop(0.55, la(0.05));
+    g.addColorStop(0, la(0.045));          // 0.10 → 화면 중앙을 먹어 캐릭터가 묻혔다
+    g.addColorStop(0.55, la(0.022));
     g.addColorStop(1, la(0));
     c.fillStyle = g;
     c.save(); c.scale(1, 0.76);
@@ -2050,7 +2050,7 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     c.restore();
     /* 직근 글로우 (허용 예외, 소면적) */
     var g2 = c.createRadialGradient(0, 0, 2, 0, 0, 46);
-    g2.addColorStop(0, la(0.34));
+    g2.addColorStop(0, la(0.15));          // 0.34 → 관 바로 아래만 밝게
     g2.addColorStop(1, la(0));
     c.fillStyle = g2;
     c.save(); c.scale(1.6, 0.62);
@@ -3685,7 +3685,7 @@ function renderStart(){
       <span>자기계발</span><span style="color:var(--accent);font-weight:800">경력 ${SAVE.career.toLocaleString()}</span>
     </button>
     <div class="hintrow">
-      <span>이동 <b>${isTouch?"화면 드래그":"WASD"}</b></span>
+      <span>이동 <b>${isTouch?"WASD · 드래그":"WASD · 마우스 드래그"}</b></span>
       <span>공격 <b>자동</b></span>
       <span>퇴근 조건 <b>미결 0</b></span>
       <span>음소거 <b>M</b></span>
@@ -3860,12 +3860,42 @@ function touchEnd(e){
     TOUCH.on=false; TOUCH.id=null; TOUCH.dx=TOUCH.dy=0;
   }
 }
+/* 마우스 드래그도 같은 조이스틱으로 받는다.
+   터치 지원 PC(터치스크린·정밀 터치패드)에서는 isTouch가 true라
+   예전엔 안내가 「화면 드래그」뿐이었는데 마우스로 끌면 아무 일도
+   안 일어났다 — 「이동이 안 된다」의 정체. */
+function mouseDown(e){
+  if(!G || G.over || G.paused || e.button!==0) return;
+  if(e.target.closest("button,input,.pick,.shoprow")) return;
+  TOUCH.id="mouse"; TOUCH.on=true;
+  TOUCH.ox=TOUCH.x=e.clientX; TOUCH.oy=TOUCH.y=e.clientY;
+  TOUCH.dx=TOUCH.dy=0;
+}
+function mouseMove(e){
+  if(!TOUCH.on || TOUCH.id!=="mouse") return;
+  TOUCH.x=e.clientX; TOUCH.y=e.clientY;
+  let dx=TOUCH.x-TOUCH.ox, dy=TOUCH.y-TOUCH.oy;
+  const d=Math.hypot(dx,dy);
+  if(d>TOUCH.R){ TOUCH.ox+=dx*(1-TOUCH.R/d); TOUCH.oy+=dy*(1-TOUCH.R/d);
+                 dx=TOUCH.x-TOUCH.ox; dy=TOUCH.y-TOUCH.oy; }
+  const m=Math.hypot(dx,dy)||1;
+  const k=Math.min(1,m/(TOUCH.R*0.42));
+  TOUCH.dx=dx/m*k; TOUCH.dy=dy/m*k;
+}
+function mouseUp(){
+  if(TOUCH.id!=="mouse") return;
+  TOUCH.on=false; TOUCH.id=null; TOUCH.dx=TOUCH.dy=0;
+}
 function bindTouch(){
   const el=$("#wrap");
   el.addEventListener("touchstart",touchStart,{passive:false});
   el.addEventListener("touchmove", touchMove, {passive:false});
   el.addEventListener("touchend",  touchEnd,  {passive:false});
   el.addEventListener("touchcancel",touchEnd,{passive:false});
+  el.addEventListener("mousedown",mouseDown);
+  addEventListener("mousemove",mouseMove);
+  addEventListener("mouseup",mouseUp);
+  addEventListener("blur",mouseUp);
 }
 /* 조이스틱 그리기 — 화면 좌표계(배율 밖) */
 function drawStick(){
