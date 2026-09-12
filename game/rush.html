@@ -1880,8 +1880,8 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
      #2a3444에 묶여, 일반인 눈에는 「검은 화면에 도형」으로 읽혔다.
      기법이 아니라 방향이 문제였다. 불을 켠 낮 사무실로 바꾼다.
      베이지 카펫 + 나무 책상. 캐릭터가 어두운 정장이라 대비도 살아난다. */
-  var FLOOR = "#3a3630";           // 베이지 카펫 (어두운 쪽)
-  var FLOOR2 = "#433f38";          // 카펫 체커 밝은 쪽
+  var FLOOR = "#4a443b";           // 카펫 (어두운 쪽) — #3a3630은 아직 「어두운 갈색」으로 읽혀 한 단계 올렸다
+  var FLOOR2 = "#524c42";          // 카펫 체커 밝은 쪽
   var PART = "#6d6a62";            // 파티션 — 회색 패브릭
   var DESK = "#8a6b47";            // 책상 — 나무
   var DESKEDGE = "#a2825b";
@@ -3516,7 +3516,7 @@ function drawFloor(g,camX,camY,VW,VH){
   const B=window.BACKDROP;
   if(B && B.office){ try{ B.office(ctx,VW,VH,camX,camY,g.t); return; }catch(e){} }
   // 폴백 — 배경 모듈이 없어도 게임은 돈다
-  ctx.fillStyle="#3a3630"; ctx.fillRect(0,0,VW,VH);
+  ctx.fillStyle="#4a443b"; ctx.fillRect(0,0,VW,VH);
   const T=96, ox=-((camX%T)+T)%T, oy=-((camY%T)+T)%T;
   ctx.strokeStyle="rgba(158,200,255,.055)"; ctx.lineWidth=1;
   ctx.beginPath();
