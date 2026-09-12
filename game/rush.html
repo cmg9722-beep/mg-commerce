@@ -3508,7 +3508,9 @@ function killFoe(g,f,i){
   kick(g, f.x-g.P.x, f.y-g.P.y, f.boss?9:2.2);
   // 콤보 — 연속 처치가 쌓이는 게 눈에 보여야 계속 몰아치게 된다
   dropFrom(g,f);
-  g.combo++; g.comboT=1.6; g.comboPop=1;
+  /* 창이 1.6초면 적 400명 사이에서 판 전체가 한 콤보가 된다(측정: 5,728).
+     숫자가 의미를 가지려면 손을 멈추면 끊겨야 한다. */
+  g.combo++; g.comboT=0.85; g.comboPop=1;
   if(g.combo>g.comboBest) g.comboBest=g.combo;
   if(g.combo%10===0){ g.flash=Math.max(g.flash,.5); S("coin"); }
   S("kill",!!f.boss,g.combo);
@@ -4143,7 +4145,7 @@ function drawCombo(g){
     ctx.fillRect(0,0,VW,VH); ctx.restore();
   }
   if(g.combo<3) return;
-  const a=clamp(g.comboT/1.6,0,1);
+  const a=clamp(g.comboT/0.85,0,1);
   const pop=1+g.comboPop*0.30;
   const tier=g.combo>=40?"#ff6b6b":g.combo>=20?"#f5c451":"#9ec8ff";
   ctx.save();
@@ -4475,9 +4477,22 @@ function offers(g){
     if(lv>=WEAPONS[id].max) continue;
     if(!lv && Object.keys(g.weapons).length>=6) continue;      // 무기는 최대 6종
     out.push({kind:"w",id,lv}); }
+  /* 지금 쓸모가 없는 건 내놓지 않는다. Lv2에 「노동조합」(동료가 없다),
+     09시에 「주 52시간」(17시 이후에만 걸린다)이 뜨면 고를 게 없는 판이 된다. */
+  const hasAlly = Object.keys(g.weapons).some(k=>WEAPONS[k]&&WEAPONS[k].ally);
+  const hasBuild= Object.keys(g.weapons).some(k=>WEAPONS[k]&&WEAPONS[k].build);
+  const gate={
+    union   : ()=>hasAlly,                      // 동료가 있어야 의미가 있다
+    law52   : ()=>g.zone>=6,                    // 16시 이후 구역부터
+    contract: ()=>g.zone>=2,                    // 미결이 실제로 쌓이기 시작한 뒤
+    remote  : ()=>g.lv>=6,
+    annual  : ()=>g.lv>=5,
+  };
   for(const id in PERKS){ const lv=g.perks[id]||0;
     if(lv>=PERKS[id].max) continue;
+    if(!lv && gate[id] && !gate[id]()) continue;
     out.push({kind:"p",id,lv}); }
+  void hasBuild;
   // 셋 뽑기 — 이미 가진 걸 조금 더 자주 준다(빌드가 완성되게)
   const pool=[];
   for(const o of out){ pool.push(o); if(o.lv>0) pool.push(o); }
