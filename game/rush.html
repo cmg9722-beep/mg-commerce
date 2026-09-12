@@ -72,6 +72,9 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-acti
   .primary,.ghost{padding:15px}
   .pick{padding:12px}
   #clock{font-size:22px}
+  .title{flex-wrap:wrap;gap:4px 12px}
+  .title h1{font-size:36px !important;white-space:nowrap}
+  #toast{top:134px}
   #hud{padding:8px 50px 8px 10px;gap:8px}
   #kills,#lv,#todo{font-size:11px}
   #kills b,#lv b,#todo b{font-size:15px}
@@ -2344,7 +2347,7 @@ const WEAPONS = {
   printer:{ id:"printer", name:"복합기", max:7, build:true,
     desc:"놓아두면 알아서 서류를 뿜는다",
     lv:l=>({cd:7.0-l*.45, dmg:16+l*8, n:5+Math.floor(l/2), every:1.1, life:14, cap:1+Math.floor(l/3)}),
-    up:l=>l%3===0?"동시에 +1대":"피해 +8, 장수 +1" },
+    up:l=>l%3===0?"동시에 +1대":(l%2===0?"피해 +8, 장수 +1":"피해 +8") },
   water:{ id:"water", name:"정수기", max:6, build:true,
     desc:"곁에 서 있으면 체력이 찬다",
     lv:l=>({cd:14-l*.9, hps:5+l*2.5, r:78+l*10, life:11, cap:1}),
@@ -2417,7 +2420,7 @@ const PERKS = {
   shoes :{ id:"shoes", name:"편한 구두",   max:5, desc:"이동 속도 +12%",        f:(P,l)=>P.spd*=1.12 },
   laptop:{ id:"laptop",name:"노트북",      max:5, desc:"공격 속도 +10%",        f:(P,l)=>P.haste*=.90 },
   card  :{ id:"card",  name:"명함",        max:5, desc:"공격 범위 +14%",        f:(P,l)=>P.range*=1.14 },
-  leave :{ id:"leave", name:"연차",        max:5, desc:"경험치 획득 +18%",      f:(P,l)=>P.xpMul*=1.18 },
+  leave :{ id:"leave", name:"반차",        max:5, desc:"경험치 획득 +18%",      f:(P,l)=>P.xpMul*=1.18 },
   cup   :{ id:"cup",   name:"텀블러",      max:5, desc:"경험치 수집 범위 +30%", f:(P,l)=>P.magnet*=1.30 },
   suit  :{ id:"suit",  name:"정장",        max:5, desc:"최대 체력 +25",         f:(P,l)=>{P.maxhp+=25; P.hp+=25;} },
   /* ── 제도 ────────────────────────────────────────────────────
@@ -2521,6 +2524,9 @@ function applyPerks(g){
   const P=stats(g), p=g.P;
   const dh = P.maxhp - p.maxhp;
   p.spd=P.spd; p.haste=P.haste; p.range=P.range; p.xpMul=P.xpMul; p.magnet=P.magnet;
+  // 제도 — 이 줄이 없으면 이어폰·주52시간·근로계약서·재택·연차·노조가 전부 무효가 된다
+  p.inv0=P.inv0; p.late=P.late; p.work=P.work; p.blink=P.blink;
+  p.annual=P.annual; p.allyDmg=P.allyDmg; p.fatigue=P.fatigue;
   p.maxhp=P.maxhp; if(dh>0) p.hp=Math.min(p.maxhp,p.hp+dh);
   p.hp=Math.min(p.hp,p.maxhp);
 }
@@ -2586,6 +2592,23 @@ function doSpawns(g,dt){
     g.spawnAcc=0;
     const k=s.kinds[(Math.random()*s.kinds.length)|0];
     spawnRing(g,k,s.n);
+  }
+  /* 따돌린 적 재배치 — 상한(CAP)에 걸린 뒤 무리를 따돌리면 스폰이 멎고 화면이 텅 빈다
+     (측정: 16:30~18:00 처리 2건, 필드 460명). 화면에서 한참 벗어난 적은
+     체력 그대로 앞쪽 스폰 링에 다시 세운다. 도망은 되지만 도망만으로는 안 끝난다. */
+  g.recycleT=(g.recycleT||0)-dt;
+  if(g.recycleT<=0){
+    g.recycleT=0.5;
+    const P=g.P, R=Math.max(VW,VH)/ZOOM*0.62+90, far=R*2.1;
+    const bias=closingBias(g), hm=Math.hypot(P.hx,P.hy);
+    const hd=hm>0.15 ? Math.atan2(P.hy,P.hx) : null;
+    for(const f of g.foes){
+      if(f.boss || f.hold>0) continue;
+      if(Math.hypot(f.x-P.x,f.y-P.y) < far) continue;
+      const a = (hd!==null && Math.random()<Math.max(bias,0.35))
+        ? hd + (Math.random()-.5)*1.5 : Math.random()*Math.PI*2;
+      f.x=P.x+Math.cos(a)*R; f.y=P.y+Math.sin(a)*R; f.kb=0; f.tauntT=0;
+    }
   }
   while(g.bossIdx<BOSSES.length && h>=BOSSES[g.bossIdx].h){
     const b=BOSSES[g.bossIdx++];
@@ -2710,7 +2733,7 @@ function stepBuilds(g,dt){
           if(f.boss) continue;
           if(Math.hypot(f.x-b.x,f.y-b.y)<L.r){ f.hold=L.hold; damage(g,f,L.dmg,b.x,b.y,0); n++; }
         }
-        if(n){ S("deny"); flash(g,"회의 소집 — "+n+"명 묶임"); }
+        if(n){ S("deny"); flash(g,"회의실 예약 — "+n+"명 묶임"); }
         g.fx.push({type:"ring",x:b.x,y:b.y,t:0,r0:12,r1:L.r,c:"#f5c451"});
       }
     }
@@ -2725,7 +2748,8 @@ function stepAllies(g,dt){
   for(let i=g.allies.length-1;i>=0;i--){
     const al=g.allies[i], L=al.L;
     if(al.hp<=0){
-      g.fx.push({type:"burst",x:al.x,y:al.y,t:0,r:14,bits:8});
+      g.fx.push({type:"burst",x:al.x,y:al.y,t:0,r:14,bits:burstBits(8,Math.random()*6.283,false)});
+      flash(g,WEAPONS[al.id].name+" — 물러났습니다. 곧 다시 옵니다");
       g.allies.splice(i,1); continue;
     }
     // 노조원은 앞에 서고, 나머지는 뒤를 따른다
@@ -3027,6 +3051,17 @@ function takeDrop(g,d){
     S("nuke"); flash(g,"사직서 — "+n+"명 정리");
   }
 }
+/* 처치 파편 — 서류 조각. 그리기 쪽이 배열을 순회하므로 반드시 배열이어야 한다
+   (동료 사망에 숫자를 넣었다가 첫 사망에 루프가 죽은 전력). */
+function burstBits(bn,away,big){
+  const bits=[];
+  for(let k=0;k<bn;k++){
+    bits.push({a:away+(Math.random()-.5)*2.4, d:(big?70:34)*(.55+Math.random()*.95),
+               sp:Math.random()*10-5, w:3+Math.random()*4, h:2+Math.random()*4,
+               c:Math.random()<.3?"#6f9fd8":(Math.random()<.5?"#dfe6f2":"#f2f5fa")});
+  }
+  return bits;
+}
 function killFoe(g,f,i){
   g.foes.splice(i,1); g.kills++;
   if(f.boss){                            // 보스 처치 — 경험치가 쏟아진다
@@ -3044,16 +3079,9 @@ function killFoe(g,f,i){
   g.bodies.push({kind:f.kind, x:f.x, y:f.y, face:f.face, boss:f.boss, t:0,
                  fall:f.boss?.55:.4, life:f.boss?5:3.5});
   if(g.bodies.length>48) g.bodies.splice(0, g.bodies.length-48);
-  const bits=[];
-  const bn=f.boss?18:8;
   // 타격이 온 방향(플레이어 → 적)으로 치우쳐 흩어진다. 방향이 읽히면 충격이 커진다.
   const away=Math.atan2(f.y-g.P.y, f.x-g.P.x);
-  for(let k=0;k<bn;k++){
-    bits.push({a:away+(Math.random()-.5)*2.4, d:(f.boss?70:34)*(.55+Math.random()*.95),
-               sp:Math.random()*10-5, w:3+Math.random()*4, h:2+Math.random()*4,
-               c:Math.random()<.3?"#6f9fd8":(Math.random()<.5?"#dfe6f2":"#f2f5fa")});
-  }
-  g.fx.push({type:"burst",x:f.x,y:f.y,t:0,boss:f.boss,r:f.r,bits});
+  g.fx.push({type:"burst",x:f.x,y:f.y,t:0,boss:f.boss,r:f.r,bits:burstBits(f.boss?18:8,away,f.boss)});
   // 히트스톱 3~5프레임이 정석 — 그 사이 뇌가 타격을 등록한다
   g.hitstop=Math.max(g.hitstop, f.boss?.16:.05);
   kick(g, f.x-g.P.x, f.y-g.P.y, f.boss?9:2.2);
@@ -3070,7 +3098,7 @@ function step(g,dt){
   const P=g.P;
   g.t+=dt;
   if(!g.ot){
-    g.due += workAt(Math.min(1,g.t/DAY))*dt;
+    g.due += workAt(Math.min(1,g.t/DAY))*dt*(P.work||1);     // 근로계약서 — 미결 유입 감소
     if(!g.warned && hourOf(g.t)>=17 && todoOf(g)>0){
       g.warned=true; flash(g,"17:00 — 미결 "+todoOf(g)+"건. 서두르세요"); S("deny");
     }
@@ -3085,7 +3113,7 @@ function step(g,dt){
     if(todoOf(g)<=0){ finish(g,"late"); return; }
     // 야근 피로 — 버티기만 해선 끝나지 않는다. 시간이 그대로 체력이다.
     // 이게 없으면 계속 도망치는 플레이가 야근에서 영영 안 끝난다(무한 루프).
-    P.hp -= (0.4 + g.otT*0.02)*dt;
+    P.hp -= (0.4 + g.otT*0.02)*dt*(P.fatigue||1);           // 노동조합 — 야근 피로 감소
     if(P.hp<=0 && !revive(g)){ finish(g,"lose"); return; }
   }
   if(g.toastT>0){ g.toastT-=dt; if(g.toastT<=0) g.toast=""; }
@@ -3146,9 +3174,7 @@ function step(g,dt){
     if(f.dash>0){                          // 돌진 중 — 조준은 이미 끝났다
       f.dash-=dt; f.x+=f.dvx*dt; f.y+=f.dvy*dt;
       if(d < f.r+P.r && P.inv<=0){
-        P.hp-=f.dmg; P.inv=.62; P.hurt=.30;
-        kick(g,P.x-f.x,P.y-f.y,11); S("chew");
-        if(P.hp<=0 && !revive(g)){ finish(g,"lose"); return; }
+        if(hurtPlayer(g,f.dmg,P.x-f.x,P.y-f.y,11)) return;
       }
       continue;
     }
@@ -3169,9 +3195,7 @@ function step(g,dt){
     }
     // 접촉
     if(d < f.r+P.r && P.inv<=0){
-      P.hp-=f.dmg; P.inv=.62; P.hurt=.30;
-      kick(g, P.x-f.x, P.y-f.y, 7); S("chew");
-      if(P.hp<=0 && !revive(g)){ finish(g,"lose"); return; }
+      if(hurtPlayer(g,f.dmg,P.x-f.x,P.y-f.y,7)) return;
     }
   }
   // 적끼리 겹침 완화 — 뭉쳐서 한 덩어리로 보이는 걸 막는다
@@ -3284,9 +3308,7 @@ function step(g,dt){
       const dd=Math.hypot(P.x-w.x,P.y-w.y);
       if(Math.abs(dd-w.r) < P.r+14){
         w.done=true;
-        P.hp-=w.dmg; P.inv=.62; P.hurt=.30;
-        kick(g,P.x-w.x,P.y-w.y,12); S("chew");
-        if(P.hp<=0 && !revive(g)){ finish(g,"lose"); return; }
+        if(hurtPlayer(g,w.dmg,P.x-w.x,P.y-w.y,12)) return;
       }
     }
   }
@@ -3329,10 +3351,24 @@ function revive(g){
   return true;
 }
 function flash(g,msg){ g.toast=msg; g.toastT=2.6; }
+/* 플레이어 피격 — 접촉·돌진·충격파가 전부 여기로 온다.
+   제도(이어폰 = 무적 시간, 주 52시간 = 17시 이후 피해 감소)가 규칙을 바꾸는 자리라 한 곳에 둔다.
+   쓰러졌으면 true. */
+function hurtPlayer(g,dmg,kx,ky,power){
+  const P=g.P;
+  const late = hourOf(g.t)>=17 ? (P.late||1) : 1;
+  P.hp -= dmg*late;
+  P.inv = .62 + (P.inv0||0);
+  P.hurt = .30;
+  kick(g,kx,ky,power); S("chew");
+  if(P.hp<=0 && !revive(g)){ finish(g,"lose"); return true; }
+  return false;
+}
 function finish(g,how){
   if(g.over) return;
   g.over=how; if(raf) cancelAnimationFrame(raf); raf=null;
   S(how==="win"||how==="late"?"win":"lose");
+  syncHud(g);                                     // 18:00으로 맞춰 놓고 결과를 띄운다
   renderEnd(g);
 }
 
@@ -3592,7 +3628,7 @@ function drawBossBar(g){
   const bs=g.foes.filter(f=>f.boss);
   if(!bs.length) return;
   const b=bs.reduce((a,c)=>c.hp>a.hp?c:a,bs[0]);
-  const w=Math.min(560,VW-80), x=(VW-w)/2, y=64;
+  const w=Math.min(560,VW-80), x=(VW-w)/2, y=VW<=560?110:64;   // 좁은 화면은 슬롯 아래로
   const rt=clamp(b.hp/b.maxhp,0,1);
   ctx.save();
   ctx.fillStyle="rgba(11,14,20,.82)"; ctx.fillRect(x-2,y-2,w+4,16);
@@ -3606,7 +3642,7 @@ function drawBossBar(g){
   ctx.font="800 12px 'Gothic A1','Malgun Gothic',sans-serif";
   ctx.textAlign="left"; ctx.textBaseline="alphabetic";
   ctx.fillStyle=b.rage?"#ff6b6b":"#9ec8ff";
-  ctx.fillText(E[b.kind].name + (b.rage?" · 격노":"") + (bs.length>1?"  ×"+bs.length:""), x, y-6);
+  ctx.fillText(E[b.kind].name + (b.rage?" · 격노":"") + (bs.length>1?"  외 "+(bs.length-1):""), x, y-6);
   ctx.textAlign="right";
   ctx.fillStyle="#7d8699";
   ctx.fillText(Math.ceil(b.hp)+" / "+b.maxhp, x+w, y-6);
@@ -3827,6 +3863,7 @@ function offers(g){
   if(ev.length) return [ev[0]];            // 진화가 가능하면 그것만 보여준다
   const out=[];
   for(const id in WEAPONS){ const lv=g.weapons[id]||0;
+    if(WEAPONS[id].evo) continue;                                // 진화형은 evoReady로만 나온다
     if(lv>=WEAPONS[id].max) continue;
     if(!lv && Object.keys(g.weapons).length>=6) continue;      // 무기는 최대 6종
     out.push({kind:"w",id,lv}); }
@@ -3855,7 +3892,7 @@ function loadoutHTML(g,label){
       ? `<span class="wchip evo">${esc(W.name)}</span>`
       : `<span class="wchip">${esc(W.name)} <b class="num">${lv}</b></span>`;
   }).join("");
-  const free=Math.max(0,5-ids.length);
+  const free=Math.max(0,6-ids.length);
   return `<div class="wrow">${label?'<span class="k">'+esc(label)+'</span>':""}${chips}`
     + (free?`<span class="wchip empty">빈 칸 ${free}</span>`:"") + `</div>`;
 }
@@ -3895,6 +3932,7 @@ function levelUp(g){
       else if(o.kind==="w") g.weapons[o.id]=(g.weapons[o.id]||0)+1;
       else { g.perks[o.id]=(g.perks[o.id]||0)+1; applyPerks(g); }
       S("place"); closeOverlay(); g.paused=false; syncSlots(g);
+      if(g.pendingLv>0){ g.pendingLv--; levelUp(g); }   // 「짬」 — 남은 시작 선택
     };
     box.appendChild(b);
   });
@@ -4162,6 +4200,7 @@ const isTouch = ("ontouchstart" in window) || navigator.maxTouchPoints>0;
 
 function touchStart(e){
   if(!G || G.over || G.paused) return;
+  if(e.target.closest("button,input")) return;      // 음소거 버튼 등은 버튼이 받는다
   for(const t of e.changedTouches){
     if(TOUCH.id!==null) break;
     TOUCH.id=t.identifier; TOUCH.on=true;
@@ -4249,15 +4288,19 @@ function drawStick(){
 }
 
 /* ── 입력 ────────────────────────────────────────────────────── */
+/* 한글 입력 상태면 e.key가 "ㅈ"·"ㅁ"으로 들어와 WASD가 죽는다. 물리 키 코드를 먼저 본다. */
+const CODE_KEY={KeyW:"w",KeyA:"a",KeyS:"s",KeyD:"d",KeyM:"m",
+                ArrowUp:"ArrowUp",ArrowDown:"ArrowDown",ArrowLeft:"ArrowLeft",ArrowRight:"ArrowRight"};
+const keyOf=e=>CODE_KEY[e.code] || (e.key.length===1?e.key.toLowerCase():e.key);
 addEventListener("keydown",e=>{
-  const k=e.key.length===1?e.key.toLowerCase():e.key;
+  const k=keyOf(e);
   keys[k]=true;
   if(k==="m" && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)){
     e.preventDefault(); toggleMute();
   }
   if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
 });
-addEventListener("keyup",e=>{ keys[e.key.length===1?e.key.toLowerCase():e.key]=false; });
+addEventListener("keyup",e=>{ keys[keyOf(e)]=false; });
 addEventListener("blur",()=>{ for(const k in keys) keys[k]=false; });
 
 function toggleMute(){
@@ -4278,6 +4321,8 @@ bindTouch();
   $("#mute").setAttribute("aria-pressed",m?"true":"false"); })();
 window.__g=()=>G;                       // 테스트 훅
 window.__finish=finish;                 // 결말 화면 검증용
+window.__offers=offers;                 // 선택지 검증용
+window.__applyPerks=applyPerks;         // 강화 반영 검증용
 window.__api={WEAPONS,PERKS,E,SCHED,BOSSES,DAY,hourOf,clockStr,spawnRing,start,todoOf,WORK_TOTAL};
 renderStart();
 
