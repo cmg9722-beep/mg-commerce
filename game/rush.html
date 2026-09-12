@@ -41,6 +41,10 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-acti
 #zone{font-size:12px;color:var(--faint,#5b6577);white-space:nowrap}
 #zone b{color:var(--ink);font-size:14px;font-weight:800;margin-left:4px}
 #zone.open b{color:var(--good)}
+#repl{font-size:13px;color:var(--dim);white-space:nowrap}
+#repl b{color:var(--blue);font-size:17px}
+#repl.warn b{color:var(--accent)}
+#repl.hot b{color:var(--bad)}
 #todo{font-size:13px;color:var(--dim)}
 #todo b{color:var(--bad);font-size:17px}
 #todo.ok b{color:var(--good)}
@@ -79,7 +83,8 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-acti
   .title h1{font-size:36px !important;white-space:nowrap}
   #toast{top:134px}
   #hud{padding:8px 50px 8px 10px;gap:8px}
-  #kills,#lv,#todo,#zone{font-size:10px}
+  #kills,#lv,#todo,#zone,#repl{font-size:10px}
+  #repl b{font-size:12px}
   #zone b{font-size:12px}
   #kills b,#lv b,#todo b{font-size:15px}
   #daybar{min-width:40px}
@@ -221,6 +226,7 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     <div id="kills">처리 <b class="num">0</b></div>
     <div id="zone">1 / 9 <b>지하 주차장</b></div>
     <div id="todo" class="ok">미결 <b class="num">0</b></div>
+    <div id="repl" style="display:none">대체율 <b class="num">0%</b></div>
   </div>
   <div id="slots"></div>
   <div id="bars">
@@ -1833,10 +1839,78 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     });
   }
 
+  /* ══════════ 자동화 로봇 — 사람이 아니다. 실루엣부터 달라야 한다 ══════════
+     직급 12종이 전부 「정장 입은 사람」이라, 이것만은 각지고 다리가 없다.
+     바퀴로 미끄러지고, 팔은 집게고, 얼굴 자리에 화면이 있다. */
+  /* 외곽선 없는 둥근 채움 — 로봇 패널용 */
+  function fillR(ctx, x, y, w, h, r, col) { ctx.fillStyle = col; rrPath(ctx, x, y, w, h, r); ctx.fill(); }
+  function botunit(ctx, cx, cy, s, pose) {
+    unit(ctx, cx, cy, s, function (ctx) {
+      var M = motion(pose, G.hero);
+      var a = M.a, p = M.p, t = M.t;
+      var roll = a === "walk" ? Math.sin(p * 6.2831853) : 0;
+      var dead = a === "die";
+      ctx.save();
+      if (dead) {                                   // 쓰러짐 — 옆으로 넘어가며 꺼진다
+        var k = sstep(p / 0.7);
+        ctx.translate(0, 34); ctx.rotate(-1.35 * k); ctx.translate(0, -34);
+        ctx.globalAlpha = 1 - 0.35 * sstep((p - 0.6) / 0.4);
+      }
+      if (a === "hit") { var hk = p < 0.35 ? Math.sin(p / 0.35 * 1.5708) : Math.cos((p - 0.35) / 0.65 * 1.5708);
+                         ctx.translate(4.5 * hk, 1.2 * hk); }
+      /* 바퀴 — 다리가 없다 */
+      fillR(ctx, -17, 20, 34, 12, 6, "#23272f");
+      dot(ctx, -10 + roll * 2, 26, 5, "#3a4049");
+      dot(ctx, 10 + roll * 2, 26, 5, "#3a4049");
+      /* 몸통 — 각진 금속 상자 */
+      box(ctx, -18, -14, 36, 36, 3, "#8f959e");
+      ctx.fillStyle = SH; rrPath(ctx, 3, -14, 15, 36, 3); ctx.fill();
+      litL(ctx, -16.4, -12, 32);
+      fillR(ctx, -12, 4, 24, 8, 1.5, "#4a505a");      // 환기구
+      stroke(ctx, "#6a7078", 1.4, function (c) {
+        c.moveTo(-10, 6); c.lineTo(10, 6); c.moveTo(-10, 9.5); c.lineTo(10, 9.5); });
+      dot(ctx, -12, -8, 2.2, dead ? "#5a4040" : "#57d98a");   // 전원 램프
+      /* 집게 팔 — 서류를 들고 있다 */
+      var sw = a === "walk" ? Math.sin(p * 6.2831853) * 0.22 : 0;
+      pivot(ctx, -18, -8, 0.30 + sw, function (ctx) {
+        limb(ctx, -18, -8, -30, 6, 5, "#6b7079");
+        fillR(ctx, -35, 2, 10, 9, 1.5, "#4a505a");
+        if (!dead) { fillR(ctx, -39, -6, 15, 11, 1, PAPER);
+                     stroke(ctx, PAPER2, 1.1, function (c) {
+                       c.moveTo(-36, -2); c.lineTo(-28, -2); c.moveTo(-36, 1); c.lineTo(-30, 1); }); }
+      });
+      pivot(ctx, 18, -8, -0.30 - sw, function (ctx) {
+        limb(ctx, 18, -8, 30, 6, 5, "#6b7079");
+        fillR(ctx, 25, 2, 10, 9, 1.5, "#4a505a");
+      });
+      /* 머리 — 화면. 눈이 아니라 표시등이다 */
+      ctx.save();
+      ctx.translate(0, -1.2 * Math.abs(roll));
+      box(ctx, -15, -33, 30, 21, 3, "#787e88");
+      fillR(ctx, -12, -30, 24, 15, 2, dead ? "#232830" : "#1b2a3a");
+      if (!dead) {
+        ctx.fillStyle = "#7fe0c0";
+        ctx.fillRect(-8, -25 + Math.sin(t * 2.2) * 0.6, 5, 4);
+        ctx.fillRect(3, -25 + Math.sin(t * 2.2) * 0.6, 5, 4);
+        ctx.fillStyle = "rgba(127,224,192,.22)";     // 화면 잔광
+        ctx.fillRect(-12, -30, 24, 15);
+      } else {
+        stroke(ctx, "#4a5058", 1.6, function (c) {   // 꺼진 화면 — X
+          c.moveTo(-7, -26); c.lineTo(-2, -21); c.moveTo(-2, -26); c.lineTo(-7, -21);
+          c.moveTo(2, -26); c.lineTo(7, -21); c.moveTo(7, -26); c.lineTo(2, -21); });
+      }
+      fillR(ctx, -3, -37, 6, 5, 1, "#5a6069");         // 안테나
+      dot(ctx, 0, -39, 2.4, dead ? "#5a4040" : "#ff6b6b");
+      ctx.restore();
+      ctx.restore();
+    });
+  }
+
   window.SPRITES_RANK = {
     intern: intern, staff: staff, senior: senior, manager: manager,
     gm: gm, audit: audit, drunk: drunk, hero: hero,
-    rookie: rookie, hrteam: hrteam, vendor: vendor, chief: chief, ceo: ceo
+    rookie: rookie, hrteam: hrteam, vendor: vendor, chief: chief, ceo: ceo,
+    bot: botunit
   };
 })();
 </script>
@@ -2479,6 +2553,43 @@ const todoOf = g => Math.max(0, zoneOf(g).quota - (g.kills-g.zoneK0) - (g.zoneBo
 /* 문이 열릴 조건 — 몫을 끝내고, 보스가 남아 있으면 그것도 끝내야 한다 */
 const gateReady = g => todoOf(g)<=0 && !g.foes.some(f=>f.boss);
 
+/* ── 자동화 ────────────────────────────────────────────────────
+   오늘 처리된 일 중 로봇이 한 몫의 비율. 45%를 넘긴 채로 하루가 끝나면
+   정시 퇴근한 채로 진다 — 「내일부터는 안 나오셔도 됩니다」. */
+const REPLACE_LIMIT = 0.45;
+function replaceRate(g){
+  const t=g.robotWork+g.kills;
+  return t>0 ? g.robotWork/t : 0;
+}
+function stepRobots(g,dt){
+  const P=g.P;
+  /* 투입 — 12시(구역 4) 이후부터. 노조가 있으면 도입이 느려진다 */
+  if(g.zone>=3){
+    const live=g.foes.filter(f=>E[f.kind].robot).length;
+    g.robotCd-=dt*(P.union?0.55:1);
+    if(g.robotCd<=0 && live<2){
+      g.robotCd=26+Math.random()*12;
+      spawnRing(g,"bot",1);
+      if(!g.robotSeen){
+        g.robotSeen=true;
+        flash(g,"자동화 로봇 투입 — 저게 내 일을 합니다"); S("bossIn");
+        g.flash=Math.max(g.flash,.7);
+      }else S("deny");
+    }
+  }
+  /* 일을 대신 한다 — 단체협약이 있으면 상한에 걸려 더 못 올라간다 */
+  let n=0;
+  for(const f of g.foes) if(E[f.kind].robot) n++;
+  if(n){
+    const capped = P.union>=3 && replaceRate(g)>=REPLACE_LIMIT-0.07;
+    if(!capped) g.robotWork += n*0.62*dt*(P.union?0.7:1);
+  }
+  if(!g.robotWarn && replaceRate(g)>=0.30 && g.robotWork>8){
+    g.robotWarn=true;
+    flash(g,"대체율 30% — 이러다 자리가 없어집니다"); S("deny");
+  }
+}
+
 /* ── 무기 ─────────────────────────────────────────────────────── */
 const WEAPONS = {
   stamp:{ id:"stamp", name:"반려 도장", max:8, base:"start",
@@ -2713,6 +2824,10 @@ const E = {
   vendor :{name:"협력사",hp:190, spd:118,dmg:13, xp:5, r:17},
   ceo    :{name:"대표이사",hp:9000,spd:32,dmg:44,xp:400,r:36, boss:true,
             atk:"shock", atkCd:2.8, summon:"manager", summonN:9, summonCd:6},
+  /* 자동화 로봇 — 이 게임에서 유일하게 나를 때리지 않는 적.
+     쫓아오지도 않는다. 조용히 내 일을 대신 한다.
+     있으면 편하다. 그래서 부수기가 아깝다 — 그 망설임이 이 적의 무기다. */
+  bot    :{name:"자동화 로봇",hp:520, spd:26, dmg:0,  xp:14, r:20, robot:true, rate:0.62},
 };
 /* 시간대별 스폰 구성 — 시(hour) 기준 */
 const SCHED = [
@@ -2761,6 +2876,7 @@ function newGame(grudge){
     blinkCd:0, annualCd:0, annualT:0,
     spawnAcc:0, bossOut:false, shake:0, shakeX:0, shakeY:0, hitstop:0,
     zone:0, zoneK0:0, zoneT:0, zoneBonus:0, gate:null, cleared:0, sayCd:2.5,
+    robotWork:0, robotCd:16, robotSeen:false, robotWarn:false,
     ot:false, otT:0, warned:false,
     combo:0, comboT:0, comboBest:0, comboPop:0, flash:0,
     toast:"", toastT:0, paused:false, best:0,
@@ -2944,6 +3060,8 @@ function nextZone(g){
   g.zone++; g.cleared++;
   g.gate=null; g.zoneK0=g.kills; g.zoneT=0; g.zoneBonus=0;
   if(g.zone>=ZONES.length){                    // 정문을 나왔다
+    // 대체 판정이 먼저다 — 정시에 나왔는데 자리가 없어진 경우
+    if(replaceRate(g)>=REPLACE_LIMIT){ finish(g,"replaced"); return true; }
     finish(g, g.ot?"late":"win"); return true;
   }
   // 구역 통과 보상 — 긴장 뒤에 한숨 한 번. 이 리듬이 있어야 하루가 읽힌다
@@ -3451,6 +3569,7 @@ function step(g,dt){
   stepAllies(g,dt);
   stepPolicy(g,dt);
   stepSay(g,dt);
+  stepRobots(g,dt);
 
   // 퇴근 시계(지속형 감속)
   const CK = g.weapons.ontime ? WEAPONS.ontime.lv(1)
@@ -3485,6 +3604,17 @@ function step(g,dt){
     if(f.wind>0){                          // 예비동작 — 멈춰서 힘을 모은다
       f.wind-=dt; if(f.wind<=0 && f.pending) bossFire(g,f);
       continue;
+    }
+    if(E[f.kind].robot){                              // 로봇 — 나를 무시하고 제 일을 한다
+      if(f.hold>0){ f.hold-=dt; }
+      else{
+        if(f.wx===undefined){ f.wx=f.x+(Math.random()-.5)*300; f.wy=f.y+(Math.random()-.5)*300; }
+        const wdx=f.wx-f.x, wdy=f.wy-f.y, wd=Math.hypot(wdx,wdy)||1;
+        if(wd<24){ f.wx=f.x+(Math.random()-.5)*420; f.wy=f.y+(Math.random()-.5)*420; }
+        else { f.x+=wdx/wd*f.spd*f.slow*dt; f.y+=wdy/wd*f.spd*f.slow*dt;
+               f.walk+=dt*f.spd*f.slow/44; f.face=wdx<0?-1:1; }
+      }
+      continue;                                       // 접촉 피해 없음
     }
     if(f.hold>0){ f.hold-=dt; f.walk+=dt*0.6; }      // 회의에 묶임 — 못 움직인다
     else if(f.kb>0){ f.kb-=dt; f.x+=f.kbx*dt*9; f.y+=f.kby*dt*9; }
@@ -4345,6 +4475,15 @@ function syncHud(g){
   const td=todoOf(g), te=$("#todo"), Z=zoneOf(g);
   te.querySelector("b").textContent=td;
   te.classList.toggle("ok",td<=0);
+  const rb=$("#repl");
+  if(rb){
+    if(g.robotSeen){
+      const rr=Math.round(replaceRate(g)*100);
+      rb.style.display="";
+      rb.querySelector("b").textContent=rr+"%";
+      rb.className = rr>=45?"hot" : rr>=30?"warn" : "";
+    } else rb.style.display="none";
+  }
   const zn=$("#zone");
   if(zn){
     zn.innerHTML=(g.zone+1)+" / "+ZONES.length+" <b>"+esc(Z.name)+"</b>";
@@ -4389,7 +4528,7 @@ function metaBonus(){
 /* 하루 결과 → 경력. 오래 버틸수록, 많이 처리할수록. */
 function careerEarned(g){
   const hours=(Math.min(g.t,DAY)/DAY)*(H1-H0);
-  const bonus = g.over==="win" ? 150 : g.over==="late" ? 60 : 0;
+  const bonus = g.over==="win" ? 150 : g.over==="late" ? 60 : g.over==="replaced" ? 25 : 0;
   return Math.round(hours*12 + g.kills*0.22 + bonus);
 }
 
@@ -4490,22 +4629,25 @@ function renderShop(){
 }
 
 function renderEnd(g){
-  const win=g.over==="win", late=g.over==="late", done=win||late;
-  const acc = win?"var(--good)" : late?"var(--accent)" : "var(--bad)";
+  const repl=g.over==="replaced";
+  const win=g.over==="win", late=g.over==="late", done=win||late||repl;
+  /* 「대체」는 금색 — 초록도 빨강도 아니다. 이겼는데 진 것이라 색이 따로다 */
+  const acc = win?"var(--good)" : late?"var(--accent)" : repl?"#c9a227" : "var(--bad)";
   // 경력 정산 — 이 판이 남긴 것
   const earn=careerEarned(g);
   SAVE.career+=earn; SAVE.days++;
   if(g.kills>SAVE.best) SAVE.best=g.kills;
-  if(done) SAVE.cleared=true;
+  if(win||late) SAVE.cleared=true;
   writeSave(SAVE);
   $("#card").innerHTML=`
     <div class="rhead">
       <span class="rbar" style="background:${acc}"></span>
       <div>
         <h1 class="ttl" style="color:${acc};font-size:38px;margin:0;line-height:1">${
-          win?"정시 퇴근":late?"야근 퇴근":"자리에서 쓰러짐"}</h1>
+          win?"정시 퇴근":late?"야근 퇴근":repl?"대체":"자리에서 쓰러짐"}</h1>
         <div class="sub" style="margin:6px 0 0">${
-          win ?"18:00. 가방 들고 나왔습니다."
+          repl?"18:00. 정시에 퇴근했습니다.<br><b style=\"color:#c9a227\">내일부터는 안 나오셔도 됩니다.</b>"
+        : win ?"18:00. 가방 들고 나왔습니다."
         : late?"야근 "+Math.max(1,Math.round((g.otT/DAY)*(H1-H0)*60))+"분. 끝내고 나왔습니다."
         :      (g.ot?"야근 중":clockStr(g.t))+" — "+zoneOf(g).name+"에서 쓰러졌습니다."}</div>
       </div>
@@ -4514,12 +4656,15 @@ function renderEnd(g){
       <div class="cstat"><b class="num">${g.kills.toLocaleString()}</b><span>처리</span></div>
       <div class="cstat"><b class="num" style="color:var(--bad)">${g.comboBest.toLocaleString()}</b><span>최고 연속</span></div>
       <div class="cstat"><b class="num">${g.lv}</b><span>레벨</span></div>
-      <div class="cstat"><b class="num">${Math.round(g.dmgDealt).toLocaleString()}</b><span>누적 피해</span></div>
+      <div class="cstat"><b class="num"${g.robotSeen&&replaceRate(g)>=0.3?' style="color:'+acc+'"':''}>${
+        g.robotSeen?Math.round(replaceRate(g)*100)+"%":Math.round(g.dmgDealt).toLocaleString()}</b><span>${
+        g.robotSeen?"대체율":"누적 피해"}</span></div>
     </div>
     ${loadoutHTML(g,"마지막 구성")}
     <div class="quote">
       <div class="q">“${esc(g.grudge)}”</div>
-      <div class="a">— ${win?"이제 안 들립니다.":late?"늦었지만, 끝내고 나왔습니다.":"내일 또 듣습니다."}</div>
+      <div class="a">— ${win?"이제 안 들립니다.":late?"늦었지만, 끝내고 나왔습니다."
+        :repl?"이제 아무도 이 말을 하지 않습니다.":"내일 또 듣습니다."}</div>
     </div>
     <div class="earnrow">
       <span class="k">오늘의 경력</span>
