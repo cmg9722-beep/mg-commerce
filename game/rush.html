@@ -804,6 +804,7 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
 })();
 </script>
 
+<script src="_assets.js" onerror="window.ASSETS=null"></script>
 <script>
 /* _rank_chars.js — 「정시 퇴근」 직급 캐릭터 v3 (동작 개편판)
    ────────────────────────────────────────────────────────────────
@@ -2522,7 +2523,27 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const clamp = (v,a,b) => v<a?a:v>b?b:v;
-const S = (m,...a) => { try{ const x=window.SFX; if(x&&typeof x[m]==="function") x[m](...a); }catch(e){} };
+/* 소리 — 산 음원이 있으면 그걸 쓰고, 없으면 합성음.
+   음원 이름은 효과음 이름 그대로다(hit·kill·killBoss·coin·levelup…). */
+const _sfxPool={};
+function playAsset(name){
+  const src=AST.sfx[name]; if(!src) return false;
+  try{
+    if(window.SFX && window.SFX.muted) return true;          // 음소거면 소리만 안 낸다
+    let pool=_sfxPool[name];
+    if(!pool){ pool=_sfxPool[name]=[]; for(let i=0;i<4;i++){ const a=new Audio(src); a.preload="auto"; pool.push(a); } }
+    const a=pool.find(v=>v.paused||v.ended)||pool[0];
+    a.currentTime=0; a.volume=0.62;
+    const pr=a.play(); if(pr&&pr.catch) pr.catch(()=>{});
+    return true;
+  }catch(e){ return false; }
+}
+const S = (m,...a) => { try{
+  const alias = (m==="kill" && a[0]) ? "killBoss" : m;        // 보스 처치는 따로
+  if(playAsset(alias)) return;
+  if(alias!==m && playAsset(m)) return;
+  const x=window.SFX; if(x&&typeof x[m]==="function") x[m](...a);
+}catch(e){} };
 
 /* 하루 = 09:00 → 18:00, 9시간을 DAY초에 압축 */
 const DAY = 420;                 // 한 판 길이(초)
@@ -3852,6 +3873,14 @@ function finish(g,how){
 
 /* ── 그리기 ──────────────────────────────────────────────────── */
 function drawFloor(g,camX,camY,VW,VH){
+  /* 산 구역 배경이 있으면 그걸 타일로 깐다. 없으면 코드 배경 */
+  const zi=asset("zone-"+g.zone);
+  if(zi){
+    const w=zi.naturalWidth, h=zi.naturalHeight;
+    const ox=-(((camX%w)+w)%w), oy=-(((camY%h)+h)%h);
+    for(let y=oy;y<VH;y+=h) for(let x=ox;x<VW;x+=w) ctx.drawImage(zi,x,y);
+    return;
+  }
   const B=window.BACKDROP;
   if(B && B.office){ try{ B.office(ctx,VW,VH,camX,camY,g.t,g.zone); return; }catch(e){} }
   // 폴백 — 배경 모듈이 없어도 게임은 돈다
@@ -3870,6 +3899,29 @@ function drawFloor(g,camX,camY,VW,VH){
    캐릭터는 Canvas2D 패스 수십 개로 그린다. 적이 수백 명이면 프레임마다
    수천 번의 패스 연산이 된다(측정: 200명 25 FPS, 450명 13 FPS).
    동작을 프레임 단위로 미리 구워두고 drawImage로 찍는다. */
+/* ── 에셋 레이어 ────────────────────────────────────────────────
+   tools/build-assets.mjs 가 만든 window.ASSETS를 먼저 본다.
+   없으면 지금처럼 코드로 그리고 합성한다 — 하나씩 갈아끼울 수 있게.
+   그래서 그림이 한 장만 들어와도 그 한 장만 바뀐다. */
+const AST={ img:{}, sfx:{}, ready:{} };
+(function(){
+  const A=window.ASSETS;
+  if(!A) return;
+  for(const k in (A.img||{})){
+    const im=new Image();
+    im.onload =()=>{ AST.ready[k]=true; };
+    im.onerror=()=>{ delete AST.img[k]; };
+    im.src=A.img[k];
+    AST.img[k]=im;
+  }
+  for(const k in (A.sfx||{})) AST.sfx[k]=A.sfx[k];
+})();
+/* 쓸 수 있는 그림인가 — 로딩이 끝났고 실제로 픽셀이 있는 것만 */
+function asset(name){
+  const im=AST.img[name];
+  return (im && AST.ready[name] && im.naturalWidth>0) ? im : null;
+}
+
 const FRAMES={ walk:8, hit:4, die:8, attack:4, idle:1 };
 const BAKE=2;
 const _cache=new Map();
@@ -3892,6 +3944,18 @@ function baked(kind,size,action,fi){
   return c;
 }
 function blit(g2,kind,size,action,p,x,y){
+  /* 산 스프라이트 시트가 있으면 그것부터. 가로로 8프레임을 기대한다 */
+  const sheet=asset(kind==="hero"?"hero":"foe-"+kind);
+  if(sheet){
+    const cols=Math.max(1,Math.round(sheet.naturalWidth/sheet.naturalHeight));
+    const n0=FRAMES[action]||1;
+    const fi0=n0>1 ? clamp(Math.floor(p*n0),0,n0-1) : 0;
+    const col=cols>1 ? fi0%cols : 0;
+    const fw=sheet.naturalWidth/cols;
+    g2.drawImage(sheet, col*fw, 0, fw, sheet.naturalHeight,
+                 x-size/2, y-size*0.72, size, size*(sheet.naturalHeight/fw));
+    return true;
+  }
   const n=FRAMES[action]||1;
   const fi=n>1 ? clamp(Math.floor(p*n),0,n-1) : 0;
   const c=baked(kind,size,action,fi);
@@ -4491,6 +4555,8 @@ function icon(id,size,kind){
   x.translate(4,4);                            // 64 설계 좌표를 72 안에 여백 두고 앉힌다
   /* 법인카드(무기)와 명함(강화)이 둘 다 id "card"다. 종류로 가른다 */
   const key = (id==="card" && kind==="p") ? "namecard" : id;
+  const bought=asset("icon-"+key);
+  if(bought){ x.drawImage(bought,0,0,64,64); c.style.width=c.style.height=size+"px"; return c; }
   const f = IC[key] || (key==="namecard" ? IC.card : null);
   if(f) { try{ f(x); }catch(e){} }
   else { x.fillStyle="#6f9fd8"; x.fillRect(18,18,36,36); }
