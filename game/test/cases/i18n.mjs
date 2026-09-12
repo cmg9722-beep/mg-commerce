@@ -7,12 +7,16 @@ const SAVE_PLAYED = { career:2400, lv:{hp:2,spd:1}, best:8800, score:8800, days:
                       ach:{first:1,k100:1,combo50:1}, opt:{} };
 
 /* 화면에 실제로 보이는 글자만 본다 — 숨은 노드는 제외 */
+/* 일부러 한국어로 남기는 것들 — 언어 선택 자체는 두 언어로 보여야 한다.
+   영어 화면에 갇힌 한국어 사용자가 「한국어」를 못 찾으면 빠져나올 수 없다. */
+const KEEP = ['한국어', 'Language · 언어', '언어 · Language'];
 const SCAN = () => {
+  const KEEP = ['한국어', 'Language · 언어', '언어 · Language'];
   const out = [];
   const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
   for(let n=w.nextNode(); n; n=w.nextNode()){
     const t = (n.nodeValue||'').trim();
-    if(!t || !/[가-힣]/.test(t)) continue;
+    if(!t || !/[가-힣]/.test(t) || KEEP.includes(t)) continue;
     const el = n.parentElement;
     if(!el || !el.offsetParent && el.tagName!=='BODY') continue;
     out.push(t);

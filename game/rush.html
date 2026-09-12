@@ -321,6 +321,37 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
 #mute[aria-pressed="true"] .x{display:block}
 #toast{position:absolute;left:50%;top:110px;transform:translateX(-50%);z-index:6;
   font-weight:800;font-size:15px;color:var(--accent);text-shadow:0 2px 10px #000;pointer-events:none}
+/* 첫 판 안내 — 화면 아래에 한 줄. 게임은 뒤에서 계속 돌아간다.
+   글을 읽는 동안 멈추면 「설명을 듣는 시간」이 되고, 그러면 안 읽는다. */
+#tut{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);z-index:9;
+  display:flex;align-items:center;gap:12px;max-width:min(560px,calc(100vw - 28px));
+  padding:12px 14px;border-radius:13px;border:1px solid var(--line);
+  background:rgba(17,20,27,.94);box-shadow:0 10px 30px rgba(0,0,0,.5);
+  animation:tutin .32s ease-out both}
+@keyframes tutin{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+@media (prefers-reduced-motion:reduce){#tut{animation:none}}
+#tut .tstep{flex-shrink:0;display:flex;align-items:baseline;gap:1px;
+  color:var(--accent);font-weight:800;font-size:17px;font-variant-numeric:tabular-nums}
+#tut .tstep span{font-size:11px;color:var(--dim);font-weight:700}
+#tut .tbody{display:flex;flex-direction:column;gap:2px;min-width:0}
+#tut .tbody strong{font-size:14.5px;color:var(--ink);font-weight:800;line-height:1.35}
+#tut .tbody span{font-size:12.5px;color:var(--dim);line-height:1.45}
+#tut #tutskip{flex-shrink:0;align-self:flex-start;padding:6px 10px;border-radius:8px;
+  border:1px solid var(--line);background:transparent;color:var(--dim);
+  font:inherit;font-size:11.5px;font-weight:700;cursor:pointer}
+#tut #tutskip:hover{color:var(--ink);border-color:var(--dim)}
+#tut #tutskip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* 안내가 가리키는 HUD 칸이 눈에 띄게 */
+.tutpoint{position:relative;box-shadow:0 0 0 2px var(--accent),0 0 16px rgba(201,162,39,.45);
+  border-radius:9px;animation:tutpulse 1.5s ease-in-out infinite}
+@keyframes tutpulse{0%,100%{box-shadow:0 0 0 2px var(--accent),0 0 16px rgba(201,162,39,.45)}
+  50%{box-shadow:0 0 0 2px var(--accent),0 0 4px rgba(201,162,39,.2)}}
+@media (prefers-reduced-motion:reduce){.tutpoint{animation:none}}
+body.lobby #tut{display:none}
+@media (max-width:560px){
+  #tut{bottom:104px;padding:10px 12px;gap:9px}
+  #tut .tbody strong{font-size:13.5px} #tut .tbody span{font-size:11.5px}
+}
 </style>
 </head>
 <body>
@@ -344,6 +375,11 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     <div class="bar" id="xpb"><i></i></div>
   </div>
   <div id="toast"></div>
+  <div id="tut" hidden>
+    <div class="tstep"><b id="tutn">1</b><span id="tuts">/5</span></div>
+    <div class="tbody"><strong id="tutt"></strong><span id="tutd"></span></div>
+    <button id="tutskip" type="button">건너뛰기</button>
+  </div>
   <button id="mute" type="button" aria-pressed="false" title="소리 켜기/끄기 (M)" aria-label="소리 끄기">
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
          stroke-linecap="round" stroke-linejoin="round">
@@ -3346,6 +3382,16 @@ const L10N = { ko:null, en:{
   "이거 오늘 안에 되죠":"You can finish this today, right","공격 자동":"auto-attack","오늘 점수":"Today's score","최고":"Best",
   "반려 도장 시작":"Rejection Stamp starting","조작 · 소리":"Controls · Sound",
   "바꾸면 화면을 다시 읽습니다":"Changing this reloads the screen","언어 · Language":"Language · 언어",
+
+  "가까이 오는 사람에게 반려 도장이 자동으로 찍힙니다. 손은 피하는 데 씁니다.":"Your rejection stamp hits whoever comes close. Your hands are for dodging.",
+  "경험치가 차면 셋 중 하나를 고릅니다. 무기 칸은 여섯 개뿐이니 신중하게.":"Fill the XP bar and pick one of three. You only get six weapon slots — choose carefully.",
+  "화면 가장자리 화살표가 출구를 가리킵니다. 아홉 구역을 지나면 정문입니다.":"The arrow at the screen edge points to the exit. Nine zones, then the main entrance.",
+  "오늘 이 구역에서 처리해야 할 몫입니다. 0이 되면 문이 열립니다.":"That's your quota for this zone. At zero, the door opens.",
+  "W · A · S · D 또는 화살표로 움직여 보세요.":"Move with W · A · S · D or the arrow keys.",
+  "화면을 끌어 보세요. 손가락을 떼면 멈춥니다.":"Drag anywhere on the screen. Lift your finger to stop.",
+  "카드가 싸우는 방식을 정합니다":"Cards decide how you fight","이 숫자를 0으로 만드세요":"Get this number to zero",
+  "공격은 알아서 나갑니다":"Attacks fire on their own","움직이기만 하면 됩니다":"All you do is move",
+  "문이 열리면 그리로":"When the door opens, head for it","건너뛰기":"Skip",
 } };
 /* 원문 그대로 돌려주는 게 기본. 한국어면 표를 아예 안 본다.
 
@@ -4245,6 +4291,71 @@ let cv, ctx, G=null, raf=null, VW=960, VH=600, DPR=1, ZOOM=1;
 function calcZoom(){ return clamp(Math.min(VW,VH)/540, 0.85, 1.8); }
 const keys = Object.create(null);
 
+/* ══════════════ 첫 판 안내 ══════════════════════════════════
+   이 장르는 「움직이기만 하면 된다」가 강점인데, 처음 여는 사람에겐
+   그게 오히려 불친절하다 — 공격 버튼을 찾다가 죽는다. 참조로 연
+   게임 여덟 개 중 안내를 가진 건 하나뿐이었고, 그 하나는 로비에
+   글로만 적어 뒀다. 글은 안 읽힌다.
+
+   그래서 판 안에서, 시간이 아니라 「했는가」로 넘어간다.
+     · 움직였나 → 다음
+     · 처음 처리했나 → 다음
+   각 단계는 자기가 가리킬 HUD 칸을 알고 있고, 게임은 뒤에서 계속
+   돌아간다. 멈추면 「설명 듣는 시간」이 되고, 그러면 안 읽는다.
+   언제든 건너뛸 수 있고, 한 번 끝내면 다시 안 뜬다. */
+const TUT_KEY="jeongsi.tut.v1";
+const TUT=[
+  { id:"move", t:"움직이기만 하면 됩니다",
+    d:()=>isTouch ? "화면을 끌어 보세요. 손가락을 떼면 멈춥니다."
+                  : "W · A · S · D 또는 화살표로 움직여 보세요.",
+    done:(g,st)=>st.moved>150 },
+  { id:"auto", t:"공격은 알아서 나갑니다",
+    d:()=>"가까이 오는 사람에게 반려 도장이 자동으로 찍힙니다. 손은 피하는 데 씁니다.",
+    done:(g)=>g.kills>=1, hi:"#kills" },
+  { id:"todo", t:"이 숫자를 0으로 만드세요",
+    d:()=>"오늘 이 구역에서 처리해야 할 몫입니다. 0이 되면 문이 열립니다.",
+    done:(g)=>g.kills>=5, hi:"#todo" },
+  { id:"card", t:"카드가 싸우는 방식을 정합니다",
+    d:()=>"경험치가 차면 셋 중 하나를 고릅니다. 무기 칸은 여섯 개뿐이니 신중하게.",
+    done:(g)=>g.lv>=2, hi:"#xpb" },
+  { id:"gate", t:"문이 열리면 그리로",
+    d:()=>"화면 가장자리 화살표가 출구를 가리킵니다. 아홉 구역을 지나면 정문입니다.",
+    done:(g)=>g.zone>=1, hi:"#zone" },
+];
+const tutSeen = () => { try{ return !!localStorage.getItem(TUT_KEY); }catch(e){ return true; } };
+const tutMark = () => { try{ localStorage.setItem(TUT_KEY,"1"); }catch(e){} };
+function tutStart(g){
+  g.tut = (tutSeen() || (SAVE.days|0)>0 || (SAVE.runs|0)>0)
+        ? null : { i:0, t:0, moved:0, px:g.P.x, py:g.P.y, hold:0 };
+  tutPaint(g);
+}
+function tutStop(g){ if(g) g.tut=null; tutMark(); tutPaint(g); }
+function tutStep(g,dt){
+  const st=g.tut; if(!st) return;
+  st.t+=dt;
+  st.moved += Math.hypot(g.P.x-st.px, g.P.y-st.py); st.px=g.P.x; st.py=g.P.y;
+  const cur=TUT[st.i]; if(!cur){ tutStop(g); return; }
+  /* 조건을 채웠어도 0.9초는 남긴다 — 글이 뜨자마자 사라지면 못 읽는다 */
+  if(cur.done(g,st)) st.hold+=dt; else st.hold=0;
+  if(st.hold>=0.9 || st.t>34){
+    st.i++; st.t=0; st.hold=0;
+    if(st.i>=TUT.length){ tutStop(g); return; }
+    S("select");
+    tutPaint(g);
+  }
+}
+function tutPaint(g){
+  const box=$("#tut"); if(!box) return;
+  for(const el of document.querySelectorAll(".tutpoint")) el.classList.remove("tutpoint");
+  const st=g&&g.tut, cur=st&&TUT[st.i];
+  if(!cur){ box.hidden=true; return; }
+  box.hidden=false;
+  $("#tutn").textContent=st.i+1;
+  $("#tuts").textContent="/"+TUT.length;
+  $("#tutt").textContent=T(cur.t);
+  $("#tutd").textContent=T(cur.d());
+  if(cur.hi){ const el=$(cur.hi); if(el) el.classList.add("tutpoint"); }
+}
 function newGame(grudge){
   const M=metaBonus();
   return {
@@ -4273,7 +4384,7 @@ function newGame(grudge){
     rndName:"", rndKind:"", rndShow:0, barOn:0, barP:0,
     ot:false, otT:0, warned:false,
     combo:0, comboT:0, comboBest:0, comboPop:0, flash:0,
-    toast:"", toastT:0, paused:false, best:0,
+    toast:"", toastT:0, paused:false, best:0, tut:null,
   };
 }
 
@@ -5278,6 +5389,7 @@ function step(g,dt){
   if(g.toastT>0){ g.toastT-=dt; if(g.toastT<=0) g.toast=""; }
   if(g.shake>0) g.shake=Math.max(0,g.shake-dt*34);
   g.shakeX*=Math.max(0,1-dt*11); g.shakeY*=Math.max(0,1-dt*11);
+  if(g.tut) tutStep(g,dt);
   if(g.comboT>0){ g.comboT-=dt; if(g.comboT<=0) g.combo=0; }
   if(g.comboPop>0) g.comboPop=Math.max(0,g.comboPop-dt*4.5);
   if(g.flash>0) g.flash=Math.max(0,g.flash-dt*2.2);
@@ -5659,6 +5771,7 @@ function hurtPlayer(g,dmg,kx,ky,power){
   return false;
 }
 function finish(g,how){
+  if(g.tut){ g.tut=null; tutPaint(g); }        // 안내는 결과 화면을 가리지 않는다
   if(g.over) return;
   g.over=how; if(raf) cancelAnimationFrame(raf); raf=null;
   S("bgmStop");
@@ -5758,22 +5871,27 @@ function baked(kind,size,action,fi){
        처음 1.6배로 두니 3.6%밖에 안 돼서 있으나 마나였다.
        크기에 비례시키되 상한을 둔다 — 보스에 너무 두꺼우면 뭉개진다. */
     const w=c.width, h=c.height,
-          R=Math.max(2, Math.min(9, Math.round(size*(kind==="hero"?0.070:0.055)*BAKE)));
-    const o=document.createElement("canvas"); o.width=w; o.height=h;
-    const ox=o.getContext("2d");
-    for(let i=0;i<8;i++){
-      const a2=i/8*6.2832;
-      ox.drawImage(c, Math.cos(a2)*R, Math.sin(a2)*R);
-    }
-    ox.globalCompositeOperation="source-in";
-    /* 테두리 색 — 적은 바닥보다 어둡게, 나는 밝게.
-       적 400명이 전부 검은 윤곽인 화면에서 나만 밝은 윤곽이면
-       색을 못 구별하는 사람도 「저 밝은 게 나」로 읽는다. */
-    ox.fillStyle = kind==="hero" ? "#ffd978" : "#0a0d13";
-    ox.fillRect(0,0,w,h);
+          R=Math.max(2, Math.min(7, Math.round(size*0.055*BAKE)));
+    /* 적은 어두운 테두리 한 겹. 주인공은 그 바깥에 밝은 테를 한 겹 더 두른다.
+       처음엔 주인공 테두리를 통째로 금색으로 두껍게 했더니 캐릭터가
+       노란 덩어리가 돼서 얼굴도 도장도 안 보였다 — 실제로 찍어 보고 알았다.
+       어두운 테는 형체를 잡고, 바깥 밝은 테만 「저게 나」를 맡는다. */
+    const passes = kind==="hero"
+      ? [[R, "#0a0d13"], [R+3*BAKE, "#ffd978"]]     // 어두운 것 먼저 → 밝은 게 더 뒤로
+      : [[R, "#0a0d13"]];
     x.setTransform(1,0,0,1,0,0);
-    x.globalCompositeOperation="destination-over";
-    x.drawImage(o,0,0);
+    for(const [rad,col] of passes){
+      const o=document.createElement("canvas"); o.width=w; o.height=h;
+      const ox=o.getContext("2d");
+      for(let i=0;i<8;i++){
+        const a2=i/8*6.2832;
+        ox.drawImage(c, Math.cos(a2)*rad, Math.sin(a2)*rad);
+      }
+      ox.globalCompositeOperation="source-in";
+      ox.fillStyle=col; ox.fillRect(0,0,w,h);
+      x.globalCompositeOperation="destination-over";      // 뒤로 깔린다
+      x.drawImage(o,0,0);
+    }
     x.globalCompositeOperation="source-over";
   }catch(e){}
   c._pad=pad;
@@ -6120,8 +6238,8 @@ function drawPlayer(g,sx,sy){
   const P=g.P;
   // 바닥 그림자 — 회전/반전 밖에서 그린다
   ctx.save();
-  ctx.fillStyle="rgba(0,0,0,.45)";
-  ctx.beginPath(); ctx.ellipse(sx,sy+22,17,6,0,0,7); ctx.fill();
+  ctx.fillStyle="rgba(0,0,0,.38)";
+  ctx.beginPath(); ctx.ellipse(sx,sy+22,15,5,0,0,7); ctx.fill();
   ctx.restore();
   /* 발밑 표식 */
   ctx.save();
@@ -6132,14 +6250,12 @@ function drawPlayer(g,sx,sy){
   gl.addColorStop(1,"rgba(245,196,81,0)");
   ctx.fillStyle=gl;
   ctx.beginPath(); ctx.ellipse(sx,sy+22,rr*1.9,ry*1.9,0,0,7); ctx.fill();
-  // 도는 점선 링 — 멈춰 있어도 움직여서 눈이 잡는다
-  ctx.translate(sx,sy+22); ctx.scale(1,ry/rr); ctx.rotate(spin);
-  ctx.strokeStyle="rgba(255,217,120,.72)"; ctx.lineWidth=2.2;
-  ctx.setLineDash([7,6]);
-  ctx.beginPath(); ctx.arc(0,0,rr,0,7); ctx.stroke();
+  /* 도는 점선 링 — 멈춰 있어도 링이 돌아서 눈이 잡는다.
+     스케일로 눌러 그리면 위아래 선이 얇아져 찌그러 보인다. 타원으로 직접 그린다. */
+  ctx.strokeStyle="rgba(255,217,120,.78)"; ctx.lineWidth=2;
+  ctx.setLineDash([7,6]); ctx.lineDashOffset=-spin*rr;
+  ctx.beginPath(); ctx.ellipse(sx,sy+22,rr,ry,0,0,7); ctx.stroke();
   ctx.setLineDash([]);
-  ctx.strokeStyle="rgba(255,217,120,.18)"; ctx.lineWidth=6;
-  ctx.beginPath(); ctx.arc(0,0,rr,0,7); ctx.stroke();
   ctx.restore();
   // 진행 방향 쐐기 — 어디로 가고 있는지가 링 위에 얹힌다
   if(P.moving && (P.vx||P.vy)){
@@ -7387,7 +7503,7 @@ function resize(){
 }
 function start(grudge){
   closeOverlay(); lobbyOn(false);
-  G=newGame(grudge); applyPerks(G); syncSlots(G); markBossTicks();
+  G=newGame(grudge); applyPerks(G); syncSlots(G); markBossTicks(); tutStart(G);
   if(opt("bgm")) S("bgmStart");      // 배경음 — 하루가 흐르는 걸 귀로도
   if(G.pendingLv>0){ G.pendingLv--; levelUp(G); }   // 「짬」 — 시작부터 고를 게 있다
   let last=performance.now();
@@ -7551,6 +7667,9 @@ window.__RND=RND;                       // 무작위 사건 검증용
 window.__api={WEAPONS,PERKS,E,ZONES,DAY,hourOf,clockStr,spawnRing,start,todoOf,zoneOf,gateReady,
              RANKS,rankOf,rankName,quotaOf,promoDue,stats,SAVE:()=>SAVE,
              LANG:()=>LANG, setLang, T, L10N};
+$("#tutskip").onclick=()=>{ S("select"); tutStop(G); };
+window.__tut=()=>G&&G.tut;              // 안내 검증용
+window.__TUT=TUT;
 localizeData();                         // 자료표 먼저 — 화면은 그 뒤에 짠다
 i18nDOM(document.body);                 // 정적 HTML(버튼·라벨)도 한 번 훑는다
 renderStart();
