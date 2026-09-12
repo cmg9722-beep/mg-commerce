@@ -110,3 +110,31 @@ CC0는 저작권을 완전히 포기한 것이라 **상업 이용 가능하고 �
 
 `game/assets/sfx/` 에 같은 이름으로 덮어쓰고 `node tools/build-assets.mjs`.
 파일을 지우면 그 소리만 다시 코드 합성음으로 돌아갑니다.
+
+---
+
+## 글꼴
+
+| 글꼴 | 출처 | 라이선스 | 쓰는 곳 |
+|---|---|---|---|
+| Black Han Sans | [Google Fonts](https://fonts.google.com/specimen/Black+Han+Sans) | SIL OFL 1.1 (`fonts/OFL-BlackHanSans.txt`) | 제목·시계 |
+| Gothic A1 (400·700·800) | [Google Fonts](https://fonts.google.com/specimen/Gothic+A1) | SIL OFL 1.1 (`fonts/OFL-GothicA1.txt`) | 본문 전체 |
+
+**왜 파일로 들고 있는가.** 처음엔 구글에서 받아 썼는데, 그러면 네트워크가
+없을 때 글꼴이 통째로 대체된다. 앱스토어에 내는 게임이 지하철에서 다르게
+보이면 안 된다. `game/test/cases/offline.mjs` 가 바깥으로 나가는 요청이
+하나라도 있으면 실패시킨다.
+
+**어떻게 줄였는가.** 원본 넷을 합치면 7.9MB다. 게임이 실제로 화면에 띄우는
+글자만 남겨 **191KB**로 줄였다(한글 697자 + 라틴·숫자·기호 114자).
+서브셋은 OFL이 명시적으로 허용한다 — 파생물도 OFL로 배포하면 된다.
+
+설정에 직접 적는 「내 한 줄」처럼 여기 없는 글자는 시스템 글꼴로 떨어진다.
+글자 단위로 대체되니 화면이 깨지지 않는다.
+
+재현:
+```bash
+pip install fonttools brotli
+pyftsubset GothicA1-Regular.ttf --text-file=chars.txt --flavor=woff2 \
+  --layout-features='*' --no-hinting --desubroutinize --name-IDs='*'
+```

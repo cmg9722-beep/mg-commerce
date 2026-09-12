@@ -4,9 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>정시 퇴근 — 오늘도 6시에 나간다</title>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;600;800&display=swap">
 <style>
+/* 글꼴 — 파일로 같이 간다. 구글에서 받아 쓰면 지하철에서 열었을 때
+   글꼴이 깨지는데, 그건 출시 게임이 감당할 문제가 아니다.
+
+   원본 7.9MB를 게임이 실제로 쓰는 811자(한글 697)만 남겨 191KB로 줄였다.
+   설정에 직접 적는 「내 한 줄」처럼 여기 없는 글자는 시스템 글꼴로 떨어진다 —
+   글자 단위로 대체되니 화면이 깨지지 않는다.
+   Black Han Sans · Gothic A1 — SIL OFL 1.1 (assets/fonts/OFL-*.txt).
+   서브셋과 상업적 이용이 허용된다. */
+@font-face{font-family:'Black Han Sans';font-style:normal;font-weight:400;font-display:swap;
+  src:url(assets/fonts/BlackHanSans-subset.woff2) format('woff2')}
+@font-face{font-family:'Gothic A1';font-style:normal;font-weight:400;font-display:swap;
+  src:url(assets/fonts/GothicA1-400-subset.woff2) format('woff2')}
+@font-face{font-family:'Gothic A1';font-style:normal;font-weight:700;font-display:swap;
+  src:url(assets/fonts/GothicA1-700-subset.woff2) format('woff2')}
+@font-face{font-family:'Gothic A1';font-style:normal;font-weight:800;font-display:swap;
+  src:url(assets/fonts/GothicA1-800-subset.woff2) format('woff2')}
 :root{--bg:#0b0e14;--panel:#141922;--line:#232a36;--ink:#e8ecf4;--dim:#7d8699;
       --accent:#f5c451;--good:#57d98a;--bad:#ff6b6b;--blue:#9ec8ff;--deep:#6f9fd8;
       /* 칩·기록칸 — 기존에 없던 컴포넌트라 토큰을 새로 둔다 */
@@ -4238,7 +4252,7 @@ function drawSay(g,f,sx,sy){
   if(a<=0.01) return;
   ctx.save();
   ctx.globalAlpha=a;
-  ctx.font="600 13px 'Gothic A1',\"Malgun Gothic\",system-ui,sans-serif";
+  ctx.font="700 13px 'Gothic A1',\"Malgun Gothic\",system-ui,sans-serif";
   const w=Math.min(ctx.measureText(f.say).width+20, 260);
   const h=25, x=sx-w/2, y=sy-f.r-h-16;
   ctx.fillStyle="rgba(232,236,244,.95)";
@@ -5961,6 +5975,47 @@ function asset(name){
   return (im && AST.ready[name] && im.naturalWidth>0) ? im : null;
 }
 
+/* ── 체형 ────────────────────────────────────────────────────
+   적 열두 종을 실제 크기로 나란히 세워 놓고 보니 전부 같은 몸이었다 —
+   같은 키, 같은 어깨너비, 같은 머리. 다른 건 재킷 색과 손에 든 것뿐이라
+   52px에 400명이 깔리면 색밖에 안 남는다. 색맹인 사람에겐 아예 안 갈린다.
+
+   스프라이트 열두 개를 다시 그리는 대신 굽는 단계에서 가로·세로 배율을
+   건다. 발밑을 축으로 늘리니 그림자와 어긋나지 않는다.
+   폭 0.86~1.32(1.5배), 키 0.80~1.30(1.6배) — 실루엣만으로 갈린다.
+   흔한 적끼리도 마르고 긴 쪽과 넓고 낮은 쪽으로 양끝을 벌렸다.
+
+   숫자는 그 사람이 사무실에서 차지하는 자리에서 왔다.
+   인턴은 웅크리고, 부장은 넓고, 대표이사는 길다. */
+const BODY={
+  /* 화면을 채우는 건 이 여덟이다. 보스는 어차피 한 명씩 나오고 크니까
+     구별될 수밖에 없고, 갈려야 하는 건 여기다. 그래서 더 벌렸다 —
+     마르고 긴 쪽(인사팀·대리)과 넓고 낮은 쪽(협력사·회식조)을 양끝으로. */
+  intern :[0.86,0.80],   // 작고 좁다 — 웅크린다
+  rookie :[0.90,0.88],   // 작고 가볍다 — 뛴다
+  staff  :[1.00,1.00],   // 기준
+  senior :[0.95,1.12],   // 길쭉하다
+  manager:[1.22,1.00],   // 어깨가 넓다
+  drunk  :[1.12,0.90],   // 퍼지고 낮다
+  hrteam :[0.88,1.14],   // 가장 마르고 길다
+  vendor :[1.28,0.88],   // 상자를 안아 가장 넓고 낮다
+  gm     :[1.32,1.07],   // 크고 넓다
+  chief  :[1.03,1.24],   // 크고 길다
+  audit  :[1.22,1.15],   // 각지고 크다
+  ceo    :[1.15,1.30],   // 가장 크고 길다
+  bot    :[1.10,0.90],   // 기계라 낮고 넓다
+};
+/* 발끝 위치 — 설계 좌표 y=34. 여기를 축으로 늘려야 발이 바닥에 붙어 있다 */
+const FOOT_Y = 34;
+function bodyScale(g2, kind, size, ox, oy, fn){
+  const B=BODY[kind];
+  if(!B){ fn(); return; }
+  const fy = oy + FOOT_Y*(size/100);
+  g2.save();
+  g2.translate(ox, fy); g2.scale(B[0], B[1]); g2.translate(-ox, -fy);
+  fn();
+  g2.restore();
+}
 const FRAMES={ walk:8, hit:4, die:8, attack:4, idle:1 };
 const BAKE=2;
 const _cache=new Map();
@@ -5970,13 +6025,16 @@ function baked(kind,size,action,fi){
   const R=window.SPRITES_RANK, SP=window.SPRITES;
   const fn=(R&&R[kind])||(SP&&SP.foes&&SP.foes[kind]);
   if(!fn){ _cache.set(key,null); return null; }
-  const pad=Math.ceil(size*(kind==="hero"?0.74:0.62));   // 주인공은 빛이 번질 여백이 더 든다
+  /* 여백 — 주인공은 빛이 번질 자리가, 큰 체형은 늘어날 자리가 더 든다 */
+  const B=BODY[kind]||[1,1];
+  const pad=Math.ceil(size*(kind==="hero"?0.74:0.62)*Math.max(1,B[0],B[1]));
   const c=document.createElement("canvas");
   c.width=c.height=Math.ceil(pad*2*BAKE);
   const x=c.getContext("2d");
   x.scale(BAKE,BAKE);
   const n=FRAMES[action]||1;
-  try{ fn(x,pad,pad,size,{a:action,p:n>1?fi/n:0,t:0}); }
+  try{ bodyScale(x,kind,size,pad,pad,
+                 ()=>fn(x,pad,pad,size,{a:action,p:n>1?fi/n:0,t:0})); }
   catch(e){ _cache.set(key,null); return null; }
   /* ── 외곽선 ──────────────────────────────────────────────────
      어두운 바닥 위에 어두운 정장이 서 있으면 형체가 배경에 먹힌다.
@@ -6064,7 +6122,9 @@ function drawFoe(g,f,sx,sy){
   // 스프라이트는 왼쪽을 본다. 오른쪽으로 갈 때만 뒤집는다.
   if(f.face>0) ctx.scale(-1,1);
   const ps=poseOf(f,g);
-  if(!blit(ctx,f.kind,size,ps.a,ps.p,0,0) && fn) fn(ctx,0,0,size,ps);
+  /* 구운 게 없으면 직접 그린다 — 체형은 양쪽에 똑같이 걸어야 어긋나지 않는다 */
+  if(!blit(ctx,f.kind,size,ps.a,ps.p,0,0) && fn)
+    bodyScale(ctx,f.kind,size,0,0,()=>fn(ctx,0,0,size,ps));
   ctx.restore();
   if(f.hit>0){                           // 얇은 링만 — 흰 덩어리로 얼굴을 지우지 않는다
     const a=clamp(f.hit/.12,0,1);
@@ -7859,6 +7919,7 @@ window.__finish=finish;                 // 결말 화면 검증용
 window.__offers=offers;                 // 선택지 검증용
 window.__applyPerks=applyPerks;         // 강화 반영 검증용
 window.__icon=icon;
+window.__bodyScale=bodyScale;    // 체형 검증용
 window.__gainXp=gainXp;
 window.__killFoe=killFoe;            // 처치 연출 검증용
 window.spawnWall=spawnWall; window.spawnClose=spawnClose; window.spawnSpiral=spawnSpiral;  // 대형 검증용             // 레벨업·승진 검증용                     // 아이콘 검증용
