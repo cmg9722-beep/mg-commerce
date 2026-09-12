@@ -3168,8 +3168,16 @@ const quotaOf = g => Math.round(zoneOf(g).quota*(1+rankOf(g)*RANK_LOAD));
    zoneBonus — 「일이 얹혔다/덜어졌다」. 음수가 업무 추가다(감사·고객사·승진용). */
 const todoOf = g => Math.max(0, Math.ceil(quotaOf(g)
   - Math.max(0,(g.kills-g.zoneK0)-(g.killHold||0)) - (g.zoneBonus||0)));
-/* 문이 열릴 조건 — 몫을 끝내고, 보스가 남아 있으면 그것도 끝내야 한다 */
-const gateReady = g => todoOf(g)<=0 && !g.foes.some(f=>f.boss);
+/* 문이 열릴 조건 — 몫만 끝내면 된다.
+   원래는 보스도 잡아야 열렸다. 재 보니 그게 이 게임을 망치고 있었다:
+   1~5구역은 23~32초씩 시원하게 지나는데 보스가 있는 6구역에서 390초,
+   6분 반을 갇혔다. 빌드가 보스를 못 뚫으면 영원히 못 나간다.
+   다섯 구역을 기분 좋게 지나다 갑자기 벽에 부딪히는 게 「재미없다」의 정체였다.
+
+   보스는 이제 관문이 아니라 「같이 있는 것」이다. 잡으면 미결 45건이
+   한 번에 깎이고 인수인계 상자를 남긴다 — 잡을 이유는 충분하다.
+   못 잡으면 몫을 채우고 나가면 된다. 다만 문 앞까지 쫓아온다. */
+const gateReady = g => todoOf(g)<=0;
 
 /* ── 자동화 ────────────────────────────────────────────────────
    오늘 처리된 일 중 로봇이 한 몫의 비율. 45%를 넘긴 채로 하루가 끝나면
@@ -3791,9 +3799,9 @@ const E = {
   manager:{name:"과장", hp:130, spd:70, dmg:14, xp:5, r:18},
   drunk  :{name:"회식조",hp:74, spd:138,dmg:11, xp:4, r:17},
   gm     :{name:"부장", hp:340, spd:44, dmg:22, xp:12,r:22, meddle:118},
-  audit  :{name:"점검단",hp:3400,spd:36, dmg:34, xp:160,r:30, boss:true, meddle:210,
+  audit  :{name:"점검단",hp:2200,spd:36, dmg:34, xp:160,r:30, boss:true, meddle:210,
             atk:"shock", atkCd:3.6, summon:"staff", summonN:7, summonCd:7.5},
-  chief  :{name:"본부장", hp:1500,spd:46, dmg:28, xp:70, r:26, boss:true, meddle:190,
+  chief  :{name:"본부장", hp:950, spd:46, dmg:28, xp:70, r:26, boss:true, meddle:190,
             atk:"charge", atkCd:4.2},
   rookie :{name:"신입", hp:16,  spd:182,dmg:5,  xp:1, r:13},
   /* 원거리 — 지금까지 모든 적이 붙어서 때렸다. 붙기만 하면 위협이
@@ -3808,7 +3816,7 @@ const E = {
             shoot:{cd:6.0, spd:205, dmg:5,  r:400, keep:250, c:"#dfe4ec"}},
   vendor :{name:"협력사",hp:190, spd:118,dmg:13, xp:5, r:17,
             shoot:{cd:6.8, spd:195, dmg:5, r:380, keep:230, c:"#a5825a"}},
-  ceo    :{name:"대표이사",hp:9000,spd:32,dmg:44,xp:400,r:36, boss:true, meddle:240,
+  ceo    :{name:"대표이사",hp:5200,spd:32,dmg:44,xp:400,r:36, boss:true, meddle:240,
             atk:"shock", atkCd:2.8, summon:"manager", summonN:9, summonCd:6},
   /* ── 사무집기 ─────────────────────────────────────────────────
      직장인 스트레스 해소가 목적인 게임인데 사무집기를 부술 수 없었다.
@@ -4809,8 +4817,12 @@ function killFoe(g,f,i){
   g.foes.splice(i,1); g.kills++;
   // 점심시간과 발표 자리 밖의 처치는 진도에 안 잡힌다
   const Zx=zoneOf(g);
+  /* 점심·발표 중엔 진도가 덜 나간다. 원래는 「하나도」 안 잡혔는데,
+     재 보니 그게 대회의실을 259초짜리 벽으로 만들고 있었다 — 200명을
+     잡아도 미결이 그대로면 그건 규칙이 아니라 고장으로 읽힌다.
+     이제 60%만 깎인다. 연단에 서면 온전히 깎이니 이유는 남는다. */
   if(g.lunchT>0 || (Zx.ev==="present" && g.podSet && !g.podOn))
-    g.killHold=(g.killHold||0)+(g.P.work||1);           // 근로계약서 — 유입 감소
+    g.killHold=(g.killHold||0)+0.6*(g.P.work||1);       // 근로계약서 — 유입 감소
   // 보스 처치는 그 구역 몫을 크게 깎는다 — 큰 걸 잡았으면 그만큼 일한 것이다
   if(f.boss){ g.zoneBonus=(g.zoneBonus||0)+45;
               g.bossKill[f.kind]=1;                    // 업적 — 누구를 넘었나
@@ -5599,13 +5611,22 @@ function drawBuilds(g,X,Y){
     const fade=Math.min(1,(b.life-b.t)/0.8);
     ctx.save(); ctx.globalAlpha=clamp(fade,0,1);
     if(b.id==="part"){
+      /* 세워 둔 칸막이. 얇은 선 세 줄이라 「벽」으로 안 읽혔다 —
+         두께를 주고 기둥을 세우고 칸을 나눈다. 방패처럼 보여야 한다. */
       const hw=L.w/2, ca=Math.cos(b.a)*hw, sa=Math.sin(b.a)*hw;
-      ctx.strokeStyle="rgba(0,0,0,.45)"; ctx.lineWidth=15; ctx.lineCap="round";
-      ctx.beginPath(); ctx.moveTo(x-ca,y-sa+5); ctx.lineTo(x+ca,y+sa+5); ctx.stroke();
-      ctx.strokeStyle="#2f3a4c"; ctx.lineWidth=12;
-      ctx.beginPath(); ctx.moveTo(x-ca,y-sa); ctx.lineTo(x+ca,y+sa); ctx.stroke();
-      ctx.strokeStyle="#44536b"; ctx.lineWidth=3;
-      ctx.beginPath(); ctx.moveTo(x-ca,y-sa-5); ctx.lineTo(x+ca,y+sa-5); ctx.stroke();
+      const nx=-Math.sin(b.a), ny=Math.cos(b.a);
+      ctx.save(); ctx.translate(x,y); ctx.rotate(b.a);
+      ctx.fillStyle="rgba(0,0,0,.42)";                  // 바닥 그림자
+      ctx.fillRect(-hw-3, 4, L.w+6, 13);
+      ctx.fillStyle="#2b3444"; ctx.fillRect(-hw, -13, L.w, 24);       // 판
+      ctx.fillStyle="#44536b"; ctx.fillRect(-hw, -13, L.w, 8);        // 윗면(빛)
+      ctx.fillStyle="#1e2634";
+      for(let q=1;q<4;q++) ctx.fillRect(-hw+L.w*q/4-1.5, -13, 3, 24); // 칸 나눔
+      ctx.fillStyle="#39414f";                                        // 양쪽 기둥
+      ctx.fillRect(-hw-5, -16, 8, 30); ctx.fillRect(hw-3, -16, 8, 30);
+      ctx.strokeStyle="rgba(6,8,13,.9)"; ctx.lineWidth=2.2;
+      ctx.strokeRect(-hw, -13, L.w, 24);
+      ctx.restore();
       const rt=clamp(b.hp/b.maxhp,0,1);                 // 내구도
       ctx.fillStyle="rgba(11,14,20,.8)"; ctx.fillRect(x-hw,y-16,L.w,3);
       ctx.fillStyle=rt>.4?"#9ec8ff":"#ff6b6b"; ctx.fillRect(x-hw,y-16,L.w*rt,3);
@@ -5623,16 +5644,24 @@ function drawBuilds(g,X,Y){
         ctx.fillStyle="rgba(158,200,255,.10)";
         ctx.beginPath(); ctx.ellipse(x,y,r,r*0.62,0,0,7); ctx.fill();
       }
-      ctx.fillStyle="rgba(0,0,0,.42)";
-      ctx.beginPath(); ctx.ellipse(x,y+11,15,5,0,0,7); ctx.fill();
-      const body = b.id==="printer"?"#3b4658" : b.id==="water"?"#2e5a4b"
-                 : b.id==="barista"?"#5a4a2e" : b.id==="wet"?"#c8a33a" : "#3f4a63";
-      ctx.fillStyle=body; ctx.fillRect(x-13,y-22,26,32);
-      ctx.strokeStyle="rgba(6,8,13,.85)"; ctx.lineWidth=1.8; ctx.strokeRect(x-13,y-22,26,32);
-      ctx.fillStyle="rgba(255,255,255,.13)"; ctx.fillRect(x-11,y-20,5,28);
-      const eye = b.id==="water"?"#9fe6c2" : b.id==="barista"?"#f5c451"
-                : b.id==="wet"?"#1d2129" : "#9ec8ff";
-      ctx.fillStyle=eye; ctx.fillRect(x-7,y-16,14,5);
+      /* 물건답게 그린다. 원래는 복합기도 정수기도 커피머신도 전부 같은
+         26×32 네모에 눈 하나였다 — 뭘 깔았는지 구분이 안 됐다.
+         부술 수 있는 집기에 이미 그려둔 것을 그대로 쓴다. */
+      const R=window.SPRITES_RANK;
+      const spr = b.id==="printer"?R.copy_p : b.id==="water"?R.water_p
+                : b.id==="barista"?R.copy_p : null;
+      if(spr){ try{ spr(ctx,x,y-4,54); }catch(e){} }
+      else if(b.id==="wet"){                            // 쏟은 커피 — 세워 둘 물건이 아니다
+        ctx.fillStyle="rgba(0,0,0,.34)";
+        ctx.beginPath(); ctx.ellipse(x,y+4,18,7,0,0,7); ctx.fill();
+        ctx.fillStyle="#6b4a33";
+        ctx.beginPath(); ctx.ellipse(x,y,16,6.5,0,0,7); ctx.fill();
+        ctx.fillStyle="#8a5f42"; ctx.beginPath(); ctx.ellipse(x-4,y-1,7,3,0,0,7); ctx.fill();
+        ctx.fillStyle="#c9a227"; ctx.fillRect(x+9,y-10,10,12);
+        ctx.strokeStyle="rgba(6,8,13,.8)"; ctx.lineWidth=1.6; ctx.strokeRect(x+9,y-10,10,12);
+      }
+      else if(b.id==="book"){ try{ R.desk_p(ctx,x,y-4,58); }catch(e){} }
+      else { try{ R.chair_p(ctx,x,y-4,50); }catch(e){} }
     }
     ctx.restore();
   }
@@ -5903,6 +5932,7 @@ function drawWorld(g){
     ctx.restore();
   }
   /* 던진 사직서 — 떠서 날아가는 게 보여야 한다. 그림자로 높이를 준다 */
+
   for(const q of g.paper){
     const u=Math.min(1,q.t/q.dur), h=Math.sin(u*Math.PI)*46;
     const sx=X(q.x), sy=Y(q.y);
@@ -5922,10 +5952,22 @@ function drawWorld(g){
   for(const s of g.shots){
     ctx.save(); ctx.translate(X(s.x),Y(s.y));
     ctx.rotate(Math.atan2(s.vy,s.vx));
-    if(s.kind==="pierce"){ ctx.fillStyle="#9ec8ff"; ctx.fillRect(-12,-2.5,24,5);
-      ctx.fillStyle="#cfe4ff"; ctx.fillRect(6,-2.5,6,5); }
-    else if(s.kind==="paper"){ ctx.fillStyle="#f2f5fa"; ctx.fillRect(-6,-4,12,8);
-      ctx.fillStyle="#c3ccdb"; ctx.fillRect(-6,-4,12,2); }
+    /* 무기마다 날아가는 게 달라야 한다. 전에는 세 종류에 전부 흰색이라
+       무엇을 뽑아도 「종이만 나간다」로 보였다. 색과 모양을 갈라놓는다. */
+    if(s.kind==="pierce"){                       // 근태기록 — 붉은 도장 띠
+      ctx.fillStyle="rgba(255,107,107,.35)"; ctx.fillRect(-20,-4,40,8);
+      ctx.fillStyle="#ff6b6b"; ctx.fillRect(-13,-3,26,6);
+      ctx.fillStyle="#ffd0d0"; ctx.fillRect(8,-3,6,6); }
+    else if(s.kind==="paper"){                   // 복사기 — 흩날리는 서류
+      ctx.fillStyle="rgba(0,0,0,.30)"; ctx.fillRect(-6,-7,14,16);
+      ctx.fillStyle="#f7f9fc"; ctx.fillRect(-7,-8,14,16);
+      ctx.fillStyle="#b9c6d8"; ctx.fillRect(-5,-5,10,2); ctx.fillRect(-5,-1,7,2); }
+    else if(s.kind==="mail"){                    // 참조 메일 — 파란 봉투가 쫓아온다
+      ctx.fillStyle="#2f5f9e"; ctx.fillRect(-9,-7,18,14);
+      ctx.fillStyle="#6f9fd8"; ctx.fillRect(-9,-7,18,14);
+      ctx.strokeStyle="#dfe6f2"; ctx.lineWidth=1.6;
+      ctx.beginPath(); ctx.moveTo(-9,-7); ctx.lineTo(0,1); ctx.lineTo(9,-7); ctx.stroke();
+      ctx.fillStyle="#57d98a"; ctx.beginPath(); ctx.arc(8,-6,3,0,7); ctx.fill(); }
     else { ctx.fillStyle="#dfe6f2"; ctx.fillRect(-7,-5,14,10);
       ctx.strokeStyle="#7d8699"; ctx.lineWidth=1.2;
       ctx.beginPath(); ctx.moveTo(-7,-5); ctx.lineTo(0,1); ctx.lineTo(7,-5); ctx.stroke(); }
