@@ -268,6 +268,82 @@ tr:last-child td{border-bottom:0}
   </div>
 </section>
 
+<section style="border:1px solid #3a2f1a; background:#14120c; border-radius:12px;
+                padding:26px 24px; margin-bottom:54px">
+  <span class="snum" style="color:var(--gold)">03-B</span>
+  <h2>자동화 — 이기는 것처럼 보이면서 지는 법</h2>
+  <p class="lead">야근·회식·진급·간섭을 다 이겨내고 정시 퇴근을 쟁취했다.
+    그런데 그 자리가 없어진다. <b>이게 이 게임의 매듭이다.</b></p>
+
+  <h3 style="margin-top:26px">자동화 로봇</h3>
+  <p class="lead">다른 적과 반대로 설계한다. <b>로봇은 나를 때리지 않는다.</b>
+    쫓아오지도 않는다. 그냥 조용히 내 일을 한다.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>다른 적</th><th>자동화 로봇</th></tr></thead>
+      <tbody>
+        <tr><td>나를 쫓아온다</td><td>나를 무시한다</td></tr>
+        <tr><td>체력을 깎는다</td><td>체력을 안 깎는다</td></tr>
+        <tr><td>잡으면 미결이 준다</td><td><b style="color:var(--gold)">가만둬도 미결이 준다</b></td></tr>
+        <tr><td>위협이 눈에 보인다</td><td>도움처럼 보인다</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="lead" style="margin-top:16px">
+    로봇이 있으면 편하다. 미결이 저절로 줄고, 하루가 수월해진다.
+    그래서 부수기가 아깝다 — <b>그 망설임이 이 적의 무기다.</b></p>
+
+  <h3 style="margin-top:30px">대체율</h3>
+  <p class="lead">오늘 처리된 일 중 로봇이 한 몫의 비율. HUD에 계속 떠 있다.</p>
+  <div class="loop">
+    <span class="step">대체율 <b style="color:var(--green)">0~29%</b><br>
+      <span style="font-weight:400;color:var(--dim);font-size:12px">아직 내 일이다</span></span>
+    <span class="arr">→</span>
+    <span class="step">대체율 <b style="color:var(--amber)">30~44%</b><br>
+      <span style="font-weight:400;color:var(--dim);font-size:12px">경고가 뜬다</span></span>
+    <span class="arr">→</span>
+    <span class="step">대체율 <b style="color:var(--red)">45% 이상</b><br>
+      <span style="font-weight:400;color:var(--dim);font-size:12px">18시에 「대체」</span></span>
+  </div>
+
+  <h3 style="margin-top:30px">네 번째 결말</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>결말</th><th>조건</th><th>마지막 문장</th></tr></thead>
+      <tbody>
+        <tr><td class="nm" style="color:var(--green)">정시 퇴근</td><td>18시에 미결 0</td>
+            <td>18:00. 가방 들고 나왔습니다.</td></tr>
+        <tr><td class="nm" style="color:var(--amber)">야근 퇴근</td><td>야근 끝에 미결 0</td>
+            <td>늦었지만, 끝내고 나왔습니다.</td></tr>
+        <tr><td class="nm" style="color:var(--red)">쓰러짐</td><td>체력 0</td>
+            <td>미결 N건을 남기고 쓰러졌습니다.</td></tr>
+        <tr><td class="nm" style="color:var(--gold)">대체</td><td>대체율 45% 이상</td>
+            <td><b>18:00. 정시에 퇴근했습니다.<br>내일부터는 안 나오셔도 됩니다.</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">
+    「대체」는 <b>정시 퇴근한 채로 지는</b> 유일한 결말이다.
+    시계는 18:00이고 미결은 0인데, 결과 화면 색이 초록이 아니다.
+    이 게임에서 제일 무서운 화면이어야 한다 — 야근보다.
+  </div>
+
+  <h3 style="margin-top:30px">노조가 여기서 쓸모를 갖는다</h3>
+  <p class="lead">혼자서는 로봇을 부수는 것 말곤 답이 없다. 부수면 또 온다.
+    노조가 있으면 <b>도입 자체를 협상 대상으로 만든다</b> — 현실에서 노조가
+    실제로 하는 일이 그거다.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>노조</th><th>로봇에게</th></tr></thead>
+      <tbody>
+        <tr><td>없음</td><td>부수는 것 말곤 방법이 없다. 재가동되어 다시 온다</td></tr>
+        <tr><td>결성(5명)</td><td>로봇 투입 속도가 느려진다. 대체율이 천천히 오른다</td></tr>
+        <tr><td>단체협약</td><td>대체율 상한이 생긴다 — 45%에 닿지 않는다</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
 <section>
   <span class="snum">04</span>
   <h2>아홉 개 구역</h2>
