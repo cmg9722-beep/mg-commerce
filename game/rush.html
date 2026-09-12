@@ -2731,6 +2731,61 @@ function replaceRate(g){
   const t=g.robotWork+g.kills;
   return t>0 ? g.robotWork/t : 0;
 }
+/* ── 단체교섭 ──────────────────────────────────────────────────
+   이야기가 15일차에 「오늘은 문을 두드리는 게 아니라, 앉아서 얘기한다」고
+   예고한다. 그 약속을 지키는 곳이 여기다.
+
+   대표이사실에 조합원을 데리고 들어가면 최종전이 전투에서 협상으로
+   바뀐다. 대표이사를 때려서 이기는 게 아니라, 버티면서 요구안을
+   관철시킨다 — 협상력은 조합원 수다. 혼자서는 안 된다.
+   이게 이 게임이 하려는 말이고, 규칙으로도 그래야 한다. */
+const BARGAIN_DAY = 14;                       // 15일차부터
+function bargainReady(g){
+  return (SAVE.days|0) >= BARGAIN_DAY
+      && g.allies.some(a=>a.id==="unionist");
+}
+function stepBargain(g,dt){
+  if(g.zone!==ZONES.length-1) return;                      // 대표이사실에서만
+  if(!g.barOn){
+    if(g.bossOut && bargainReady(g)){
+      g.barOn=1; g.barP=0;
+      flash(g,"단체교섭 시작 — 조합원이 많을수록 빨리 끝납니다");
+      S("bossIn"); g.flash=Math.max(g.flash,.9); kick(g,0,-1,14);
+    }
+    return;
+  }
+  const n=g.allies.filter(a=>a.id==="unionist").length;
+  /* 교섭 상대가 자리를 뜨면(쓰러뜨렸으면) 교섭은 없던 일이 된다 */
+  const ceo=g.foes.find(f=>E[f.kind].robot!==true && f.boss);
+  if(!ceo){ g.barOn=0; g.barP=0; return; }
+  /* 대표이사 가까이서 버티는 동안 요구안이 관철된다. 조합원 수가 속도다 */
+  const near = Math.hypot(ceo.x-g.P.x, ceo.y-g.P.y) < 320;
+  if(near) g.barP += (2.4 + n*2.2) * dt;
+  else     g.barP -= 1.1 * dt;                 // 자리를 뜨면 밀린다
+  g.barP=clamp(g.barP,0,100);
+  if(g.barP>=100){ finish(g,"union"); }
+}
+function drawBargain(g){
+  if(!g.barOn) return;
+  const W=VW, x=Math.round(W*0.5), y=118;
+  const w=Math.min(560, W-80), h=16;
+  ctx.save();
+  ctx.fillStyle="rgba(11,14,20,.88)";
+  ctx.fillRect(x-w/2-3, y-3, w+6, h+6);
+  ctx.fillStyle="#1b2430"; ctx.fillRect(x-w/2, y, w, h);
+  const p=clamp(g.barP/100,0,1);
+  const gr=ctx.createLinearGradient(x-w/2,0,x+w/2,0);
+  gr.addColorStop(0,"#3f7a52"); gr.addColorStop(1,"#57d98a");
+  ctx.fillStyle=gr; ctx.fillRect(x-w/2, y, w*p, h);
+  ctx.strokeStyle="#57d98a"; ctx.lineWidth=1.5;
+  ctx.strokeRect(x-w/2, y, w, h);
+  const n=g.allies.filter(a=>a.id==="unionist").length;
+  ctx.fillStyle="#57d98a"; ctx.font="700 13px 'Gothic A1',system-ui";
+  ctx.textAlign="left";  ctx.fillText("단체교섭", x-w/2, y-7);
+  ctx.textAlign="right"; ctx.fillText("조합원 "+n+"명 · "+Math.round(g.barP)+"%", x+w/2, y-7);
+  ctx.restore();
+}
+
 /* ── 오늘의 사건 ────────────────────────────────────────────────
    구역 사건은 매 판 똑같다. 그것만으로는 두 번째 판이 첫 판과 같다.
    이 장르가 매 판을 다르게 만드는 방법은 주사위다 — 뱀서는 매 분
@@ -3232,7 +3287,7 @@ function newGame(grudge){
     prnX:0, prnY:0, prnDone:0, prnSet:0, deskSet:0, podSet:0, quietSaid:0, quietK:1,
     clients:[], cliCd:9, cliSaid:0,
     rndT:0, rndSpd:1, rndSlow:1, rndHp:1, rndSpawn:1, rndNoBot:0, rndNoSpawn:0,
-    rndName:"", rndKind:"", rndShow:0,
+    rndName:"", rndKind:"", rndShow:0, barOn:0, barP:0,
     ot:false, otT:0, warned:false,
     combo:0, comboT:0, comboBest:0, comboPop:0, flash:0,
     toast:"", toastT:0, paused:false, best:0,
@@ -3420,6 +3475,7 @@ function nextZone(g){
   g.podX=0; g.podOn=false; g.podSet=0; g.deskSet=0; g.prnX=0; g.prnDone=0; g.prnSet=0;
   g.quietSaid=0; g.quietK=1;
   g.clients.length=0; g.cliCd=9;
+  g.barOn=0; g.barP=0;
   rollEvent(g);           // 오늘의 사건 — 매 판을 다르게 만드는 주사위
   if(g.zone>=ZONES.length){                    // 정문을 나왔다
     // 대체 판정이 먼저다 — 정시에 나왔는데 자리가 없어진 경우
@@ -3792,6 +3848,14 @@ function kick(g,dx,dy,power){
   g.shake=Math.max(g.shake,power*0.55);
 }
 function damage(g,f,dmg,sx,sy,kb){
+  /* 교섭 중엔 대표이사를 때리지 않는다 — 앉아서 얘기하기로 했으니까.
+     때려서 이기는 싸움이 버텨서 관철시키는 싸움으로 규칙째 바뀐다 */
+  if(g.barOn && f.boss && E[f.kind].robot!==true){
+    f.hit=.06;
+    if(g.floats.length<6 && Math.random()<0.05)
+      g.floats.push({x:f.x,y:f.y-f.r-4,v:"교섭 중",t:0});
+    return;
+  }
   f.hp-=dmg; g.dmgDealt+=dmg; f.hit=.12;
   if(kb){ const dx=f.x-sx, dy=f.y-sy, d=Math.hypot(dx,dy)||1;
           f.kbx=dx/d*kb; f.kby=dy/d*kb; f.kb=.14; }
@@ -3939,6 +4003,7 @@ function step(g,dt){
   stepRobots(g,dt);
   stepEvent(g,dt);
   stepRnd(g,dt);
+  stepBargain(g,dt);
 
   // 퇴근 시계(지속형 감속)
   const CK = g.weapons.ontime ? WEAPONS.ontime.lv(1)
@@ -4208,7 +4273,7 @@ function finish(g,how){
   if(g.over) return;
   g.over=how; if(raf) cancelAnimationFrame(raf); raf=null;
   S("bgmStop");
-  S(how==="win"||how==="late"?"win":"lose");
+  S(how==="win"||how==="late"||how==="union"?"win":"lose");
   syncHud(g);                                     // 18:00으로 맞춰 놓고 결과를 띄운다
   renderEnd(g);
 }
@@ -4633,6 +4698,7 @@ function draw(g){
   ctx.setTransform(DPR*ZOOM,0,0,DPR*ZOOM,0,0);
   try{ drawWorld(g); } finally { ctx.setTransform(DPR,0,0,DPR,0,0); }
   drawBossBar(g);
+  drawBargain(g);
   drawCombo(g);
   drawGateArrow(g);           // 화면 좌표계 — 배율 변환 밖
   drawStick();
@@ -5201,7 +5267,8 @@ function metaBonus(){
 /* 하루 결과 → 경력. 오래 버틸수록, 많이 처리할수록. */
 function careerEarned(g){
   const hours=(Math.min(g.t,DAY)/DAY)*(H1-H0);
-  const bonus = g.over==="win" ? 150 : g.over==="late" ? 60 : g.over==="replaced" ? 25 : 0;
+  const bonus = g.over==="union" ? 400 : g.over==="win" ? 150
+              : g.over==="late" ? 60 : g.over==="replaced" ? 25 : 0;
   return Math.round(hours*12 + g.kills*0.22 + bonus);
 }
 
@@ -5361,16 +5428,18 @@ function renderShop(){
 }
 
 function renderEnd(g){
-  const repl=g.over==="replaced";
-  const win=g.over==="win", late=g.over==="late", done=win||late||repl;
-  /* 「대체」는 금색 — 초록도 빨강도 아니다. 이겼는데 진 것이라 색이 따로다 */
-  const acc = win?"var(--good)" : late?"var(--accent)" : repl?"#c9a227" : "var(--bad)";
+  const repl=g.over==="replaced", uni=g.over==="union";
+  const win=g.over==="win", late=g.over==="late", done=win||late||repl||uni;
+  /* 「대체」는 금색 — 초록도 빨강도 아니다. 이겼는데 진 것이라 색이 따로다.
+     「단체협약」은 청록 — 혼자 나온 게 아니라서 초록과도 다르다 */
+  const acc = uni?"#5fe0c0" : win?"var(--good)" : late?"var(--accent)"
+            : repl?"#c9a227" : "var(--bad)";
   // 경력 정산 — 이 판이 남긴 것
   const earn=careerEarned(g);
   SAVE.career+=earn; SAVE.days++;
   SAVE.last=g.over;                       // 어제가 오늘 첫 줄을 바꾼다
   if(g.kills>SAVE.best) SAVE.best=g.kills;
-  if(win||late) SAVE.cleared=true;
+  if(win||late||uni) SAVE.cleared=true;
   writeSave(SAVE);
   const NXT=nextStage(SAVE.days|0);      // 다음 이야기 — 「한 판 더」가 여기서 나온다
   $("#card").innerHTML=`
@@ -5378,9 +5447,10 @@ function renderEnd(g){
       <span class="rbar" style="background:${acc}"></span>
       <div>
         <h1 class="ttl" style="color:${acc};font-size:38px;margin:0;line-height:1">${
-          win?"정시 퇴근":late?"야근 퇴근":repl?"대체":"자리에서 쓰러짐"}</h1>
+          uni?"단체협약":win?"정시 퇴근":late?"야근 퇴근":repl?"대체":"자리에서 쓰러짐"}</h1>
         <div class="sub" style="margin:6px 0 0">${
-          repl?"18:00. 정시에 퇴근했습니다.<br><b style=\"color:#c9a227\">내일부터는 안 나오셔도 됩니다.</b>"
+          uni ?"합의했습니다.<br><b style=\"color:#5fe0c0\">내일부터 여섯 시에 나갑니다 — 나만이 아니라, 전부.</b>"
+        : repl?"18:00. 정시에 퇴근했습니다.<br><b style=\"color:#c9a227\">내일부터는 안 나오셔도 됩니다.</b>"
         : win ?"18:00. 가방 들고 나왔습니다."
         : late?"야근 "+Math.max(1,Math.round((g.otT/DAY)*(H1-H0)*60))+"분. 끝내고 나왔습니다."
         :      (g.ot?"야근 중":clockStr(g.t))+" — "+zoneOf(g).name+"에서 쓰러졌습니다."}</div>
@@ -5397,7 +5467,8 @@ function renderEnd(g){
     ${loadoutHTML(g,"마지막 구성")}
     <div class="quote">
       <div class="q">“${esc(g.grudge)}”</div>
-      <div class="a">— ${win?"이제 안 들립니다.":late?"늦었지만, 끝내고 나왔습니다."
+      <div class="a">— ${uni?"이제 이 말은 규정 위반입니다."
+        :win?"이제 안 들립니다.":late?"늦었지만, 끝내고 나왔습니다."
         :repl?"이제 아무도 이 말을 하지 않습니다.":"내일 또 듣습니다."}</div>
     </div>
     ${NXT ? `<div class="nextday">
