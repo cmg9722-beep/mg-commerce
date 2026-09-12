@@ -4317,20 +4317,138 @@ function drawWorld(g){
 }
 
 /* ── 아이콘 (무기/강화 카드용) ────────────────────────────────── */
-function icon(id,size){
+/* ── 아이콘 ────────────────────────────────────────────────────
+   전에는 스프라이트 5장을 40여 항목이 돌려 썼다. 파티션과 노조원이
+   같은 그림이고 복사기와 복합기가 같은 그림이라, 슬롯만 봐서는 뭘 들었는지
+   알 수 없었다. 레벨업마다 보이는 그림이라 매판 눈에 걸린다.
+   64×64 설계 좌표에 항목마다 하나씩 그린다. 도형은 단순하게, 외곽선은 굵게 —
+   40px로 줄여도 실루엣이 남아야 한다. */
+const IC=(function(){
+  const OUT="rgba(6,8,13,.85)";
+  function R(x,r,px,py,w,h,rad,fill){          // 둥근 사각
+    const c=x; c.beginPath();
+    const xx=px,yy=py; rad=Math.min(rad,w/2,h/2);
+    c.moveTo(xx+rad,yy); c.arcTo(xx+w,yy,xx+w,yy+h,rad);
+    c.arcTo(xx+w,yy+h,xx,yy+h,rad); c.arcTo(xx,yy+h,xx,yy,rad);
+    c.arcTo(xx,yy,xx+w,yy,rad); c.closePath();
+    if(fill){ c.fillStyle=fill; c.fill(); }
+    c.strokeStyle=OUT; c.lineWidth=2.4; c.stroke();
+  }
+  function F(c,px,py,w,h,rad,fill){            // 외곽선 없는 채움
+    c.beginPath(); rad=Math.min(rad,w/2,h/2);
+    c.moveTo(px+rad,py); c.arcTo(px+w,py,px+w,py+h,rad);
+    c.arcTo(px+w,py+h,px,py+h,rad); c.arcTo(px,py+h,px,py,rad);
+    c.arcTo(px,py,px+w,py,rad); c.closePath(); c.fillStyle=fill; c.fill();
+  }
+  function D(c,px,py,r,fill,line){             // 원
+    c.beginPath(); c.arc(px,py,r,0,6.2832); c.fillStyle=fill; c.fill();
+    if(line!==false){ c.strokeStyle=OUT; c.lineWidth=2.4; c.stroke(); }
+  }
+  function L(c,col,w,fn){ c.strokeStyle=col; c.lineWidth=w; c.lineCap="round";
+                          c.lineJoin="round"; c.beginPath(); fn(c); c.stroke(); }
+  function lines(c,px,py,w,n,col){             // 서류 줄
+    L(c,col||"#aab3c2",2,k=>{ for(let i=0;i<n;i++){ k.moveTo(px,py+i*5); k.lineTo(px+w*(i%2?0.7:1),py+i*5); } });
+  }
+  const PAPER="#f2f5fa", INK="#2b3140", GOLD="#f5c451", RED="#ff6b6b",
+        BLUE="#9ec8ff", GREEN="#57d98a", STEEL="#8f959e", WOOD="#8a6b47", VIO="#a78bd0";
+  function doc(c,col){ R(c,0,18,10,28,40,3,col||PAPER); lines(c,24,20,16,5); }
+  return {
+  /* ── 무기 ── */
+  stamp:c=>{ doc(c); D(c,42,42,12,RED); L(c,"#fff",3,k=>{k.moveTo(37,42);k.lineTo(41,46);k.lineTo(48,37);}); },
+  copy:c=>{ R(c,0,10,26,44,26,3,STEEL); F(c,14,30,36,6,1,"#5a616c");
+            R(c,0,18,8,28,20,2,PAPER); lines(c,23,13,18,3); },
+  mail:c=>{ R(c,0,10,18,44,30,3,PAPER); L(c,INK,2.6,k=>{k.moveTo(10,18);k.lineTo(32,34);k.lineTo(54,18);});
+            D(c,48,44,10,BLUE); L(c,INK,2.4,k=>{k.moveTo(44,44);k.lineTo(52,44);k.moveTo(49,41);k.lineTo(52,44);k.lineTo(49,47);}); },
+  coffee:c=>{ D(c,32,40,17,"#6b4a33"); F(c,17,36,30,10,4,"#3c2a1e");
+              L(c,"#c9a227",3,k=>{k.moveTo(24,24);k.lineTo(27,16);k.moveTo(32,23);k.lineTo(34,14);k.moveTo(40,24);k.lineTo(43,16);}); },
+  clock:c=>{ D(c,32,32,22,PAPER); L(c,INK,3,k=>{k.moveTo(32,32);k.lineTo(32,19);k.moveTo(32,32);k.lineTo(43,36);}); D(c,32,32,3,INK,false); },
+  quit:c=>{ doc(c); L(c,RED,3.4,k=>{k.moveTo(22,44);k.lineTo(44,22);}); L(c,INK,2,k=>{k.moveTo(24,20);k.lineTo(38,20);}); },
+  meeting:c=>{ D(c,32,34,20,"#3f4a63"); [0,1,2,3,4].forEach(i=>{const a=i/5*6.2832-1.57;
+               D(c,32+Math.cos(a)*20,34+Math.sin(a)*20,6,PAPER);}); },
+  overtime:c=>{ D(c,32,32,21,"#2b3140"); D(c,32,32,13,"#3f4a63");
+                L(c,GOLD,3,k=>{k.moveTo(32,32);k.lineTo(32,22);k.moveTo(32,32);k.lineTo(40,36);}); },
+  msg:c=>{ R(c,0,8,14,36,26,6,PAPER); L(c,INK,2.4,k=>{k.moveTo(18,40);k.lineTo(14,50);k.lineTo(28,40);});
+           lines(c,15,24,20,3); D(c,50,44,9,GREEN); },
+  card:c=>{ R(c,0,8,20,48,26,3,"#4a6fa5"); F(c,12,26,20,5,1,PAPER); F(c,12,35,30,3,1,"rgba(255,255,255,.5)");
+            F(c,40,24,12,9,2,GOLD); },
+  attend:c=>{ R(c,0,12,10,40,44,3,PAPER); lines(c,18,20,28,6);
+              L(c,GREEN,3.4,k=>{k.moveTo(24,40);k.lineTo(30,46);k.lineTo(44,28);}); },
+  elev:c=>{ R(c,0,12,10,40,44,3,STEEL); L(c,INK,2.4,k=>{k.moveTo(32,12);k.lineTo(32,54);});
+            L(c,INK,3,k=>{k.moveTo(20,28);k.lineTo(25,22);k.lineTo(30,28);k.moveTo(34,36);k.lineTo(39,42);k.lineTo(44,36);}); },
+  /* 진화형 — 원본 위에 금색 표식 */
+  jeongyeol:c=>{ IC.stamp(c); D(c,52,14,10,GOLD); },
+  notice:c=>{ IC.copy(c); D(c,52,14,10,GOLD); },
+  replyall:c=>{ IC.mail(c); D(c,52,14,10,GOLD); },
+  caffeine:c=>{ IC.coffee(c); D(c,52,14,10,GOLD); },
+  ontime:c=>{ IC.clock(c); D(c,52,14,10,GOLD); },
+  resign:c=>{ IC.quit(c); D(c,52,14,10,GOLD); },
+  /* ── 설치기 ── */
+  part:c=>{ F(c,8,44,48,6,2,"rgba(0,0,0,.3)"); R(c,0,8,24,48,20,2,"#6d6a62");
+            L(c,"#8f8c84",2.2,k=>{k.moveTo(12,30);k.lineTo(52,30);k.moveTo(12,38);k.lineTo(52,38);}); },
+  printer:c=>{ R(c,0,8,24,48,28,3,"#3b4658"); R(c,0,18,12,28,16,2,PAPER); lines(c,23,17,18,2);
+               F(c,14,34,36,6,2,"#9ec8ff"); D(c,48,46,4,GREEN,false); },
+  water:c=>{ R(c,0,20,6,24,24,4,"#6fc3e0"); R(c,0,18,30,28,26,3,"#e8ecf4");
+             F(c,24,36,16,6,2,"#2e5a4b"); },
+  barista:c=>{ R(c,0,12,12,40,34,3,"#5a4a2e"); F(c,20,20,24,10,2,"#2b2118");
+               D(c,32,46,9,"#3c2a1e"); L(c,"#c9a227",2.6,k=>{k.moveTo(28,32);k.lineTo(28,38);k.moveTo(36,32);k.lineTo(36,38);}); },
+  wet:c=>{ L(c,"#c8a33a",0,k=>{}); c.beginPath(); c.moveTo(32,10); c.lineTo(54,50); c.lineTo(10,50);
+           c.closePath(); c.fillStyle="#e0b83a"; c.fill(); c.strokeStyle=OUT; c.lineWidth=2.6; c.stroke();
+           L(c,INK,3.4,k=>{k.moveTo(32,26);k.lineTo(32,38);}); D(c,32,44,2.6,INK,false); },
+  book:c=>{ R(c,0,10,12,44,40,3,PAPER); L(c,"#9ec8ff",2.4,k=>{
+            for(let i=0;i<3;i++){k.moveTo(18,24+i*8);k.lineTo(46,24+i*8);} });
+            D(c,46,44,11,RED); L(c,"#fff",2.6,k=>{k.moveTo(42,44);k.lineTo(50,44);}); },
+  /* ── 동료 ── */
+  junior:c=>{ D(c,32,22,11,"#e8d3bd"); F(c,23,12,18,7,3,"#262b38");
+              R(c,0,18,34,28,22,4,"#5a6f8f"); F(c,12,40,10,12,2,PAPER); },
+  peer:c=>{ D(c,32,22,11,"#e8d3bd"); F(c,23,12,18,7,3,"#262b38");
+            R(c,0,18,34,28,22,4,"#4b7d72"); D(c,46,44,10,GREEN);
+            L(c,"#fff",2.6,k=>{k.moveTo(42,44);k.lineTo(50,44);k.moveTo(46,40);k.lineTo(46,48);}); },
+  unionist:c=>{ D(c,32,22,11,"#e8d3bd"); F(c,21,11,22,7,3,"#a34d4d");
+                R(c,0,16,34,32,22,4,"#3f4a63");
+                L(c,GOLD,3,k=>{k.moveTo(22,44);k.lineTo(42,44);k.moveTo(32,38);k.lineTo(32,50);}); },
+  /* ── 성장 ── */
+  shoes:c=>{ c.beginPath(); c.moveTo(10,42); c.lineTo(38,42); c.quadraticCurveTo(54,42,54,50);
+             c.lineTo(10,50); c.closePath(); c.fillStyle="#3a2a20"; c.fill();
+             c.strokeStyle=OUT; c.lineWidth=2.4; c.stroke();
+             L(c,"#7a5a40",2.4,k=>{k.moveTo(16,36);k.lineTo(34,36);k.lineTo(38,42);}); },
+  laptop:c=>{ R(c,0,14,14,36,24,2,"#3b4658"); F(c,18,18,28,16,1,"#9ec8ff");
+              c.beginPath(); c.moveTo(8,40); c.lineTo(56,40); c.lineTo(52,48); c.lineTo(12,48);
+              c.closePath(); c.fillStyle="#5a616c"; c.fill(); c.strokeStyle=OUT; c.lineWidth=2.4; c.stroke(); },
+  leave:c=>{ R(c,0,12,14,40,36,3,PAPER); L(c,RED,2.6,k=>{k.moveTo(12,24);k.lineTo(52,24);});
+             lines(c,18,32,26,3); D(c,46,44,9,GREEN); },
+  cup:c=>{ R(c,0,20,14,24,36,4,"#4a6fa5"); F(c,22,10,20,7,3,"#2b3140");
+           F(c,24,24,16,5,2,"rgba(255,255,255,.45)"); },
+  suit:c=>{ c.beginPath(); c.moveTo(18,16); c.lineTo(46,16); c.lineTo(50,52); c.lineTo(14,52);
+            c.closePath(); c.fillStyle="#3f4a63"; c.fill(); c.strokeStyle=OUT; c.lineWidth=2.4; c.stroke();
+            c.beginPath(); c.moveTo(26,16); c.lineTo(32,30); c.lineTo(38,16); c.closePath();
+            c.fillStyle=PAPER; c.fill(); L(c,RED,3,k=>{k.moveTo(32,28);k.lineTo(31,46);}); },
+  earphone:c=>{ L(c,"#e8ecf4",3.2,k=>{k.moveTo(16,40);k.quadraticCurveTo(16,16,32,16);
+                k.quadraticCurveTo(48,16,48,40);}); D(c,16,44,9,"#3b4658"); D(c,48,44,9,"#3b4658"); },
+  law52:c=>{ D(c,32,32,22,PAPER); L(c,INK,3,k=>{k.moveTo(32,32);k.lineTo(32,20);k.moveTo(32,32);k.lineTo(42,38);});
+             L(c,RED,4,k=>{k.moveTo(16,48);k.lineTo(48,16);}); },
+  contract:c=>{ R(c,0,14,10,36,44,3,PAPER); lines(c,20,20,24,5);
+                L(c,"#4a6fa5",2.6,k=>{k.moveTo(20,46);k.quadraticCurveTo(28,38,34,46);k.quadraticCurveTo(40,52,46,42);}); },
+  remote:c=>{ R(c,0,10,16,44,28,3,"#3b4658"); F(c,14,20,36,20,2,"#1b2a3a");
+              c.beginPath(); c.moveTo(22,30); c.lineTo(34,24); c.lineTo(34,36); c.closePath();
+              c.fillStyle=GREEN; c.fill(); F(c,20,48,24,6,2,"#5a616c"); },
+  annual:c=>{ R(c,0,10,14,44,40,4,PAPER); F(c,10,14,44,10,4,RED);
+              lines(c,18,32,28,2); D(c,42,44,10,GREEN);
+              L(c,"#fff",2.8,k=>{k.moveTo(38,44);k.lineTo(41,47);k.lineTo(46,40);}); },
+  namecard:c=>{ R(c,0,8,22,48,22,2,PAPER); lines(c,14,30,22,3,"#7d8699");
+                F(c,40,28,12,10,2,"#4a6fa5"); },
+  union:c=>{ D(c,22,24,9,"#e8d3bd"); D(c,42,24,9,"#e8d3bd");
+             R(c,0,10,32,20,22,4,"#4b7d72"); R(c,0,34,32,20,22,4,"#4b7d72");
+             L(c,GOLD,3.4,k=>{k.moveTo(18,50);k.lineTo(46,50);}); },
+  };
+})();
+function icon(id,size,kind){
   const c=document.createElement("canvas"); c.width=c.height=72;
-  const x=c.getContext("2d"); const SP=window.SPRITES;
-  const map={stamp:"quit",copy:"copy",mail:"stap",coffee:"water",clock:"wall",quit:"quit",
-             shoes:"wall",laptop:"copy",card:"stap",leave:"quit",cup:"water",suit:"wall",
-             meeting:"wall",overtime:"water",msg:"stap",attend:"copy",elev:"wall",
-             jeongyeol:"quit",notice:"copy",replyall:"stap",caffeine:"water",
-             ontime:"wall",resign:"quit",
-             part:"wall",printer:"copy",water:"water",barista:"water",
-             wet:"water",book:"wall",junior:"stap",peer:"stap",unionist:"wall",
-             earphone:"water",law52:"wall",contract:"copy",remote:"wall",
-             annual:"quit",union:"stap"};
-  const f=SP&&SP.units&&SP.units[map[id]];
-  if(f) f(x,36,36,64);
+  const x=c.getContext("2d");
+  x.translate(4,4);                            // 64 설계 좌표를 72 안에 여백 두고 앉힌다
+  /* 법인카드(무기)와 명함(강화)이 둘 다 id "card"다. 종류로 가른다 */
+  const key = (id==="card" && kind==="p") ? "namecard" : id;
+  const f = IC[key] || (key==="namecard" ? IC.card : null);
+  if(f) { try{ f(x); }catch(e){} }
   else { x.fillStyle="#6f9fd8"; x.fillRect(18,18,36,36); }
   c.style.width=c.style.height=size+"px";
   return c;
@@ -4404,7 +4522,7 @@ function levelUp(g){
     const D = o.kind==="p"?PERKS[o.id]:WEAPONS[o.id];
     const b=document.createElement("button");
     b.className = o.kind==="e" ? "pick evo" : "pick";
-    b.appendChild(icon(o.kind==="e"?o.base:o.id,40));
+    b.appendChild(icon(o.kind==="e"?o.base:o.id,40,o.kind));
     const txt=document.createElement("div");
     const lvl = o.kind==="e" ? ("진화 — "+WEAPONS[o.base].name+"을 대체합니다")
               : o.lv===0 ? "신규" : ("Lv "+o.lv+" → "+(o.lv+1));
@@ -4840,6 +4958,7 @@ window.__g=()=>G;                       // 테스트 훅
 window.__finish=finish;                 // 결말 화면 검증용
 window.__offers=offers;                 // 선택지 검증용
 window.__applyPerks=applyPerks;         // 강화 반영 검증용
+window.__icon=icon;                     // 아이콘 검증용
 window.__api={WEAPONS,PERKS,E,ZONES,DAY,hourOf,clockStr,spawnRing,start,todoOf,zoneOf,gateReady};
 renderStart();
 
