@@ -2715,11 +2715,26 @@ const ZONES=[
    story:"마지막 문. 저 너머가 정문이다.", ev:"client"},
 ];
 const zoneOf = g => ZONES[Math.min(g.zone,ZONES.length-1)];
+/* ── 직급 ──────────────────────────────────────────────────────
+   승진은 보상이 아니라 거래다. 능력이 오르는 만큼 몫도 오른다.
+   그리고 직급은 남는다 — 내일 출근할 때 이미 그 자리에서 시작한다.
+   정답이 없어야 한다. 쌓으면 세지지만 매일이 더 힘들어진다. */
+const RANKS=["사원","주임","대리","과장","차장","부장","이사"];
+const RANK_MAX=RANKS.length-1;
+const RANK_PWR=0.08;                          // 직급당 능력
+const RANK_LOAD=0.08;                         // 직급당 미결
+const rankOf   = g => Math.min(RANK_MAX,(g.rank0||0)+(g.rank||0));
+const rankName = n => RANKS[Math.min(RANK_MAX,Math.max(0,n|0))];
+/* 이 구역 몫 — 직급이 오르면 같은 구역도 더 준다 */
+const quotaOf = g => Math.round(zoneOf(g).quota*(1+rankOf(g)*RANK_LOAD));
 /* 이 구역에 남은 미결 */
 /* 처리한 만큼 줄지만, 구역 사건이 그걸 막기도 한다.
    점심시간엔 아무도 일을 안 하고, 발표 중엔 자리에 서 있어야 진도가 나간다. */
-const todoOf = g => Math.max(0, zoneOf(g).quota
-  - Math.max(0,(g.kills-g.zoneK0)-(g.killHold||0)) - (g.zoneBonus||0));
+/* load — 이 구역에 따로 얹힌 몫(승진 등). killHold는 「처리가 진도에 안 잡힌다」는
+   뜻이라 Math.max(0,…)에 걸려 아직 한 건도 안 잡은 상태에선 아무 일도 안 한다.
+   순수한 추가 업무는 여기로 들어와야 한다. */
+const todoOf = g => Math.max(0, Math.ceil(quotaOf(g) + (g.load||0)
+  - Math.max(0,(g.kills-g.zoneK0)-(g.killHold||0)) - (g.zoneBonus||0)));
 /* 문이 열릴 조건 — 몫을 끝내고, 보스가 남아 있으면 그것도 끝내야 한다 */
 const gateReady = g => todoOf(g)<=0 && !g.foes.some(f=>f.boss);
 
@@ -2876,7 +2891,9 @@ function stepEvent(g,dt){
     g.deskOn = d<74;
     if(g.deskOn){
       P.hp=Math.min(P.maxhp,P.hp+7*dt);
-      g.zoneBonus=Math.max(0,(g.zoneBonus||0)-2.2*dt);   // 서 있으면 진도가 뒤로 간다
+      /* 서 있으면 진도가 뒤로 간다. zoneBonus는 0에서 시작해 Math.max(0,…)에
+         걸리는 값이라 여기에 쓰면 한 건도 안 쌓인다 — 유입은 killHold로 */
+      g.killHold=(g.killHold||0)+2.2*dt*(P.work||1);
       if(!g.deskSaid){ g.deskSaid=1; flash(g,"내 자리 — 체력이 찹니다. 대신 일이 쌓입니다"); }
     }
   }
@@ -3281,6 +3298,7 @@ function newGame(grudge){
     blinkCd:0, annualCd:0, annualT:0,
     spawnAcc:0, bossOut:false, shake:0, shakeX:0, shakeY:0, hitstop:0,
     zone:0, zoneK0:0, zoneT:0, zoneBonus:0, gate:null, cleared:0, sayCd:2.5,
+    rank0:Math.min(RANK_MAX,SAVE.rank|0), rank:0, promoLv:0, load:0,
     robotWork:0, robotCd:16, robotSeen:false, robotWarn:false, userPaused:false,
     evT:0, evPhase:0, lunchT:0, killHold:0, deskX:0, deskY:0, deskOn:false, deskSaid:0,
     ambCd:6, ambWarn:0, ambX:0, ambY:0, podX:0, podY:0, podOn:false,
@@ -3301,6 +3319,11 @@ function stats(g){
             xpMul:1+M.xp, magnet:1+M.magnet, maxhp:160+M.hp,
             inv0:0, late:1, work:1, blink:0, annual:0, allyDmg:1, fatigue:1 };
   for(const k in g.perks){ const p=PERKS[k]; for(let i=0;i<g.perks[k];i++) p.f(P,i+1); }
+  /* 직급 — 올라간 만큼 능력이 오른다. 몫도 같이 오른다(quotaOf) */
+  const r=rankOf(g);
+  if(r){ const m=1+r*RANK_PWR;
+         P.spd*=m; P.range*=m; P.xpMul*=m; P.magnet*=m;
+         P.maxhp=Math.round(P.maxhp*m); P.haste/=m; }
   return P;
 }
 function applyPerks(g){
@@ -3471,7 +3494,7 @@ function nextZone(g){
   const P=g.P;
   g.zone++; g.cleared++;
   g.gate=null; g.zoneK0=g.kills; g.zoneT=0; g.zoneBonus=0;
-  g.evT=0; g.evPhase=0; g.lunchT=0; g.killHold=0; g.deskX=0; g.deskSaid=0; g.ambCd=6; g.ambWarn=0;
+  g.evT=0; g.evPhase=0; g.lunchT=0; g.killHold=0; g.load=0; g.deskX=0; g.deskSaid=0; g.ambCd=6; g.ambWarn=0;
   g.podX=0; g.podOn=false; g.podSet=0; g.deskSet=0; g.prnX=0; g.prnDone=0; g.prnSet=0;
   g.quietSaid=0; g.quietK=1;
   g.clients.length=0; g.cliCd=9;
@@ -3489,7 +3512,7 @@ function nextZone(g){
   for(let i=g.foes.length-1;i>=0;i--) if(!g.foes[i].boss) g.foes.splice(i,1);
   g.bossOut=false;
   const Z=zoneOf(g);
-  flash(g, Z.name+" — 미결 "+Z.quota+"건");
+  flash(g, Z.name+" — 미결 "+quotaOf(g)+"건");
   S("levelup"); g.flash=Math.max(g.flash,.8); kick(g,0,-1,10);
   g.fx.push({type:"ring",x:P.x,y:P.y,t:0,r0:16,r1:240,c:"#f5c451"});
   return false;
@@ -3910,7 +3933,8 @@ function killFoe(g,f,i){
   g.foes.splice(i,1); g.kills++;
   // 점심시간과 발표 자리 밖의 처치는 진도에 안 잡힌다
   const Zx=zoneOf(g);
-  if(g.lunchT>0 || (Zx.ev==="present" && g.podSet && !g.podOn)) g.killHold=(g.killHold||0)+1;
+  if(g.lunchT>0 || (Zx.ev==="present" && g.podSet && !g.podOn))
+    g.killHold=(g.killHold||0)+(g.P.work||1);           // 근로계약서 — 유입 감소
   // 보스 처치는 그 구역 몫을 크게 깎는다 — 큰 걸 잡았으면 그만큼 일한 것이다
   if(f.boss){ g.zoneBonus=(g.zoneBonus||0)+45;
               flash(g, E[f.kind].name+" 처리 — 미결 45건"); }
@@ -5116,7 +5140,61 @@ function loadoutHTML(g,label){
     + (free?`<span class="wchip empty">빈 칸 ${free}</span>`:"") + `</div>`;
 }
 
+/* ── 승진 딜레마 ───────────────────────────────────────────────
+   이 게임의 중심 선택이다. 정답이 있으면 선택이 아니다.
+   받으면 세지지만 오늘 몫이 늘고 그 직급이 내일까지 따라온다.
+   안 받으면 그대로지만 오늘이 편해진다.
+   레벨 카드를 뺏지 않는다 — 딜레마는 빌드가 아니라 태도를 묻는 것이라
+   승진 화면이 먼저 뜨고, 고르고 나면 평소의 레벨 카드가 이어진다. */
+const PROMO_EVERY = 5;                        // 5·10·15… 레벨
+const PROMO_LOAD  = 30;                       // 받으면 오늘 미결 +30
+const PROMO_EASE  = 20;                       // 안 받으면 오늘 미결 −20
+function promoDue(g){
+  return g.lv>=PROMO_EVERY && g.lv%PROMO_EVERY===0
+      && g.lv>(g.promoLv||0) && rankOf(g)<RANK_MAX;
+}
+function promoUp(g){
+  g.paused=true; g.promoLv=g.lv; S("levelup");
+  const now=rankOf(g), next=Math.min(RANK_MAX,now+1);
+  const card=$("#card");
+  card.innerHTML='<div class="title" style="align-items:baseline;gap:10px">'
+    +'<h1 class="ttl" style="font-size:30px;color:#c9a227">승진</h1>'
+    +'<span style="font-size:13px;color:var(--dim)">'
+    +esc(rankName(now))+' → '+esc(rankName(next))+' · 정답은 없습니다</span></div>'
+    +'<div class="picks" style="margin-top:16px"></div>';
+  const box=card.querySelector(".picks");
+  const opt=(name,lvl,desc,accent,fn)=>{
+    const b=document.createElement("button");
+    b.className="pick"; if(accent) b.style.borderColor="#c9a227";
+    const t=document.createElement("div");
+    t.innerHTML='<span class="n"'+(accent?' style="color:#c9a227"':'')+'>'+esc(name)+'</span>'
+      +'<span class="lvl">'+esc(lvl)+'</span><span class="d">'+desc+'</span>';
+    b.appendChild(t);
+    b.onclick=()=>{ fn(); S("place"); closeOverlay(); g.paused=false;
+                    levelUp(g); };            // 승진을 고른 뒤 평소의 레벨 카드
+    box.appendChild(b);
+  };
+  opt("승진을 받는다", rankName(next),
+      '능력 +'+Math.round(RANK_PWR*100)+'% · 구역 몫 +'+Math.round(RANK_LOAD*100)+'%<br>'
+      +'<b style="color:var(--bad)">오늘 미결 +'+PROMO_LOAD+'</b> · 이 직급은 내일도 따라옵니다',
+      true, ()=>{
+        g.rank++; applyPerks(g);
+        g.load=(g.load||0)+PROMO_LOAD;
+        flash(g, rankName(rankOf(g))+" 승진 — 미결 +"+PROMO_LOAD);
+        g.flash=Math.max(g.flash,.7); kick(g,0,-1,10);
+      });
+  opt("받는 만큼만 한다", rankName(now),
+      '능력 그대로 · 직급 그대로<br>'
+      +'<b style="color:var(--good)">오늘 미결 −'+PROMO_EASE+'</b> · 내일도 오늘만큼만 합니다',
+      false, ()=>{
+        g.load=(g.load||0)-PROMO_EASE;
+        flash(g,"받는 만큼만 — 미결 −"+PROMO_EASE);
+      });
+  openOverlay();
+}
+
 function levelUp(g){
+  if(promoDue(g)){ promoUp(g); return; }
   g.paused=true; S("levelup");
   const list=offers(g);
   if(!list.length){ g.paused=false; return; }
@@ -5252,9 +5330,9 @@ const CAREER={
 function loadSave(){
   try{ const j=JSON.parse(localStorage.getItem(SAVE_KEY)||"{}");
        return {career:+j.career||0, lv:j.lv&&typeof j.lv==="object"?j.lv:{},
-               best:+j.best||0, days:+j.days||0, cleared:!!j.cleared,
+               best:+j.best||0, days:+j.days||0, cleared:!!j.cleared, rank:+j.rank||0,
                last:j.last||null, seen:j.seen&&typeof j.seen==="object"?j.seen:{}}; }
-  catch(e){ return {career:0, lv:{}, best:0, days:0, cleared:false, last:null, seen:{}}; }
+  catch(e){ return {career:0, lv:{}, best:0, days:0, cleared:false, rank:0, last:null, seen:{}}; }
 }
 function writeSave(sv){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(sv)); }catch(e){} }
 let SAVE=loadSave();
@@ -5354,6 +5432,8 @@ function renderStart(){
     <div class="crow">
       <div class="cstat"><b class="num" style="color:var(--accent)">${SAVE.career.toLocaleString()}</b><span>보유 경력</span></div>
       <div class="cstat"><b class="num">${SAVE.days}</b><span>출근 일수</span></div>
+      <div class="cstat"><b class="num"${(SAVE.rank|0)>0?' style="color:#c9a227"':''}>${
+        esc(rankName(SAVE.rank|0))}</b><span>직급</span></div>
       <div class="cstat"><b class="num">${SAVE.best.toLocaleString()}</b><span>최다 처리</span></div>
       <div class="cstat"><b class="ttl" style="color:${SAVE.cleared?"var(--good)":"var(--dim)"}">${SAVE.cleared?"있음":"없음"}</b><span>정시 퇴근</span></div>
     </div>
@@ -5421,7 +5501,7 @@ function renderShop(){
   $("#back").onclick=()=>{ S("select"); renderStart(); };
   $("#reset").onclick=()=>{
     if(!confirm("경력과 기록을 전부 지웁니다. 되돌릴 수 없습니다.")) return;
-    SAVE={career:0, lv:{}, best:0, days:0, cleared:false, last:null, seen:{}}; writeSave(SAVE);
+    SAVE={career:0, lv:{}, best:0, days:0, cleared:false, rank:0, last:null, seen:{}}; writeSave(SAVE);
     S("deny"); renderShop();
   };
   openOverlay();
@@ -5436,6 +5516,9 @@ function renderEnd(g){
             : repl?"#c9a227" : "var(--bad)";
   // 경력 정산 — 이 판이 남긴 것
   const earn=careerEarned(g);
+  /* 직급은 남는다 — 받은 승진은 내일 출근할 때 이미 그 자리다 */
+  const rk0=Math.min(RANK_MAX,SAVE.rank|0), rk=rankOf(g);
+  SAVE.rank=rk;
   SAVE.career+=earn; SAVE.days++;
   SAVE.last=g.over;                       // 어제가 오늘 첫 줄을 바꾼다
   if(g.kills>SAVE.best) SAVE.best=g.kills;
@@ -5459,6 +5542,8 @@ function renderEnd(g){
     <div class="crow">
       <div class="cstat"><b class="num">${g.kills.toLocaleString()}</b><span>처리</span></div>
       <div class="cstat"><b class="num" style="color:var(--bad)">${g.comboBest.toLocaleString()}</b><span>최고 연속</span></div>
+      <div class="cstat"><b class="num"${rk>rk0?' style="color:#c9a227"':''}>${
+        esc(rankName(rk))}</b><span>${rk>rk0?"승진 "+(rk-rk0):"직급"}</span></div>
       <div class="cstat"><b class="num">${g.lv}</b><span>레벨</span></div>
       <div class="cstat"><b class="num"${g.robotSeen&&replaceRate(g)>=0.3?' style="color:'+acc+'"':''}>${
         g.robotSeen?Math.round(replaceRate(g)*100)+"%":Math.round(g.dmgDealt).toLocaleString()}</b><span>${
@@ -5659,9 +5744,11 @@ window.__g=()=>G;                       // 테스트 훅
 window.__finish=finish;                 // 결말 화면 검증용
 window.__offers=offers;                 // 선택지 검증용
 window.__applyPerks=applyPerks;         // 강화 반영 검증용
-window.__icon=icon;                     // 아이콘 검증용
+window.__icon=icon;
+window.__gainXp=gainXp;             // 레벨업·승진 검증용                     // 아이콘 검증용
 window.__RND=RND;                       // 무작위 사건 검증용
-window.__api={WEAPONS,PERKS,E,ZONES,DAY,hourOf,clockStr,spawnRing,start,todoOf,zoneOf,gateReady};
+window.__api={WEAPONS,PERKS,E,ZONES,DAY,hourOf,clockStr,spawnRing,start,todoOf,zoneOf,gateReady,
+             RANKS,rankOf,rankName,quotaOf,promoDue,stats,SAVE:()=>SAVE};
 renderStart();
 
 </script>
