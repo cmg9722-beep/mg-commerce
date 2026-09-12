@@ -2333,11 +2333,88 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     });
   }
 
+  /* ── 사무집기 ─────────────────────────────────────────────────
+     위에서 내려다본 물건들. 사람이 아니라서 다리도 팔도 없고, 대신
+     그림자와 윤곽만으로 「저건 부술 수 있는 것」으로 읽혀야 한다.
+     구울 때 외곽선이 자동으로 둘러진다(baked). */
+  function propShadow(ctx, w, h) {
+    ctx.fillStyle = "rgba(0,0,0,.34)";
+    ctx.beginPath(); ctx.ellipse(2, h * 0.42, w * 0.52, h * 0.20, 0, 0, 6.2832); ctx.fill();
+  }
+  function deskProp(ctx, cx, cy, s) {
+    unit(ctx, cx, cy, s, function (c) {
+      propShadow(c, 92, 62);
+      box(c, -46, -26, 92, 52, 5, "#8a6b47");                 // 상판
+      fillR(c, -46, -26, 92, 16, 5, "#9c7b53");               // 빛 받는 앞쪽
+      fillR(c, -40, -18, 34, 30, 3, "#6b5236");               // 서랍
+      stroke(c, "#5a4529", 2.4, function (k) { k.moveTo(-40, -3); k.lineTo(-6, -3); });
+      fillR(c, 6, -16, 32, 22, 2, "#2b3140");                 // 모니터
+      fillR(c, 9, -13, 26, 16, 1, "#1b2a3a");
+      fillR(c, 14, 8, 16, 4, 1, "#4a5058");
+    });
+  }
+  function partProp(ctx, cx, cy, s) {
+    unit(ctx, cx, cy, s, function (c) {
+      propShadow(c, 86, 40);
+      box(c, -44, -14, 88, 26, 3, "#4b5568");                 // 판
+      fillR(c, -44, -14, 88, 9, 3, "#5d6a80");
+      stroke(c, "#39414f", 2.2, function (k) {
+        k.moveTo(-16, -12); k.lineTo(-16, 10); k.moveTo(16, -12); k.lineTo(16, 10); });
+      fillR(c, -46, 10, 14, 7, 2, "#2b3140");                 // 받침
+      fillR(c, 32, 10, 14, 7, 2, "#2b3140");
+    });
+  }
+  function waterProp(ctx, cx, cy, s) {
+    unit(ctx, cx, cy, s, function (c) {
+      propShadow(c, 48, 48);
+      box(c, -20, -6, 40, 34, 4, "#c7ccd4");                  // 본체
+      box(c, -16, -34, 32, 30, 8, "#8fc0e8");                 // 물통
+      fillR(c, -13, -30, 26, 12, 6, "#bcd8f2");               // 물빛
+      fillR(c, -8, 6, 16, 6, 2, "#4a5058");                   // 꼭지
+      dot(c, 0, 20, 4, "#6f9fd8");
+    });
+  }
+  function copyProp(ctx, cx, cy, s) {
+    unit(ctx, cx, cy, s, function (c) {
+      propShadow(c, 64, 56);
+      box(c, -30, -24, 60, 48, 4, "#8f959e");
+      fillR(c, -30, -24, 60, 14, 4, "#a8aeb8");
+      fillR(c, -24, -18, 48, 12, 2, "#2b3140");               // 유리면
+      fillR(c, -22, 4, 44, 14, 2, "#dfe6f2");                 // 배출된 종이
+      stroke(c, "#b9c0cc", 1.8, function (k) {
+        k.moveTo(-16, 9); k.lineTo(14, 9); k.moveTo(-16, 14); k.lineTo(6, 14); });
+      dot(c, 22, -30, 3.4, "#57d98a");
+    });
+  }
+  function plantProp(ctx, cx, cy, s) {
+    unit(ctx, cx, cy, s, function (c) {
+      propShadow(c, 44, 44);
+      box(c, -14, 4, 28, 22, 3, "#8a6b47");                   // 화분
+      fillR(c, -14, 4, 28, 7, 3, "#a5825a");
+      disc(c, 0, -10, 18, "#4b8f86");                         // 잎
+      disc(c, -12, -2, 11, "#5fa899");
+      disc(c, 13, -4, 10, "#3d7a72");
+    });
+  }
+  function chairProp(ctx, cx, cy, s) {
+    unit(ctx, cx, cy, s, function (c) {
+      propShadow(c, 46, 46);
+      box(c, -20, -22, 40, 18, 5, "#3f4a63");                 // 등받이
+      box(c, -18, -4, 36, 28, 6, "#4c5a78");                  // 좌판
+      fillR(c, -18, -4, 36, 9, 6, "#5b6a88");
+      stroke(c, "#2b3140", 2.4, function (k) {
+        k.moveTo(-16, 22); k.lineTo(-24, 30); k.moveTo(16, 22); k.lineTo(24, 30);
+        k.moveTo(0, 24); k.lineTo(0, 32); });
+    });
+  }
+
   window.SPRITES_RANK = {
     intern: intern, staff: staff, senior: senior, manager: manager,
     gm: gm, audit: audit, drunk: drunk, hero: hero,
     rookie: rookie, hrteam: hrteam, vendor: vendor, chief: chief, ceo: ceo,
-    bot: botunit
+    bot: botunit,
+    desk_p: deskProp, part_p: partProp, water_p: waterProp,
+    copy_p: copyProp, plant_p: plantProp, chair_p: chairProp
   };
 })();
 </script>
@@ -3686,6 +3763,20 @@ const E = {
   vendor :{name:"협력사",hp:190, spd:118,dmg:13, xp:5, r:17},
   ceo    :{name:"대표이사",hp:9000,spd:32,dmg:44,xp:400,r:36, boss:true, meddle:240,
             atk:"shock", atkCd:2.8, summon:"manager", summonN:9, summonCd:6},
+  /* ── 사무집기 ─────────────────────────────────────────────────
+     직장인 스트레스 해소가 목적인 게임인데 사무집기를 부술 수 없었다.
+     참조로 연 게임들엔 전부 부술 수 있는 것들이 깔려 있었다
+     (상자·나무·항아리). 우리에겐 그게 책상이고 파티션이고 정수기다.
+
+     적과 같은 자료 구조에 태워 무기 판정 코드를 그대로 쓴다. 대신
+     움직이지 않고, 나를 때리지 않고, 미결에도 안 잡힌다 — 일이 아니라
+     화풀이다. 부수면 뭔가 나온다. */
+  desk_p :{name:"책상",   hp:110, spd:0, dmg:0, xp:0, r:30, prop:true, drop:0.34},
+  part_p :{name:"파티션", hp:70,  spd:0, dmg:0, xp:0, r:26, prop:true, drop:0.24},
+  water_p:{name:"정수기", hp:52,  spd:0, dmg:0, xp:0, r:15, prop:true, drop:0.62},
+  copy_p :{name:"복사기", hp:150, spd:0, dmg:0, xp:0, r:22, prop:true, drop:0.70},
+  plant_p:{name:"화분",   hp:40,  spd:0, dmg:0, xp:0, r:14, prop:true, drop:0.30},
+  chair_p:{name:"의자",   hp:46,  spd:0, dmg:0, xp:0, r:15, prop:true, drop:0.20},
   /* 자동화 로봇 — 이 게임에서 유일하게 나를 때리지 않는 적.
      쫓아오지도 않는다. 조용히 내 일을 대신 한다.
      있으면 편하다. 그래서 부수기가 아깝다 — 그 망설임이 이 적의 무기다. */
@@ -3738,7 +3829,7 @@ function newGame(grudge){
     blinkCd:0, annualCd:0, annualT:0,
     spawnAcc:0, bossOut:false, shake:0, shakeX:0, shakeY:0, hitstop:0,
     zone:0, zoneK0:0, zoneT:0, zoneBonus:0, gate:null, cleared:0, sayCd:2.5,
-    rank0:Math.min(RANK_MAX,SAVE.rank|0), rank:0, promoLv:0, lowT:0,
+    rank0:Math.min(RANK_MAX,SAVE.rank|0), rank:0, promoLv:0, lowT:0, propCd:0,
     meddle:0, meddleSrc:null, meddleSaid:0,
     bossKill:{}, noonZone:0, cleanZone:0, zoneHit:0, declined:0,
     robotWork:0, robotCd:16, robotSeen:false, robotWarn:false, userPaused:false,
@@ -3912,6 +4003,18 @@ function doSpawns(g,dt){
       spawnRing(g,k,s.n);
     }
   }
+  /* 사무집기 — 지나는 길에 깔려 있다. 부수는 건 선택이고, 부수면 뭔가 나온다 */
+  g.propCd-=dt;
+  if(g.propCd<=0){
+    g.propCd=2.6+Math.random()*2.2;
+    const P=g.P, R=Math.max(VW,VH)/ZOOM*0.58+70;
+    const kinds=["desk_p","part_p","water_p","copy_p","plant_p","chair_p"];
+    const alive=g.foes.reduce((a,f)=>a+(E[f.kind].prop?1:0),0);
+    if(alive<14){
+      const a=Math.random()*Math.PI*2;
+      spawnAt(g,kinds[(Math.random()*kinds.length)|0],P.x+Math.cos(a)*R,P.y+Math.sin(a)*R);
+    }
+  }
   /* 따돌린 적 재배치 — 상한(CAP)에 걸린 뒤 무리를 따돌리면 스폰이 멎고 화면이 텅 빈다
      (측정: 16:30~18:00 처리 2건, 필드 460명). 화면에서 한참 벗어난 적은
      체력 그대로 앞쪽 스폰 링에 다시 세운다. 도망은 되지만 도망만으로는 안 끝난다. */
@@ -3922,7 +4025,7 @@ function doSpawns(g,dt){
     const bias=closingBias(g), hm=Math.hypot(P.hx,P.hy);
     const hd=hm>0.15 ? Math.atan2(P.hy,P.hx) : null;
     for(const f of g.foes){
-      if(f.boss || f.hold>0) continue;
+      if(f.boss || f.hold>0 || E[f.kind].prop) continue;
       if(Math.hypot(f.x-P.x,f.y-P.y) < far) continue;
       const a = (hd!==null && Math.random()<Math.max(bias,0.35))
         ? hd + (Math.random()-.5)*1.5 : Math.random()*Math.PI*2;
@@ -4014,6 +4117,7 @@ function nextZone(g){
   g.podX=0; g.podOn=false; g.podSet=0; g.deskSet=0; g.prnX=0; g.prnDone=0; g.prnSet=0;
   g.quietSaid=0; g.quietK=1;
   g.clients.length=0; g.cliCd=9; g.stains.length=0;
+  g.propCd=0;
   g.barOn=0; g.barP=0;
   rollEvent(g);           // 오늘의 사건 — 매 판을 다르게 만드는 주사위
   if(g.zone>=ZONES.length){                    // 정문을 나왔다
@@ -4507,6 +4611,20 @@ const DROPS={
   magnet:{id:"magnet",name:"텀블러",   color:"#9ec8ff"},
   bomb  :{id:"bomb",  name:"사직서",   color:"#f5c451"},
 };
+/* 집기를 부수면 나온다 — 경험치 구슬이 쏟아지거나, 가끔 아이템 */
+function dropAt(g,x,y){
+  const r=Math.random();
+  if(r<0.16)      g.drops.push({kind:"heal",   x, y, t:0});
+  else if(r<0.26) g.drops.push({kind:"magnet", x, y, t:0});
+  else if(r<0.31) g.drops.push({kind:"bomb",   x, y, t:0});
+  else {
+    const n=3+((Math.random()*4)|0);
+    for(let i=0;i<n;i++){
+      const a=Math.random()*6.283, d=10+Math.random()*40;
+      g.orbs.push({x:x+Math.cos(a)*d, y:y+Math.sin(a)*d, xp:2, t:0, boss:false});
+    }
+  }
+}
 function dropFrom(g,f){
   let kind=null;
   if(f.boss) kind = Math.random()<.5 ? "bomb" : "heal";
@@ -4558,6 +4676,15 @@ const DEBRIS={
   audit  :{c:["#f7f9fc","#dfe6f2","#3a4254"], n:1.4, w:7, h:5, g:0.35},
   ceo    :{c:["#f5c451","#f7f9fc","#22283a"], n:1.3, w:7, h:6, g:0.5},
   bot    :{c:["#7fe0c0","#8f959e","#4a5058"], n:1.2, w:5, h:5, g:1.4},
+  /* 집기는 크게 터진다 — 부순 맛이 나야 화풀이가 된다 */
+  desk_p :{c:["#8a6b47","#a5825a","#6b5236"], n:2.4, w:11, h:8, g:1.1, shake:6},
+  part_p :{c:["#4b5568","#5d6a80","#39414f"], n:2.2, w:12, h:7, g:1.0, shake:5},
+  water_p:{c:["#6f9fd8","#bcd8f2","#dfe6f2"], n:2.6, w:6,  h:6, g:1.3,
+           splat:"rgba(111,159,216,.30)", shake:4},
+  copy_p :{c:["#8f959e","#c7ccd4","#f2f5fa"], n:2.8, w:9,  h:7, g:0.9, shake:7},
+  plant_p:{c:["#4b8f86","#6fbfa8","#6b4a33"], n:2.2, w:7,  h:6, g:1.1,
+           splat:"rgba(75,143,134,.26)"},
+  chair_p:{c:["#3f4a63","#5b6a88","#2b3140"], n:2.0, w:8,  h:6, g:1.2, shake:4},
 };
 const DEB_DEF={c:["#6f9fd8","#dfe6f2","#f2f5fa"], n:1, w:5, h:4, g:1};
 function burstBits(bn,away,big,kind){
@@ -4572,6 +4699,20 @@ function burstBits(bn,away,big,kind){
   return bits;
 }
 function killFoe(g,f,i){
+  /* 집기는 일이 아니라 화풀이다 — 미결에도 콤보에도 안 잡힌다 */
+  if(E[f.kind].prop){
+    g.foes.splice(i,1);
+    const away=Math.atan2(f.y-g.P.y, f.x-g.P.x);
+    g.fx.push({type:"burst",x:f.x,y:f.y,t:0,r:f.r,bits:burstBits(12,away,false,f.kind)});
+    const D=DEBRIS[f.kind];
+    if(D&&D.splat&&g.stains.length<70)
+      g.stains.push({x:f.x,y:f.y,r:13+Math.random()*13,c:D.splat,t:0});
+    if(D&&D.shake) g.shake=Math.max(g.shake,D.shake);
+    g.hitstop=Math.max(g.hitstop,.04);
+    S("killBoss");
+    if(Math.random()<(E[f.kind].drop||0)) dropAt(g,f.x,f.y);
+    return;
+  }
   g.foes.splice(i,1); g.kills++;
   // 점심시간과 발표 자리 밖의 처치는 진도에 안 잡힌다
   const Zx=zoneOf(g);
@@ -4720,6 +4861,7 @@ function step(g,dt){
       f.wind-=dt; if(f.wind<=0 && f.pending) bossFire(g,f);
       continue;
     }
+    if(E[f.kind].prop) continue;                      // 집기 — 가만히 서서 맞기만 한다
     if(E[f.kind].robot){                              // 로봇 — 나를 무시하고 제 일을 한다
       if(f.hold>0){ f.hold-=dt; }
       else{
@@ -4763,10 +4905,12 @@ function step(g,dt){
   // 적끼리 겹침 완화 — 뭉쳐서 한 덩어리로 보이는 걸 막는다
   for(let a=0;a<g.foes.length;a++){
     const f=g.foes[a];
+    const fp=E[f.kind].prop;                       // 가구는 떠밀려 다니지 않는다
     for(let b=a+1;b<Math.min(g.foes.length,a+9);b++){
       const o=g.foes[b], dx=o.x-f.x, dy=o.y-f.y, dd=dx*dx+dy*dy, mr=f.r+o.r;
-      if(dd>0.01 && dd<mr*mr){ const d=Math.sqrt(dd), push=(mr-d)*.34/d;
-        f.x-=dx*push; f.y-=dy*push; o.x+=dx*push; o.y+=dy*push; }
+      if(dd>0.01 && dd<mr*mr){ const d=Math.sqrt(dd), push=(mr-d)*.34/d, op=E[o.kind].prop;
+        if(!fp){ f.x-=dx*push; f.y-=dy*push; }
+        if(!op){ o.x+=dx*push; o.y+=dy*push; } }
     }
   }
 
