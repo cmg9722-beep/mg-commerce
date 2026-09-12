@@ -1231,20 +1231,34 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
   var RED   = "#ff6b6b";
   var BLUE  = "#6f9fd8";
 
-  var C_INTERN = "#aeb7c6", C_INTERN2 = "#909aab", C_INTERN3 = "#7d8798";
-  var C_STAFF  = "#4e5a76", C_STAFF2  = "#3d4860";
-  var C_SENIOR = "#5e80b2", C_SENIOR2 = "#4c6a97";
-  var C_MGR    = "#948b7c", C_MGR2    = "#7a7264";
+  /* ── 직급 팔레트 ───────────────────────────────────────────────
+     원래는 사원·대리·회식조·신입·본부장 다섯이 전부 남회색이었다.
+     40px에서는 색 계열이 곧 정체다 — 값만 다르면 같은 놈으로 읽힌다.
+     실제로 플레이한 사람이 「다 똑같고 색상만 다르다」고 했고, 실물 크기로
+     나란히 놓고 보니 맞는 말이었다.
+
+     같은 장르 오픈소스의 적 시트를 열어 보니 답이 분명했다 — 32px인데
+     갈색·황갈·강철청·적회·파란 덩어리·남색 로브·살구로 계열이 전부 다르고,
+     밝은 놈과 어두운 놈이 섞여 있었다. 사무실이라 다 정장이라는 건
+     핑계였다. 여기서는 계열과 명도를 함께 벌린다.
+
+     밝은 축: 인턴(흰 셔츠) · 인사팀(가장 밝고 각짐) · 신입(노랑)
+     어두운 축: 점검단 · 대표이사
+     그 사이를 계열로 나눈다: 남색 · 청록 · 갈색 · 적 · 주황 · 크라프트 · 자주 */
+  var C_INTERN = "#c2c9d4", C_INTERN2 = "#a4abb8", C_INTERN3 = "#8e95a3";
+  var C_STAFF  = "#46689b", C_STAFF2  = "#375380";   // 남색 — 기준점
+  var C_SENIOR = "#4b8f86", C_SENIOR2 = "#3b736c";   // 청록
+  var C_MGR    = "#9a7a4a", C_MGR2    = "#7e623a";   // 갈색 — 배가 나온다
   var TIE_MGR  = "#e08a3c";
-  var C_GM     = "#a34d4d", C_GM2     = "#833b3b";
+  var C_GM     = "#a8433f", C_GM2     = "#87332f";   // 적 — 이미 잘 읽혔다
   var C_AUDIT  = "#3a4254", C_AUDIT2  = "#2d3444", C_AUDIT3 = "#222836";
-  var C_DRUNK  = "#6d7d96", C_DRUNK2  = "#59687f";
+  var C_DRUNK  = "#e07a3c", C_DRUNK2  = "#bd6130";   // 주황 — 가장 튄다
   var AMBER    = "#e0aa4b";
   var TROUS    = "#2b3140", TROUS2 = "#222735";
-  var C_ROOK   = "#5a6f8f", C_ROOK2   = "#475873";
-  var C_HR     = "#4b7d72", C_HR2     = "#3b655c";
-  var C_VEND   = "#7a6a9a", C_VEND2   = "#63547f";
-  var C_CHIEF  = "#3f4a63", C_CHIEF2  = "#313a4e";
+  var C_ROOK   = "#dcb13c", C_ROOK2   = "#b88f2c";   // 노랑 — 급한 놈
+  var C_HR     = "#dfe4ec", C_HR2     = "#bcc3ce";   // 흰 셔츠 — 가장 밝고 각짐
+  var C_VEND   = "#8a6b47", C_VEND2   = "#6f5638";   // 크라프트 — 상자를 안았다
+  var C_CHIEF  = "#5b3a6e", C_CHIEF2  = "#472c56";   // 자주 — 보스는 튀어야 한다
   var C_CEO    = "#22283a", C_CEO2    = "#1a1f2d";
 
   /* ── 음영 톤 — 광원은 왼쪽 위(보는 방향). 오른쪽이 그늘 ── */
@@ -3641,7 +3655,7 @@ function newGame(grudge){
     lv:1+M.startLv, xp:0, next:6, kills:0, dmgDealt:0, pendingLv:M.startLv,
     weapons:{ stamp:1+M.stampLv }, perks:{},
     cds:{}, foes:[], shots:[], orbs:[], pools:[], fx:[], floats:[], bodies:[], drops:[],
-    shocks:[], vortex:[], cards:[], builds:[], allies:[],
+    shocks:[], vortex:[], cards:[], builds:[], allies:[], stains:[],
     blinkCd:0, annualCd:0, annualT:0,
     spawnAcc:0, bossOut:false, shake:0, shakeX:0, shakeY:0, hitstop:0,
     zone:0, zoneK0:0, zoneT:0, zoneBonus:0, gate:null, cleared:0, sayCd:2.5,
@@ -3846,7 +3860,7 @@ function nextZone(g){
   g.evT=0; g.evPhase=0; g.lunchT=0; g.killHold=0; g.deskX=0; g.deskSaid=0; g.ambCd=6; g.ambWarn=0;
   g.podX=0; g.podOn=false; g.podSet=0; g.deskSet=0; g.prnX=0; g.prnDone=0; g.prnSet=0;
   g.quietSaid=0; g.quietK=1;
-  g.clients.length=0; g.cliCd=9;
+  g.clients.length=0; g.cliCd=9; g.stains.length=0;
   g.barOn=0; g.barP=0;
   rollEvent(g);           // 오늘의 사건 — 매 판을 다르게 만드는 주사위
   if(g.zone>=ZONES.length){                    // 정문을 나왔다
@@ -4270,12 +4284,39 @@ function takeDrop(g,d){
 }
 /* 처치 파편 — 서류 조각. 그리기 쪽이 배열을 순회하므로 반드시 배열이어야 한다
    (동료 사망에 숫자를 넣었다가 첫 사망에 루프가 죽은 전력). */
-function burstBits(bn,away,big){
-  const bits=[];
-  for(let k=0;k<bn;k++){
+/* ── 처치 연출 ─────────────────────────────────────────────────
+   전부 같은 흰 종이 조각으로 터지고 있었다. 그러면 400명을 갈아도
+   한 놈을 400번 잡은 것과 같다 — 카타르시스가 안 쌓인다.
+
+   식별 소품과 처치 연출을 하나로 묶는다. 들고 있던 것이 그대로 터지니까,
+   무엇이 터졌는지를 보면 무엇을 잡았는지 안다. 구분 문제와 타격감 문제를
+   한 번에 푼다. 이게 이 게임이 「스트레스가 풀린다」를 만드는 방식이다. */
+const DEBRIS={
+  /* c: 파편 색 · n: 개수 배수 · w/h: 크기 · g: 낙하(종이는 천천히) · splat: 바닥 자국 */
+  intern :{c:["#f2f5fa","#e8eef7","#6b4a33"], n:1.0, w:4, h:4, g:0.5, splat:"rgba(107,74,51,.30)"},
+  rookie :{c:["#f7f9fc","#e6ecf5","#dcb13c"], n:1.7, w:7, h:5, g:0.25},          // 서류가 흩날린다
+  staff  :{c:["#9aa6b8","#5b6478","#4a6fa5"], n:1.0, w:6, h:4, g:1.1},
+  senior :{c:["#dfe6f2","#b9c6d8","#6b4a33"], n:1.1, w:4, h:4, g:0.9, splat:"rgba(107,74,51,.34)"},
+  manager:{c:["#f7f9fc","#e6ecf5","#9a7a4a"], n:1.5, w:7, h:5, g:0.3},           // 결재판 서류
+  gm     :{c:["#f2f5fa","#c9a227","#2b3140"], n:1.0, w:5, h:5, g:1.2},           // 골프공
+  drunk  :{c:["#8fc79a","#cfe6d4","#e0aa4b"], n:1.4, w:4, h:4, g:1.3,            // 소주병 파편
+           splat:"rgba(224,170,75,.26)", shake:5},
+  hrteam :{c:["#dfe4ec","#b9c0cc","#4a6fa5"], n:1.1, w:5, h:4, g:0.8},           // 클립보드
+  vendor :{c:["#8a6b47","#a5825a","#dfe6f2"], n:1.6, w:6, h:6, g:0.8},           // 상자가 터진다
+  chief  :{c:["#f2f5fa","#a8433f","#5b3a6e"], n:1.2, w:6, h:5, g:0.6},
+  audit  :{c:["#f7f9fc","#dfe6f2","#3a4254"], n:1.4, w:7, h:5, g:0.35},
+  ceo    :{c:["#f5c451","#f7f9fc","#22283a"], n:1.3, w:7, h:6, g:0.5},
+  bot    :{c:["#7fe0c0","#8f959e","#4a5058"], n:1.2, w:5, h:5, g:1.4},
+};
+const DEB_DEF={c:["#6f9fd8","#dfe6f2","#f2f5fa"], n:1, w:5, h:4, g:1};
+function burstBits(bn,away,big,kind){
+  const D=DEBRIS[kind]||DEB_DEF;
+  const bits=[]; const n=Math.round(bn*(D.n||1));
+  for(let k=0;k<n;k++){
     bits.push({a:away+(Math.random()-.5)*2.4, d:(big?70:34)*(.55+Math.random()*.95),
-               sp:Math.random()*10-5, w:3+Math.random()*4, h:2+Math.random()*4,
-               c:Math.random()<.3?"#6f9fd8":(Math.random()<.5?"#dfe6f2":"#f2f5fa")});
+               sp:Math.random()*10-5,
+               w:D.w*(.55+Math.random()*.75), h:D.h*(.55+Math.random()*.75),
+               g:D.g, c:D.c[(Math.random()*D.c.length)|0]});
   }
   return bits;
 }
@@ -4305,7 +4346,15 @@ function killFoe(g,f,i){
   if(g.bodies.length>48) g.bodies.splice(0, g.bodies.length-48);
   // 타격이 온 방향(플레이어 → 적)으로 치우쳐 흩어진다. 방향이 읽히면 충격이 커진다.
   const away=Math.atan2(f.y-g.P.y, f.x-g.P.x);
-  g.fx.push({type:"burst",x:f.x,y:f.y,t:0,boss:f.boss,r:f.r,bits:burstBits(f.boss?18:8,away,f.boss)});
+  g.fx.push({type:"burst",x:f.x,y:f.y,t:0,boss:f.boss,r:f.r,
+             bits:burstBits(f.boss?18:8,away,f.boss,f.kind)});
+  /* 쏟아진 것은 바닥에 남는다 — 커피도 소주도. 지나온 자리가 보여야
+     「내가 여기를 갈아버렸다」가 쌓인다 */
+  const D=DEBRIS[f.kind];
+  if(D&&D.splat&&g.stains.length<70)
+    g.stains.push({x:f.x+(Math.random()-.5)*10, y:f.y+(Math.random()-.5)*8,
+                   r:9+Math.random()*11, c:D.splat, t:0});
+  if(D&&D.shake) g.shake=Math.max(g.shake,D.shake);
   // 히트스톱 3~5프레임이 정석 — 그 사이 뇌가 타격을 등록한다
   g.hitstop=Math.max(g.hitstop, f.boss?.16:.05);
   kick(g, f.x-g.P.x, f.y-g.P.y, f.boss?9:2.2);
@@ -4575,6 +4624,7 @@ function step(g,dt){
   }
   // 이펙트
   for(let i=g.fx.length-1;i>=0;i--){ g.fx[i].t+=dt; if(g.fx[i].t>.55) g.fx.splice(i,1); }
+  for(let i=g.stains.length-1;i>=0;i--){ g.stains[i].t+=dt; if(g.stains[i].t>16) g.stains.splice(i,1); }
   for(let i=g.floats.length-1;i>=0;i--){ g.floats[i].t+=dt; if(g.floats[i].t>.45) g.floats.splice(i,1); }
 }
 
@@ -5161,6 +5211,15 @@ function drawWorld(g){
     gr.addColorStop(1,"rgba(217,169,78,0)");
     ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(X(p.x),Y(p.y),p.r,0,7); ctx.fill();
   }
+  /* 쏟아진 자국 — 커피와 소주. 지나온 자리가 남아야 「갈아버렸다」가 쌓인다 */
+  for(const st of g.stains){
+    const al=Math.min(1,st.t<0.3?st.t/0.3:1)*(st.t>14?Math.max(0,(16-st.t)/2):1);
+    if(al<=0) continue;
+    ctx.save(); ctx.globalAlpha=al;
+    ctx.fillStyle=st.c;
+    ctx.beginPath(); ctx.ellipse(X(st.x),Y(st.y),st.r,st.r*0.42,0,0,7); ctx.fill();
+    ctx.restore();
+  }
   drawMeddle(g,X,Y);              // 상사 반경 — 바닥에 깔아야 적에 안 가린다
   // 퇴근 시계 범위
   if(g.weapons.clock){
@@ -5266,7 +5325,8 @@ function drawWorld(g){
         const dist=b.d*(1-(1-p)*(1-p));  // 처음에 빠르게 튀고 감속
         ctx.save();
         ctx.translate(X(e.x)+Math.cos(b.a)*dist,
-                      Y(e.y)+Math.sin(b.a)*dist + p*p*14);   // 살짝 떨어진다
+                      Y(e.y)+Math.sin(b.a)*dist + p*p*14*(b.g===undefined?1:b.g));
+        /* 낙하가 종류마다 다르다 — 서류는 천천히 내려앉고 유리는 바로 떨어진다 */
         ctx.rotate(b.a+e.t*b.sp); ctx.globalAlpha=a;
         ctx.fillStyle=b.c;
         ctx.fillRect(-b.w/2,-b.h/2,b.w,b.h);
@@ -6271,7 +6331,8 @@ window.__finish=finish;                 // 결말 화면 검증용
 window.__offers=offers;                 // 선택지 검증용
 window.__applyPerks=applyPerks;         // 강화 반영 검증용
 window.__icon=icon;
-window.__gainXp=gainXp;             // 레벨업·승진 검증용                     // 아이콘 검증용
+window.__gainXp=gainXp;
+window.__killFoe=killFoe;            // 처치 연출 검증용             // 레벨업·승진 검증용                     // 아이콘 검증용
 window.__RND=RND;                       // 무작위 사건 검증용
 window.__api={WEAPONS,PERKS,E,ZONES,DAY,hourOf,clockStr,spawnRing,start,todoOf,zoneOf,gateReady,
              RANKS,rankOf,rankName,quotaOf,promoDue,stats,SAVE:()=>SAVE};
