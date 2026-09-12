@@ -3848,7 +3848,7 @@ function openGate(g){
   const hm=Math.hypot(P.hx,P.hy)||1;
   const a=Math.atan2(P.hy/hm,P.hx/hm)+(Math.random()-.5)*1.1;
   const R=560;
-  g.gate={x:P.x+Math.cos(a)*R, y:P.y+Math.sin(a)*R, r:52, t:0};
+  g.gate={x:P.x+Math.cos(a)*R, y:P.y+Math.sin(a)*R, r:72, t:0, p:0, said:0};
   flash(g, Z.door||"문이 열렸습니다 — 표시된 곳으로");
   S("doorOpen"); g.flash=Math.max(g.flash,.7);
   g.fx.push({type:"ring",x:g.gate.x,y:g.gate.y,t:0,r0:20,r1:200,c:"#57d98a"});
@@ -3894,8 +3894,86 @@ function stepGate(g,dt){
   const gd=Math.hypot(P.x-g.gate.x,P.y-g.gate.y);
   // 너무 멀어지면 문을 다시 놓는다. 끝없는 필드라 랜드마크가 없어서
   // 한 번 등지고 달리면 「출구 11746」 같은 게 뜬다(측정에서 실제로 나왔다).
-  if(gd>1500){ openGate(g); return; }
-  if(gd < g.gate.r) nextZone(g);
+  if(gd>1500 && !g.gate.p){ openGate(g); return; }
+  stepLeave(g,dt,gd);
+}
+
+/* ── 퇴근 ──────────────────────────────────────────────────────
+   원 안에 들어가면 끝이었다. 게임 제목이 「정시 퇴근」인데 정작
+   퇴근하는 순간에 아무 일도 안 일어났다.
+
+   직장인에게 퇴근이 좋은 건 문을 통과해서가 아니라 붙잡히지 않고
+   나왔기 때문이다. 진짜 공포는 6시 5분 전 「잠깐만」이다.
+   아침 출근부터 퇴근까지가 전쟁이면, 문은 통과하는 게 아니라
+   빠져나오는 것이어야 한다.
+
+   그래서 문에 서면 「퇴근 중」 게이지가 찬다. 그동안 주변이 전부
+   문으로 몰려온다 — 맞으면 게이지가 깎이고, 떠나면 처음부터다.
+   버텨내면 그때 나간다. 마지막 정문은 더 길고, 더 크게 열린다. */
+/* 재서 맞춘 값이다. 처음 2.3초/이탈 -0.55로 두니 같은 봇이 6구역을
+   14:55 → 22:15에 지났다 — 문 앞에서 버티는 게 너무 어려워 야근이 5시간
+   늘었다. 붙잡히는 맛은 남기되 나가는 건 나갈 수 있어야 한다. */
+const LEAVE_T = 1.9, LEAVE_LAST = 2.8, LEAVE_DRAIN = 0.26;
+function stepLeave(g,dt,gd){
+  const G=g.gate, last=(g.zone===ZONES.length-1);
+  const need=last?LEAVE_LAST:LEAVE_T;
+  if(gd < G.r){
+    if(!G.p){ G.p=0.0001;
+      flash(g, last?"정문 — 회전문을 밉니다":"퇴근 중 — 버티세요");
+      S("place"); }
+    G.p += dt/need;
+    /* 「잠깐만요」 — 문 앞에 서면 다들 이쪽으로 온다. 이게 없으면 너무 쉽다 */
+    for(const f of g.foes){ if(f.boss) continue;
+      const dx=G.x-f.x, dy=G.y-f.y, d=Math.hypot(dx,dy)||1;
+      f.x += dx/d*f.spd*dt*0.55; f.y += dy/d*f.spd*dt*0.55;
+    }
+    if(!G.said && G.p>0.25){ G.said=1; sayNear(g,G.x,G.y); }
+    /* 붙잡는 것들을 쏘면서 나간다. 가만히 맞고만 있으면 그건 카타르시스가
+       아니라 스트레스다 — 이 게임이 하지 말아야 할 바로 그것이다.
+       문에서 주기적으로 밀어내는 파동이 나가고, 손도 빨라진다.
+       「마음은 이미 나갔다」가 규칙이 되는 자리다. */
+    G.pulse=(G.pulse||0)-dt;
+    if(G.pulse<=0){
+      G.pulse=0.62;
+      const R=190+(last?70:0), DMG=52+g.lv*7;
+      let n=0;
+      for(const f of g.foes){
+        if(f.boss) continue;
+        const d=Math.hypot(f.x-G.x,f.y-G.y);
+        if(d>R) continue;
+        damage(g,f,DMG,G.x,G.y,26); n++;
+      }
+      g.fx.push({type:"ring",x:G.x,y:G.y,t:0,r0:26,r1:R,c:"#57d98a"});
+      if(n){ S("nuke"); kick(g,0,-1,5); }
+    }
+    if(G.p>=1){ leaveZone(g,last); return; }
+  }else if(G.p){
+    /* 자리를 뜨면 밀린다. 완전히 처음으로 돌리면 가혹해서 천천히 */
+    G.p -= dt*LEAVE_DRAIN;
+    if(G.p<=0){ G.p=0; G.said=0; flash(g,"퇴근이 밀렸습니다"); }
+  }
+}
+/* 문 앞에서 붙잡는 말 — 가장 가까운 놈이 한 마디 한다 */
+function sayNear(g,x,y){
+  let best=null, bd=1e9;
+  for(const f of g.foes){ const d=Math.hypot(f.x-x,f.y-y); if(d<bd){bd=d;best=f;} }
+  if(!best || bd>420) return;
+  const L=["잠깐만요!","김대리님 어디 가세요","이것만 보고 가시죠","5분이면 됩니다",
+           "벌써 가세요?","내일 아침에 필요한데요"];
+  best.say=L[(Math.random()*L.length)|0]; best.sayT=2.4; best.sayT0=2.4;
+}
+/* 빠져나왔다 — 화면이 밝아지고 뒤엣것들이 밀려난다 */
+function leaveZone(g,last){
+  const P=g.P;
+  g.flash=1; g.hitstop=Math.max(g.hitstop,last?0.30:0.18);
+  g.fx.push({type:"ring",x:g.gate.x,y:g.gate.y,t:0,r0:24,r1:last?520:320,c:"#57d98a"});
+  /* 붙잡으려던 것들이 뒤로 밀려난다 — 이게 퇴근의 쾌감이다 */
+  for(const f of g.foes){ if(f.boss) continue;
+    const dx=f.x-g.gate.x, dy=f.y-g.gate.y, d=Math.hypot(dx,dy)||1;
+    f.kbx=dx/d*(last?30:20); f.kby=dy/d*(last?30:20); f.kb=.22; f.slow=0.5;
+  }
+  kick(g,0,-1,last?18:12);
+  nextZone(g);
 }
 
 function stepBuilds(g,dt){
@@ -4048,7 +4126,9 @@ function stepPolicy(g,dt){
 function fireWeapons(g,dt){
   const P=g.P;
   // 커피머신 곁이면 손이 빨라지고, 상사 곁이면 느려진다
-  const haste = P.haste * (1-(g.baristaOn||0)) * (1 + MEDDLE_SLOW*(g.meddle||0));
+  /* 퇴근 중엔 손이 빨라진다 — 마음이 이미 나갔다 */
+  const leaving = (g.gate && g.gate.p>0) ? 0.42 : 1;
+  const haste = P.haste * (1-(g.baristaOn||0)) * (1 + MEDDLE_SLOW*(g.meddle||0)) * leaving;
   for(const id in g.weapons){
     const W=WEAPONS[id], L=W.lv(g.weapons[id]);
     if(id==="clock"||id==="ontime"||id==="overtime") continue;   // 지속형
@@ -4694,6 +4774,8 @@ function hurtPlayer(g,dmg,kx,ky,power){
   P.inv = .62 + (P.inv0||0);
   P.hurt = .30;
   kick(g,kx,ky,power); S("hurt");
+  /* 퇴근 중에 붙잡히면 그만큼 밀린다 — 「5분이면 됩니다」가 5분이 아니다 */
+  if(g.gate && g.gate.p>0){ g.gate.p=Math.max(0,g.gate.p-0.16); flash(g,"붙잡혔습니다"); }
   /* 야근엔 시간이 곧 체력이라, 경고가 없으면 갑자기 죽는다 */
   if(P.hp>0 && P.hp/P.maxhp<0.25 && (g.lowT||0)<=0){ g.lowT=2.2; S("lowhp"); }
   if(P.hp<=0 && !revive(g)){ finish(g,"lose"); return true; }
@@ -4784,6 +4866,33 @@ function baked(kind,size,action,fi){
   const n=FRAMES[action]||1;
   try{ fn(x,pad,pad,size,{a:action,p:n>1?fi/n:0,t:0}); }
   catch(e){ _cache.set(key,null); return null; }
+  /* ── 외곽선 ──────────────────────────────────────────────────
+     어두운 바닥 위에 어두운 정장이 서 있으면 형체가 배경에 먹힌다.
+     같은 장르 오픈소스 적 시트를 열어 보니 전부 굵은 외곽선을 두르고
+     있었다 — 32px에서 형체가 읽히게 하는 건 색이 아니라 테두리다.
+
+     구운 캔버스에 실루엣을 여덟 방향으로 밀어 깔고(destination-over)
+     그 위에 원본이 앉는다. 프레임마다 한 번만 굽고 캐시하니 매 프레임
+     비용은 0이다. */
+  try{
+    /* 두께 — 참조로 연 16px 시트는 외곽선이 폭의 12%였다(2px/16px).
+       처음 1.6배로 두니 3.6%밖에 안 돼서 있으나 마나였다.
+       크기에 비례시키되 상한을 둔다 — 보스에 너무 두꺼우면 뭉개진다. */
+    const w=c.width, h=c.height,
+          R=Math.max(2, Math.min(7, Math.round(size*0.055*BAKE)));
+    const o=document.createElement("canvas"); o.width=w; o.height=h;
+    const ox=o.getContext("2d");
+    for(let i=0;i<8;i++){
+      const a2=i/8*6.2832;
+      ox.drawImage(c, Math.cos(a2)*R, Math.sin(a2)*R);
+    }
+    ox.globalCompositeOperation="source-in";
+    ox.fillStyle="#0a0d13"; ox.fillRect(0,0,w,h);      // 바닥보다 어두운 테두리
+    x.setTransform(1,0,0,1,0,0);
+    x.globalCompositeOperation="destination-over";
+    x.drawImage(o,0,0);
+    x.globalCompositeOperation="source-over";
+  }catch(e){}
   c._pad=pad;
   _cache.set(key,c);
   return c;
@@ -4965,6 +5074,16 @@ function drawGate(g,X,Y){
   gr.addColorStop(0,"rgba(87,217,138,"+(0.5+pulse*0.3)+")");
   gr.addColorStop(1,"rgba(87,217,138,0)");
   ctx.fillStyle=gr; ctx.fillRect(x-12,y-66,24,66);
+  // 퇴근 게이지 — 문 위에 붙여야 「여기서 버티는 중」으로 읽힌다
+  if(g.gate.p>0){
+    const w=96, h=11, gy=y-92;
+    ctx.fillStyle="rgba(11,14,20,.85)"; ctx.fillRect(x-w/2-3,gy-3,w+6,h+6);
+    ctx.fillStyle="#1b2430"; ctx.fillRect(x-w/2,gy,w,h);
+    ctx.fillStyle="#57d98a"; ctx.fillRect(x-w/2,gy,w*Math.min(1,g.gate.p),h);
+    ctx.strokeStyle="#57d98a"; ctx.lineWidth=1.5; ctx.strokeRect(x-w/2,gy,w,h);
+    ctx.fillStyle="#57d98a"; ctx.font="700 12px 'Gothic A1',system-ui"; ctx.textAlign="center";
+    ctx.fillText("퇴근 중", x, gy-6);
+  }
   // 위로 흐르는 화살표
   ctx.fillStyle="rgba(87,217,138,"+(0.55+pulse*0.4)+")";
   const ay=y-84-((t*46)%26);
