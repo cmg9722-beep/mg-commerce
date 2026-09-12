@@ -38,6 +38,9 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-acti
 #lv b{color:var(--accent);font-size:17px}
 #kills{font-size:13px;color:var(--dim)}
 #kills b{color:var(--ink);font-size:17px}
+#zone{font-size:12px;color:var(--faint,#5b6577);white-space:nowrap}
+#zone b{color:var(--ink);font-size:14px;font-weight:800;margin-left:4px}
+#zone.open b{color:var(--good)}
 #todo{font-size:13px;color:var(--dim)}
 #todo b{color:var(--bad);font-size:17px}
 #todo.ok b{color:var(--good)}
@@ -76,14 +79,15 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-acti
   .title h1{font-size:36px !important;white-space:nowrap}
   #toast{top:134px}
   #hud{padding:8px 50px 8px 10px;gap:8px}
-  #kills,#lv,#todo{font-size:11px}
+  #kills,#lv,#todo,#zone{font-size:10px}
+  #zone b{font-size:12px}
   #kills b,#lv b,#todo b{font-size:15px}
   #daybar{min-width:40px}
 }
 /* 아주 좁은 화면 — 「처리」는 결과 화면에도 나오니 접고,
    오늘의 목표인 「미결」과 하루 진행 막대를 살린다. */
 @media (max-width:430px){
-  #kills{display:none}
+  #kills,#lv{display:none}
   #daybar{min-width:88px}
   .slot{width:36px;height:36px}
   .slot canvas{width:28px;height:28px}
@@ -212,6 +216,7 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     <div id="daybar"><i></i></div>
     <div id="lv">Lv <b class="num">1</b></div>
     <div id="kills">처리 <b class="num">0</b></div>
+    <div id="zone">1 / 9 <b>지하 주차장</b></div>
     <div id="todo" class="ok">미결 <b class="num">0</b></div>
   </div>
   <div id="slots"></div>
@@ -2277,14 +2282,32 @@ function clockStr(t){
   return String(hh).padStart(2,"0")+":"+String(Math.floor(mm/5)*5).padStart(2,"0");
 }
 
-/* ── 결재함 ─────────────────────────────────────────────────────
-   정시에 나가려면 오늘 몫을 끝내야 한다. 서류는 하루 내내 올라오고,
-   처리(처치) 한 건이 한 건을 지운다. 18:00에 미결이 남아 있으면 야근.
-   이 규칙이 있어야 「아무것도 안 하고 버티기」가 구조적으로 이길 수 없다.
-   적 속도로 막는 건 수치라 언제든 다시 깨지지만, 이건 규칙이라 안 깨진다. */
-const WORK_TOTAL = 460;          // 하루에 올라오는 총 결재 건수
-const workAt = u => (WORK_TOTAL/(DAY*0.9333))*(0.2 + u*u*2.2);  // 오후로 갈수록 가팔라진다
-const todoOf = g => Math.max(0, Math.floor(g.due) - g.kills);
+/* ── 구역과 결재함 ──────────────────────────────────────────────
+   앞선 판에서 미결은 장식이었다. 하루치 유입이 460건인데 실제로는
+   1,000~6,000건을 처리하니 단 한 번도 0을 넘지 않았다. 화면에 목표가
+   없다는 지적도 같은 뿌리다 — 제자리에서 버티기만 하니까.
+
+   구역으로 끊는다. 아홉 개 공간을 순서대로 지나고, 구역마다 할당량이
+   있다. 그 구역 몫을 끝내야 문이 열리고, 문을 지나야 다음으로 간다.
+   시계는 그동안에도 계속 간다 — 18:00까지 정문을 못 나가면 야근.
+
+   방어가 아니라 돌파다. 그래서 「무엇을 방어하는지」라는 질문이 없어진다. */
+const ZONES=[
+  {h:9,  name:"지하 주차장",     quota:25,  kinds:["rookie","intern"],                    rate:1.30, n:2},
+  {h:10, name:"출입구 · 로비",   quota:40,  kinds:["intern","staff","rookie"],            rate:1.10, n:3},
+  {h:11, name:"사무실",          quota:60,  kinds:["staff","senior","hrteam"],            rate:0.95, n:4},
+  {h:12, name:"구내식당",        quota:85,  kinds:["drunk","vendor","staff"],             rate:0.82, n:5},
+  {h:13, name:"소회의실 복도",   quota:110, kinds:["senior","manager","hrteam","rookie"], rate:0.70, n:7},
+  {h:14, name:"대회의실",        quota:140, kinds:["manager","gm","staff"],               rate:0.58, n:9,  boss:"chief"},
+  {h:15, name:"탕비실 · 복사실", quota:170, kinds:["drunk","senior","vendor","rookie"],   rate:0.48, n:11},
+  {h:16, name:"임원층 복도",     quota:205, kinds:["manager","gm","hrteam","drunk"],      rate:0.40, n:13, boss:"audit"},
+  {h:17, name:"대표이사실",      quota:240, kinds:["gm","manager","drunk","rookie"],      rate:0.32, n:16, boss:"ceo"},
+];
+const zoneOf = g => ZONES[Math.min(g.zone,ZONES.length-1)];
+/* 이 구역에 남은 미결 */
+const todoOf = g => Math.max(0, zoneOf(g).quota - (g.kills-g.zoneK0));
+/* 문이 열릴 조건 — 몫을 끝내고, 보스가 남아 있으면 그것도 끝내야 한다 */
+const gateReady = g => todoOf(g)<=0 && !g.foes.some(f=>f.boss);
 
 /* ── 무기 ─────────────────────────────────────────────────────── */
 const WEAPONS = {
@@ -2504,8 +2527,9 @@ function newGame(grudge){
     cds:{}, foes:[], shots:[], orbs:[], pools:[], fx:[], floats:[], bodies:[], drops:[],
     shocks:[], vortex:[], cards:[], builds:[], allies:[],
     blinkCd:0, annualCd:0, annualT:0,
-    spawnAcc:0, bossIdx:0, shake:0, shakeX:0, shakeY:0, hitstop:0,
-    due:0, ot:false, otT:0, warned:false,
+    spawnAcc:0, bossOut:false, shake:0, shakeX:0, shakeY:0, hitstop:0,
+    zone:0, zoneK0:0, zoneT:0, gate:null, cleared:0,
+    ot:false, otT:0, warned:false,
     combo:0, comboT:0, comboBest:0, comboPop:0, flash:0,
     toast:"", toastT:0, paused:false, best:0,
   };
@@ -2566,8 +2590,7 @@ function spawnAt(g,kind,x,y){
    돌 때마다 그동안 벌어 둔 거리를 잃는다. 그게 대가다. */
 function closingBias(g){
   if(g.ot) return 0.82;                        // 야근은 사방이 막힌다
-  const h=hourOf(g.t);
-  return h<16 ? 0 : clamp((h-16)/2,0,1)*0.72;
+  return clamp((g.zone-4)/4,0,1)*0.72;         // 뒤쪽 구역일수록 앞을 막는다
 }
 function spawnRing(g,kind,n){
   const P=g.P, R=Math.max(VW,VH)/ZOOM*0.62+90;
@@ -2583,7 +2606,7 @@ function spawnRing(g,kind,n){
   }
 }
 function doSpawns(g,dt){
-  const h=hourOf(g.t), s=schedFor(h);
+  const s=zoneOf(g);                 // 구성·밀도는 시간이 아니라 구역이 정한다
   g.spawnAcc+=dt;
   const CAP=420;                       // 폭주 방지 상한 (성능·가독성 둘 다)
   // 야근은 시간이 갈수록 조여 온다 — 미결을 빨리 비우는 것 말고 답이 없게
@@ -2609,13 +2632,6 @@ function doSpawns(g,dt){
         ? hd + (Math.random()-.5)*1.5 : Math.random()*Math.PI*2;
       f.x=P.x+Math.cos(a)*R; f.y=P.y+Math.sin(a)*R; f.kb=0; f.tauntT=0;
     }
-  }
-  while(g.bossIdx<BOSSES.length && h>=BOSSES[g.bossIdx].h){
-    const b=BOSSES[g.bossIdx++];
-    spawnRing(g,b.kind,1);
-    flash(g,b.msg); S("bossIn");
-    kick(g,0,-1,16); g.hitstop=Math.max(g.hitstop,.22);   // 등장 순간 화면이 멎는다
-    g.flash=Math.max(g.flash,.9);
   }
 }
 
@@ -2676,6 +2692,51 @@ function nearest(g,x,y,maxd){
 /* ── 설치기 ────────────────────────────────────────────────────
    깔아둔 집기가 알아서 일한다. 파티션은 맞으면 부서지고,
    나머지는 시간이 다 되면 걷힌다. */
+/* ── 문 ────────────────────────────────────────────────────────
+   구역 몫을 끝내면 출구가 열린다. 화면에 「저기로 가면 된다」가
+   생기는 순간이고, 이게 없으면 하루가 한 덩어리로 흘러간다. */
+function openGate(g){
+  const P=g.P, Z=zoneOf(g);
+  const hm=Math.hypot(P.hx,P.hy)||1;
+  const a=Math.atan2(P.hy/hm,P.hx/hm)+(Math.random()-.5)*1.1;
+  const R=560;
+  g.gate={x:P.x+Math.cos(a)*R, y:P.y+Math.sin(a)*R, r:52, t:0};
+  flash(g, Z.door||"문이 열렸습니다 — 표시된 곳으로");
+  S("win"); g.flash=Math.max(g.flash,.7);
+  g.fx.push({type:"ring",x:g.gate.x,y:g.gate.y,t:0,r0:20,r1:200,c:"#57d98a"});
+}
+function nextZone(g){
+  const P=g.P;
+  g.zone++; g.cleared++;
+  g.gate=null; g.zoneK0=g.kills; g.zoneT=0;
+  if(g.zone>=ZONES.length){                    // 정문을 나왔다
+    finish(g, g.ot?"late":"win"); return true;
+  }
+  // 구역 통과 보상 — 긴장 뒤에 한숨 한 번. 이 리듬이 있어야 하루가 읽힌다
+  P.hp=Math.min(P.maxhp, P.hp+P.maxhp*0.15);
+  P.inv=Math.max(P.inv,1.6);
+  for(let i=g.foes.length-1;i>=0;i--) if(!g.foes[i].boss) g.foes.splice(i,1);
+  g.bossOut=false;
+  const Z=zoneOf(g);
+  flash(g, Z.name+" — 미결 "+Z.quota+"건");
+  S("levelup"); g.flash=Math.max(g.flash,.8); kick(g,0,-1,10);
+  g.fx.push({type:"ring",x:P.x,y:P.y,t:0,r0:16,r1:240,c:"#f5c451"});
+  return false;
+}
+function stepGate(g,dt){
+  const P=g.P, Z=zoneOf(g);
+  // 구역 보스는 들어오자마자 한 번만 부른다
+  if(Z.boss && !g.bossOut){
+    g.bossOut=true;
+    spawnRing(g,Z.boss,1);
+    flash(g, Z.name+" — "+E[Z.boss].name+" 등장"); S("bossIn");
+    kick(g,0,-1,16); g.hitstop=Math.max(g.hitstop,.22); g.flash=Math.max(g.flash,.9);
+  }
+  if(!g.gate){ if(gateReady(g)) openGate(g); return; }
+  g.gate.t+=dt;
+  if(Math.hypot(P.x-g.gate.x,P.y-g.gate.y) < g.gate.r) nextZone(g);
+}
+
 function stepBuilds(g,dt){
   const P=g.P;
   for(let i=g.builds.length-1;i>=0;i--){
@@ -3097,20 +3158,20 @@ function killFoe(g,f,i){
 function step(g,dt){
   const P=g.P;
   g.t+=dt;
+  g.zoneT+=dt;
+  stepGate(g,dt);
   if(!g.ot){
-    g.due += workAt(Math.min(1,g.t/DAY))*dt*(P.work||1);     // 근로계약서 — 미결 유입 감소
-    if(!g.warned && hourOf(g.t)>=17 && todoOf(g)>0){
-      g.warned=true; flash(g,"17:00 — 미결 "+todoOf(g)+"건. 서두르세요"); S("deny");
+    if(!g.warned && hourOf(g.t)>=17){
+      g.warned=true;
+      flash(g,"17:00 — "+(ZONES.length-g.zone)+"개 구역 남았습니다"); S("deny");
     }
     if(g.t>=DAY){
-      if(todoOf(g)<=0){ finish(g,"win"); return; }
       g.ot=true; g.otT=0; g.warned=true;
-      flash(g,"18:00 — 미결 "+todoOf(g)+"건. 야근입니다");
+      flash(g,"18:00 — 아직 "+zoneOf(g).name+"입니다. 야근입니다");
       S("bossIn"); g.flash=Math.max(g.flash,.9); kick(g,0,-1,14);
     }
   }else{
     g.otT+=dt;
-    if(todoOf(g)<=0){ finish(g,"late"); return; }
     // 야근 피로 — 버티기만 해선 끝나지 않는다. 시간이 그대로 체력이다.
     // 이게 없으면 계속 도망치는 플레이가 야근에서 영영 안 끝난다(무한 루프).
     P.hp -= (0.4 + g.otT*0.02)*dt*(P.fatigue||1);           // 노동조합 — 야근 피로 감소
@@ -3481,6 +3542,58 @@ function drawFoe(g,f,sx,sy){
 
 /* ── 설치기·동료 그리기 ───────────────────────────────────────
    집기는 바닥에 붙어 있고, 동료는 사람이라 그림자를 받는다. */
+function drawGate(g,X,Y){
+  if(!g.gate) return;
+  const x=X(g.gate.x), y=Y(g.gate.y), t=g.gate.t;
+  const pulse=0.5+0.5*Math.sin(t*3.4);
+  ctx.save();
+  // 바닥 표시
+  ctx.fillStyle="rgba(87,217,138,"+(0.10+pulse*0.07)+")";
+  ctx.beginPath(); ctx.ellipse(x,y+6,58,24,0,0,7); ctx.fill();
+  ctx.strokeStyle="rgba(87,217,138,"+(0.45+pulse*0.35)+")"; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.ellipse(x,y+6,58,24,0,0,7); ctx.stroke();
+  // 문틀
+  ctx.fillStyle="rgba(0,0,0,.45)"; ctx.fillRect(x-34,y-66,68,72);
+  ctx.fillStyle="#1d2835"; ctx.fillRect(x-32,y-68,64,70);
+  ctx.strokeStyle="#57d98a"; ctx.lineWidth=3; ctx.strokeRect(x-32,y-68,64,70);
+  // 열린 틈에서 새어나오는 빛
+  const gr=ctx.createLinearGradient(x,y-68,x,y+2);
+  gr.addColorStop(0,"rgba(87,217,138,"+(0.5+pulse*0.3)+")");
+  gr.addColorStop(1,"rgba(87,217,138,0)");
+  ctx.fillStyle=gr; ctx.fillRect(x-12,y-66,24,66);
+  // 위로 흐르는 화살표
+  ctx.fillStyle="rgba(87,217,138,"+(0.55+pulse*0.4)+")";
+  const ay=y-84-((t*46)%26);
+  ctx.beginPath(); ctx.moveTo(x,ay-13); ctx.lineTo(x+11,ay+4); ctx.lineTo(x-11,ay+4);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+/* 문이 화면 밖이면 가장자리에 방향 표시 — 안 그러면 어디로 갈지 모른다 */
+function drawGateArrow(g){
+  if(!g.gate) return;
+  // 화면 좌표계에서 직접 계산한다 — drawWorld의 X/Y는 여기서 못 쓴다
+  const x=(g.gate.x-g.P.x)*ZOOM+VW/2, y=(g.gate.y-g.P.y)*ZOOM+VH/2;
+  const m=52, W=VW, H=VH;
+  if(x>m && x<W-m && y>m && y<H-m) return;
+  const cx=W/2, cy=H/2;
+  let dx=x-cx, dy=y-cy; const d=Math.hypot(dx,dy)||1; dx/=d; dy/=d;
+  const rad=Math.min(W,H)/2-58;
+  const ax=cx+dx*rad, ay=cy+dy*rad;
+  const dist=Math.round(Math.hypot(g.gate.x-g.P.x,g.gate.y-g.P.y));
+  ctx.save();
+  ctx.translate(ax,ay); ctx.rotate(Math.atan2(dy,dx));
+  ctx.fillStyle="rgba(87,217,138,.92)";
+  ctx.beginPath(); ctx.moveTo(20,0); ctx.lineTo(-12,13); ctx.lineTo(-12,-13);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.fillStyle="rgba(87,217,138,.92)";
+  ctx.font="700 13px 'Gothic A1',system-ui,sans-serif";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("출구 "+dist, ax-dx*26, ay-dy*26);
+  ctx.restore();
+}
+
 function drawBuilds(g,X,Y){
   for(const b of g.builds){
     const x=X(b.x), y=Y(b.y), L=b.L;
@@ -3620,6 +3733,7 @@ function draw(g){
   try{ drawWorld(g); } finally { ctx.setTransform(DPR,0,0,DPR,0,0); }
   drawBossBar(g);
   drawCombo(g);
+  drawGateArrow(g);           // 화면 좌표계 — 배율 변환 밖
   drawStick();
 }
 /* 콤보 — 10단위마다 화면이 번쩍인다 */
@@ -3746,6 +3860,7 @@ function drawWorld(g){
     ctx.restore();
   }
 
+  drawGate(g,X,Y);            // 출구 — 화면에 「저기로」가 있어야 한다
   drawBuilds(g,X,Y);          // 집기는 사람 아래에 깔린다
 
   // 적 (아래쪽이 앞)
@@ -3956,16 +4071,16 @@ function syncSlots(g){
     el.appendChild(d);
   }
 }
-/* 보스가 오는 시각을 시간 막대에 눈금으로 — 언제 큰 게 오는지 보여야 한다 */
+/* 구역 경계를 시간 막대에 눈금으로 — 하루가 몇 토막인지 보여야 한다 */
 function markBossTicks(){
   const bar=$("#daybar"); if(!bar) return;
   bar.querySelectorAll("u").forEach(u=>u.remove());
-  BOSSES.forEach(b=>{
+  ZONES.forEach(b=>{
     const p=((b.h-H0)/(H1-H0))*100;
     if(p<0||p>100) return;
     const u=document.createElement("u");
     u.style.left=p.toFixed(1)+"%";
-    u.title=b.msg;
+    u.title=b.name;
     bar.appendChild(u);
   });
 }
@@ -3975,9 +4090,14 @@ function syncHud(g){
     +(g.ot?"야근":hourOf(g.t)>=17?"곧 퇴근":"근무 중")+"</small>";
   $("#daybar i").style.width=Math.min(100,g.t/DAY*100).toFixed(1)+"%";
   $("#daybar").classList.toggle("ot",g.ot);
-  const td=todoOf(g), te=$("#todo");
+  const td=todoOf(g), te=$("#todo"), Z=zoneOf(g);
   te.querySelector("b").textContent=td;
   te.classList.toggle("ok",td<=0);
+  const zn=$("#zone");
+  if(zn){
+    zn.innerHTML=(g.zone+1)+" / "+ZONES.length+" <b>"+esc(Z.name)+"</b>";
+    zn.classList.toggle("open", !!g.gate);
+  }
   $("#lv b").textContent=g.lv;
   $("#kills b").textContent=g.kills;
   $("#hpn").textContent=Math.max(0,Math.ceil(P.hp))+" / "+P.maxhp;
@@ -4323,7 +4443,7 @@ window.__g=()=>G;                       // 테스트 훅
 window.__finish=finish;                 // 결말 화면 검증용
 window.__offers=offers;                 // 선택지 검증용
 window.__applyPerks=applyPerks;         // 강화 반영 검증용
-window.__api={WEAPONS,PERKS,E,SCHED,BOSSES,DAY,hourOf,clockStr,spawnRing,start,todoOf,WORK_TOTAL};
+window.__api={WEAPONS,PERKS,E,ZONES,DAY,hourOf,clockStr,spawnRing,start,todoOf,zoneOf,gateReady};
 renderStart();
 
 </script>
