@@ -3551,10 +3551,12 @@ const WEAPONS = {
     desc:"주변 적을 느리게 만든다",
     lv:l=>({r:96+l*14, slow:.62-l*.05}),
     up:l=>"범위 +14, 감속 강화" },
+  /* 사직서 — 「던지면 폭탄 터지듯이」. 화면 전체를 조용히 쓸던 패시브를
+     실제로 던지는 것으로 바꿨다. 날아가서 터지는 게 보여야 시원하다. */
   quit:{ id:"quit", name:"사직서", max:5,
-    desc:"화면 전체를 쓸어버린다",
-    lv:l=>({cd:25-l*2.8, dmg:180+l*120}),
-    up:l=>"피해 +120, 재사용 −2.8초" },
+    desc:"책상에 던진다. 닿는 곳에서 터진다",
+    lv:l=>({cd:12-l*1.3, dmg:150+l*95, r:150+l*26, n:1+Math.floor(l/3)}),
+    up:l=>l%3===0?"한 번에 +1장":"피해 +95, 폭발 반경 +26" },
   meeting:{ id:"meeting", name:"회의 소집", max:6,
     desc:"한 점으로 끌어모은다. 모인 것은 함께 닳는다",
     lv:l=>({cd:6.2-l*.35, r:120+l*16, pull:130+l*18, dps:10+l*5, life:2.6}),
@@ -3794,8 +3796,18 @@ const E = {
   chief  :{name:"본부장", hp:1500,spd:46, dmg:28, xp:70, r:26, boss:true, meddle:190,
             atk:"charge", atkCd:4.2},
   rookie :{name:"신입", hp:16,  spd:182,dmg:5,  xp:1, r:13},
-  hrteam :{name:"인사팀",hp:120, spd:58, dmg:12, xp:4, r:17, eatXp:true},
-  vendor :{name:"협력사",hp:190, spd:118,dmg:13, xp:5, r:17},
+  /* 원거리 — 지금까지 모든 적이 붙어서 때렸다. 붙기만 하면 위협이
+     「거리」 하나로 단순해진다. 던지는 놈이 섞여야 서 있는 자리가 문제가 된다.
+     인사팀은 클립보드를, 협력사는 샘플 상자를 던진다.
+
+   세기는 재서 맞췄다. 처음 인사팀·사원 둘에 주고 피해 9/6·간격 3.4/5.2로
+   뒀더니 사무실 구역에서 60명 중 52명이 쏘고, 피해의 75%가 날아온 것에서
+   나왔다 — 같은 봇이 5~6구역에서 3구역으로 내려앉았다.
+   사원은 가장 흔한 적이라 빼고, 남은 둘도 피해를 절반으로, 간격을 두 배로. */
+  hrteam :{name:"인사팀",hp:120, spd:58, dmg:12, xp:4, r:17, eatXp:true,
+            shoot:{cd:6.0, spd:205, dmg:5,  r:400, keep:250, c:"#dfe4ec"}},
+  vendor :{name:"협력사",hp:190, spd:118,dmg:13, xp:5, r:17,
+            shoot:{cd:6.8, spd:195, dmg:5, r:380, keep:230, c:"#a5825a"}},
   ceo    :{name:"대표이사",hp:9000,spd:32,dmg:44,xp:400,r:36, boss:true, meddle:240,
             atk:"shock", atkCd:2.8, summon:"manager", summonN:9, summonCd:6},
   /* ── 사무집기 ─────────────────────────────────────────────────
@@ -3860,7 +3872,7 @@ function newGame(grudge){
     lv:1+M.startLv, xp:0, next:6, kills:0, dmgDealt:0, pendingLv:M.startLv,
     weapons:{ stamp:1+M.stampLv }, perks:{},
     cds:{}, foes:[], shots:[], orbs:[], pools:[], fx:[], floats:[], bodies:[], drops:[],
-    shocks:[], vortex:[], cards:[], builds:[], allies:[], stains:[],
+    shocks:[], vortex:[], cards:[], builds:[], allies:[], stains:[], paper:[], eshots:[],
     blinkCd:0, annualCd:0, annualT:0,
     spawnAcc:0, bossOut:false, shake:0, shakeX:0, shakeY:0, hitstop:0,
     zone:0, zoneK0:0, zoneT:0, zoneBonus:0, gate:null, cleared:0, sayCd:2.5,
@@ -4152,6 +4164,7 @@ function nextZone(g){
   g.podX=0; g.podOn=false; g.podSet=0; g.deskSet=0; g.prnX=0; g.prnDone=0; g.prnSet=0;
   g.quietSaid=0; g.quietK=1;
   g.clients.length=0; g.cliCd=9; g.stains.length=0;
+  g.eshots.length=0; g.paper.length=0;
   g.propCd=0;
   g.barOn=0; g.barP=0;
   rollEvent(g);           // 오늘의 사건 — 매 판을 다르게 만드는 주사위
@@ -4607,12 +4620,23 @@ function fireWeapons(g,dt){
       g.cds[id]=L.cd; continue;
     }
     if(id==="quit"){
-      let n=0;
-      for(const f of g.foes){ damage(g,f,L.dmg,P.x,P.y,26); n++; }
-      g.fx.push({type:"quit",t:0});
-      g.shake=Math.max(g.shake,16); g.hitstop=Math.max(g.hitstop,.10);
-      S("nuke"); flash(g,"사직서 — "+n+"명 정리");
-      g.cds[id]=L.cd; continue;
+      /* 가장 몰려 있는 쪽으로 던진다. 없으면 가는 방향으로 */
+      for(let k=0;k<L.n;k++){
+        let tx=P.x, ty=P.y, best=-1;
+        for(const f of g.foes){
+          if(E[f.kind].prop) continue;
+          let c=0;
+          for(const o of g.foes){ if(E[o.kind].prop) continue;
+            if(Math.hypot(o.x-f.x,o.y-f.y)<L.r) c++; }
+          if(c>best){ best=c; tx=f.x; ty=f.y; }
+        }
+        if(best<0){ const hm=Math.hypot(P.hx,P.hy)||1;
+                    tx=P.x+P.hx/hm*320; ty=P.y+P.hy/hm*320; }
+        tx+=(Math.random()-.5)*90; ty+=(Math.random()-.5)*90;
+        g.paper.push({x:P.x, y:P.y, sx:P.x, sy:P.y, tx, ty, t:0,
+                      dur:0.44+Math.random()*0.10, dmg:L.dmg, r:L.r});
+      }
+      S("place"); g.cds[id]=L.cd; continue;
     }
   }
 }
@@ -4645,7 +4669,39 @@ const DROPS={
   heal  :{id:"heal",  name:"믹스커피", color:"#57d98a"},
   magnet:{id:"magnet",name:"텀블러",   color:"#9ec8ff"},
   bomb  :{id:"bomb",  name:"사직서",   color:"#f5c451"},
+  /* ── 인수인계 상자 ─────────────────────────────────────────────
+     참조로 연 게임들엔 전부 보물상자가 있었다. 보스를 잡으면 떨어지고,
+     열면 무기 여러 개가 한꺼번에 오른다 — 이 장르에서 가장 큰 한 방이다.
+     우리 것으로는 「인수인계 상자」다. 누군가 나간 자리에서 넘어온 일감이
+     한꺼번에 쏟아지는데, 그게 곧 내 무기가 된다. */
+  chest :{id:"chest", name:"인수인계 상자", color:"#c9a227"},
 };
+/* 상자를 연다 — 가진 무기 중 둘에서 넷이 한꺼번에 오른다.
+   빈 칸이 있으면 새 무기가 들어오고, 다 찼으면 있는 걸 올린다.
+   한 번에 여러 개가 오르는 그 순간이 이 장르의 가장 큰 한 방이다. */
+function openChest(g){
+  const n=2+((Math.random()*3)|0);                 // 2~4개
+  const got={};                                    // 같은 걸 두 번 올리면 최종만 적는다
+  for(let k=0;k<n;k++){
+    const own=Object.keys(g.weapons).filter(id=>WEAPONS[id] && g.weapons[id]<WEAPONS[id].max);
+    const free=Math.max(0,6-Object.keys(g.weapons).length);
+    let pick=null;
+    if(free>0 && Math.random()<0.5){
+      const pool=Object.keys(WEAPONS).filter(id=>!g.weapons[id] && !WEAPONS[id].evo && unlocked(id));
+      if(pool.length) pick=pool[(Math.random()*pool.length)|0];
+    }
+    if(!pick && own.length) pick=own[(Math.random()*own.length)|0];
+    if(!pick) break;
+    g.weapons[pick]=(g.weapons[pick]||0)+1;
+    got[pick]=g.weapons[pick];
+  }
+  const list=Object.keys(got).map(id=>WEAPONS[id].name+" "+got[id]);
+  syncSlots(g);
+  g.flash=1; g.hitstop=Math.max(g.hitstop,.22); kick(g,0,-1,14);
+  g.fx.push({type:"ring",x:g.P.x,y:g.P.y,t:0,r0:20,r1:300,c:"#c9a227"});
+  S("levelup");
+  flash(g, list.length?("인수인계 상자 — "+list.join(" · ")):"인수인계 상자 — 더 받을 게 없습니다");
+}
 /* 집기를 부수면 나온다 — 경험치 구슬이 쏟아지거나, 가끔 아이템 */
 function dropAt(g,x,y){
   const r=Math.random();
@@ -4662,7 +4718,7 @@ function dropAt(g,x,y){
 }
 function dropFrom(g,f){
   let kind=null;
-  if(f.boss) kind = Math.random()<.5 ? "bomb" : "heal";
+  if(f.boss) kind = "chest";                 // 보스는 반드시 상자를 남긴다
   else {
     const r=Math.random();
     if(r<0.012) kind="heal";
@@ -4679,6 +4735,8 @@ function takeDrop(g,d){
   } else if(d.kind==="magnet"){
     g.orbs.forEach(o=>{ o.x=P.x+(o.x-P.x)*0.06; o.y=P.y+(o.y-P.y)*0.06; });
     flash(g,"텀블러 — 경험치 전부 수집"); S("coin");
+  } else if(d.kind==="chest"){
+    openChest(g);
   } else {
     let n=0; for(const f of g.foes){ damage(g,f,240,P.x,P.y,24); n++; }
     g.fx.push({type:"quit",t:0});
@@ -4897,6 +4955,26 @@ function step(g,dt){
       continue;
     }
     if(E[f.kind].prop) continue;                      // 집기 — 가만히 서서 맞기만 한다
+    /* 던지는 놈 — 사거리 안이면 멈춰서 던지고, 너무 가까우면 물러난다 */
+    const SH=E[f.kind].shoot;
+    /* hold는 회의에 묶일 때 비로소 생기는 값이라 undefined일 수 있다.
+       undefined<=0 은 false여서 조건이 통째로 안 걸렸다 */
+    if(SH && !(f.hold>0) && !(f.kb>0) && !f.mv){
+      f.shT=(f.shT===undefined?Math.random()*SH.cd:f.shT)-dt;
+      if(d<SH.r && f.shT<=0){
+        f.shT=SH.cd*(0.75+Math.random()*0.5);
+        const a=Math.atan2(dy,dx);
+        g.eshots.push({x:f.x, y:f.y, vx:Math.cos(a)*SH.spd, vy:Math.sin(a)*SH.spd,
+                       dmg:SH.dmg*(g.ot?1.2:1), t:0, c:SH.c, sp:Math.random()*8-4});
+        f.walk+=0.3;
+      }
+      if(d<SH.keep){                                  // 붙으면 물러난다
+        f.x-=dx/d*f.spd*f.slow*dt*0.85; f.y-=dy/d*f.spd*f.slow*dt*0.85;
+        f.face=dx<0?1:-1;
+        continue;
+      }
+      if(d<SH.r*0.92){ f.walk+=dt*0.5; continue; }    // 사거리 안이면 멈춰서 던진다
+    }
     if(E[f.kind].robot){                              // 로봇 — 나를 무시하고 제 일을 한다
       if(f.hold>0){ f.hold-=dt; }
       else{
@@ -5025,6 +5103,38 @@ function step(g,dt){
     }
   }
   // 법인카드 — 날아갔다 돌아온다
+  /* 적이 던진 것 — 맞으면 아프다. 벽은 없으니 수명으로 지운다 */
+  for(let i=g.eshots.length-1;i>=0;i--){
+    const e2=g.eshots[i]; e2.t+=dt;
+    e2.x+=e2.vx*dt; e2.y+=e2.vy*dt;
+    if(e2.t>2.6){ g.eshots.splice(i,1); continue; }
+    if(Math.hypot(e2.x-g.P.x, e2.y-g.P.y) < g.P.r+9){
+      g.eshots.splice(i,1);
+      if(g.P.inv<=0 && hurtPlayer(g,e2.dmg,g.P.x-e2.x,g.P.y-e2.y,6)) return;
+      continue;
+    }
+  }
+  /* 던진 사직서 — 포물선으로 날아가 닿는 곳에서 터진다 */
+  for(let i=g.paper.length-1;i>=0;i--){
+    const q=g.paper[i]; q.t+=dt;
+    const u=Math.min(1,q.t/q.dur);
+    q.x=q.sx+(q.tx-q.sx)*u; q.y=q.sy+(q.ty-q.sy)*u;
+    if(u>=1){
+      g.paper.splice(i,1);
+      let n=0;
+      for(const f of g.foes){
+        if(Math.hypot(f.x-q.x,f.y-q.y)>q.r) continue;
+        damage(g,f,q.dmg,q.x,q.y,30); n++;
+      }
+      g.fx.push({type:"ring",x:q.x,y:q.y,t:0,r0:18,r1:q.r*1.6,c:"#f5c451"});
+      g.fx.push({type:"burst",x:q.x,y:q.y,t:0,r:q.r*0.4,
+                 bits:burstBits(16,Math.random()*6.283,true,"manager")});
+      g.shake=Math.max(g.shake,9); g.hitstop=Math.max(g.hitstop,.06);
+      g.flash=Math.max(g.flash,.45);
+      S("nuke");
+      if(n) flash(g,"사직서 — "+n+"명 정리");
+    }
+  }
   for(let i=g.cards.length-1;i>=0;i--){
     const c=g.cards[i]; c.t+=dt;
     const T=1.05;
@@ -5725,7 +5835,13 @@ function drawWorld(g){
     ctx.fillStyle="#0b0e14"; ctx.strokeStyle=C.color; ctx.lineWidth=2.5;
     ctx.beginPath(); ctx.arc(0,0,10,0,7); ctx.fill(); ctx.stroke();
     ctx.fillStyle=C.color;
-    if(d.kind==="heal"){ ctx.fillRect(-5,-1.6,10,3.2); ctx.fillRect(-1.6,-5,3.2,10); }
+    if(d.kind==="chest"){                    // 상자 — 크고 금색이라 못 지나친다
+      ctx.fillStyle="#8a6b47"; ctx.fillRect(-9,-6,18,12);
+      ctx.fillStyle="#c9a227"; ctx.fillRect(-9,-6,18,3.4);
+      ctx.fillStyle="#c9a227"; ctx.fillRect(-2,-6,4,12);
+      ctx.fillStyle="#f5c451"; ctx.fillRect(-1,-1,2,3);
+    }
+    else if(d.kind==="heal"){ ctx.fillRect(-5,-1.6,10,3.2); ctx.fillRect(-1.6,-5,3.2,10); }
     else if(d.kind==="magnet"){ ctx.beginPath(); ctx.arc(0,0,4.5,0,7); ctx.fill(); }
     else { ctx.fillRect(-4,-5,8,10); ctx.fillStyle="#0b0e14";
            ctx.fillRect(-2.5,-3,5,1.4); ctx.fillRect(-2.5,-.5,5,1.4); ctx.fillRect(-2.5,2,3,1.4); }
@@ -5778,6 +5894,30 @@ function drawWorld(g){
   drawClients(g,X,Y);
   drawPlayer(g,X(P.x),Y(P.y));
 
+  /* 적이 던진 것 — 흰 종이가 돌면서 날아온다. 피할 수 있어야 한다 */
+  for(const e2 of g.eshots){
+    ctx.save(); ctx.translate(X(e2.x),Y(e2.y)); ctx.rotate(e2.t*e2.sp);
+    ctx.fillStyle="rgba(0,0,0,.35)"; ctx.fillRect(-6,-8,13,17);
+    ctx.fillStyle=e2.c; ctx.fillRect(-7,-9,13,17);
+    ctx.fillStyle="rgba(0,0,0,.22)"; ctx.fillRect(-7,-9,13,4);
+    ctx.restore();
+  }
+  /* 던진 사직서 — 떠서 날아가는 게 보여야 한다. 그림자로 높이를 준다 */
+  for(const q of g.paper){
+    const u=Math.min(1,q.t/q.dur), h=Math.sin(u*Math.PI)*46;
+    const sx=X(q.x), sy=Y(q.y);
+    ctx.fillStyle="rgba(0,0,0,.28)";
+    ctx.beginPath(); ctx.ellipse(sx,sy,9*(1-h/90),4*(1-h/90),0,0,7); ctx.fill();
+    ctx.save(); ctx.translate(sx,sy-h); ctx.rotate(q.t*13);
+    ctx.fillStyle="#f7f9fc"; ctx.fillRect(-9,-12,18,24);
+    ctx.fillStyle="#c3ccdb"; ctx.fillRect(-9,-12,18,4);
+    ctx.fillStyle="#ff6b6b"; ctx.fillRect(-6,-4,12,2.6); ctx.fillRect(-6,1,9,2.6);
+    ctx.restore();
+    /* 떨어질 자리 — 미리 보여야 피할 수도, 몰 수도 있다 */
+    ctx.save(); ctx.globalAlpha=.16+u*.30; ctx.strokeStyle="#f5c451"; ctx.lineWidth=2;
+    ctx.setLineDash([6,6]); ctx.lineDashOffset=-q.t*40;
+    ctx.beginPath(); ctx.arc(X(q.tx),Y(q.ty),q.r,0,7); ctx.stroke(); ctx.restore();
+  }
   // 탄
   for(const s of g.shots){
     ctx.save(); ctx.translate(X(s.x),Y(s.y));
