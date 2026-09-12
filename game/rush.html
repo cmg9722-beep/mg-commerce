@@ -41,6 +41,12 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-acti
 #zone{font-size:12px;color:var(--faint,#5b6577);white-space:nowrap}
 #zone b{color:var(--ink);font-size:14px;font-weight:800;margin-left:4px}
 #zone.open b{color:var(--good)}
+#pause{position:absolute;top:46px;right:14px;width:38px;height:38px;pointer-events:auto;
+  background:rgba(20,25,34,.9);border:1px solid var(--line);border-radius:9px;
+  color:var(--dim);font-size:12px;letter-spacing:1px;cursor:pointer;z-index:6}
+#pause:hover{color:var(--ink)}
+#pausecard{text-align:center}
+#pausecard .pr{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px}
 #repl{font-size:13px;color:var(--dim);white-space:nowrap}
 #repl b{color:var(--blue);font-size:17px}
 #repl.warn b{color:var(--accent)}
@@ -227,6 +233,7 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     <div id="zone">1 / 9 <b>지하 주차장</b></div>
     <div id="todo" class="ok">미결 <b class="num">0</b></div>
     <div id="repl" style="display:none">대체율 <b class="num">0%</b></div>
+    <button id="pause" aria-label="일시정지">❚❚</button>
   </div>
   <div id="slots"></div>
   <div id="bars">
@@ -2876,7 +2883,7 @@ function newGame(grudge){
     blinkCd:0, annualCd:0, annualT:0,
     spawnAcc:0, bossOut:false, shake:0, shakeX:0, shakeY:0, hitstop:0,
     zone:0, zoneK0:0, zoneT:0, zoneBonus:0, gate:null, cleared:0, sayCd:2.5,
-    robotWork:0, robotCd:16, robotSeen:false, robotWarn:false,
+    robotWork:0, robotCd:16, robotSeen:false, robotWarn:false, userPaused:false,
     ot:false, otT:0, warned:false,
     combo:0, comboT:0, comboBest:0, comboPop:0, flash:0,
     toast:"", toastT:0, paused:false, best:0,
@@ -3787,6 +3794,41 @@ function revive(g){
   return true;
 }
 function flash(g,msg){ g.toast=msg; g.toastT=2.6; }
+
+/* ── 일시정지 ──────────────────────────────────────────────────
+   모바일에서 전화가 오면, PC에서 누가 부르면 멈출 방법이 있어야 한다.
+   출시 필수 요소인데 없었다. */
+function togglePause(){
+  const g=G; if(!g || g.over) return;
+  if($("#ov").classList.contains("on") && !g.userPaused) return;   // 레벨업 창은 건드리지 않는다
+  g.userPaused=!g.userPaused;
+  g.paused=g.userPaused;
+  if(g.userPaused){ S("select"); renderPause(g); }
+  else { closeOverlay(); }
+}
+function renderPause(g){
+  const Z=zoneOf(g);
+  $("#card").innerHTML=`
+    <div id="pausecard">
+      <h1 class="ttl" style="font-size:30px;margin:0 0 6px">잠깐 멈춤</h1>
+      <div class="sub" style="margin:0 0 4px">${clockStr(g.t)} · ${esc(Z.name)} (${g.zone+1}/${ZONES.length})</div>
+      <div class="crow" style="margin-top:16px">
+        <div class="cstat"><b class="num">${g.kills.toLocaleString()}</b><span>처리</span></div>
+        <div class="cstat"><b class="num" style="color:${todoOf(g)>0?"var(--bad)":"var(--good)"}">${todoOf(g)}</b><span>미결</span></div>
+        <div class="cstat"><b class="num">${g.lv}</b><span>레벨</span></div>
+        <div class="cstat"><b class="num">${Math.max(0,Math.ceil(g.P.hp))}</b><span>체력</span></div>
+      </div>
+      ${loadoutHTML(g,"지금 구성")}
+      <button class="primary" id="resume" style="margin-top:18px">계속하기</button>
+      <div class="pr">
+        <span style="font-size:12px;color:var(--dim)">${isTouch?"화면 드래그로 이동":"WASD 이동"}
+          · 공격 자동 · <b style="color:var(--ink)">P</b> 또는 <b style="color:var(--ink)">Esc</b>로 멈춤
+          · <b style="color:var(--ink)">M</b> 음소거</span>
+      </div>
+    </div>`;
+  $("#resume").onclick=()=>{ S("resume"); togglePause(); };
+  openOverlay();
+}
 /* 플레이어 피격 — 접촉·돌진·충격파가 전부 여기로 온다.
    제도(이어폰 = 무적 시간, 주 52시간 = 17시 이후 피해 감소)가 규칙을 바꾸는 자리라 한 곳에 둔다.
    쓰러졌으면 true. */
@@ -4850,6 +4892,7 @@ const isTouch = ("ontouchstart" in window) || navigator.maxTouchPoints>0;
 
 function touchStart(e){
   if(!G || G.over || G.paused) return;
+  if(e.target && e.target.closest && e.target.closest("button")) return;
   if(e.target.closest("button,input")) return;      // 음소거 버튼 등은 버튼이 받는다
   for(const t of e.changedTouches){
     if(TOUCH.id!==null) break;
@@ -4914,6 +4957,9 @@ function bindTouch(){
   el.addEventListener("touchmove", touchMove, {passive:false});
   el.addEventListener("touchend",  touchEnd,  {passive:false});
   el.addEventListener("touchcancel",touchEnd,{passive:false});
+  const pb=$("#pause");
+  if(pb){ pb.addEventListener("click",e=>{ e.stopPropagation(); togglePause(); });
+          pb.addEventListener("touchstart",e=>{ e.stopPropagation(); },{passive:true}); }
   el.addEventListener("mousedown",mouseDown);
   addEventListener("mousemove",mouseMove);
   addEventListener("mouseup",mouseUp);
@@ -4939,15 +4985,15 @@ function drawStick(){
 
 /* ── 입력 ────────────────────────────────────────────────────── */
 /* 한글 입력 상태면 e.key가 "ㅈ"·"ㅁ"으로 들어와 WASD가 죽는다. 물리 키 코드를 먼저 본다. */
-const CODE_KEY={KeyW:"w",KeyA:"a",KeyS:"s",KeyD:"d",KeyM:"m",
+const CODE_KEY={KeyW:"w",KeyA:"a",KeyS:"s",KeyD:"d",KeyM:"m",KeyP:"p",Escape:"Escape",
                 ArrowUp:"ArrowUp",ArrowDown:"ArrowDown",ArrowLeft:"ArrowLeft",ArrowRight:"ArrowRight"};
 const keyOf=e=>CODE_KEY[e.code] || (e.key.length===1?e.key.toLowerCase():e.key);
 addEventListener("keydown",e=>{
   const k=keyOf(e);
   keys[k]=true;
-  if(k==="m" && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)){
-    e.preventDefault(); toggleMute();
-  }
+  const typing=/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
+  if(k==="m" && !typing){ e.preventDefault(); toggleMute(); }
+  if((k==="p"||k==="Escape") && !typing){ e.preventDefault(); togglePause(); }
   if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
 });
 addEventListener("keyup",e=>{ keys[keyOf(e)]=false; });
