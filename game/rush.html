@@ -47,6 +47,12 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-acti
 #pause:hover{color:var(--ink)}
 #pausecard{text-align:center}
 #pausecard .pr{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+#rnd{font-size:12px;white-space:nowrap;border-radius:999px;padding:4px 11px;
+  border:1px solid var(--line);background:var(--panel)}
+#rnd.good{color:var(--good);border-color:#24402f;background:#16251c}
+#rnd.bad{color:var(--bad);border-color:#4a2a2e;background:#231519}
+#rnd.fun{color:var(--blue);border-color:#2a3a4e;background:#151d27}
+#rnd small{opacity:.7;margin-left:5px}
 #repl{font-size:13px;color:var(--dim);white-space:nowrap}
 #repl b{color:var(--blue);font-size:17px}
 #repl.warn b{color:var(--accent)}
@@ -90,6 +96,7 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-acti
   #toast{top:134px}
   #hud{padding:8px 50px 8px 10px;gap:8px}
   #kills,#lv,#todo,#zone,#repl{font-size:10px}
+  #rnd{font-size:10px;padding:3px 8px}
   #repl b{font-size:12px}
   #zone b{font-size:12px}
   #kills b,#lv b,#todo b{font-size:15px}
@@ -254,6 +261,7 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     <div id="zone">1 / 9 <b>지하 주차장</b></div>
     <div id="todo" class="ok">미결 <b class="num">0</b></div>
     <div id="repl" style="display:none">대체율 <b class="num">0%</b></div>
+    <div id="rnd" style="display:none"></div>
     <button id="pause" aria-label="일시정지">❚❚</button>
   </div>
   <div id="slots"></div>
@@ -570,6 +578,92 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     return function () { try { return fn.apply(null, arguments); } catch (e) {} };
   }
 
+  /* ── 배경음 ────────────────────────────────────────────────────
+     음원 파일이 아니라 합성이다. 파일 하나 구조를 지키면서 하루가
+     흘러가는 걸 귀로 느끼게 하려면 이쪽이 맞다 —
+     시각이 갈수록 템포가 빨라지고 화성이 조여든다.
+
+     구성은 셋뿐이다. 더 넣으면 총소리와 싸운다.
+       베이스   한 박자에 한 번. 하루의 맥박
+       아르페지오 네 음. 오전엔 느슨하고 오후엔 촘촘해진다
+       하이햇   오후부터 들어온다. 초조함
+
+     음계: A 단조 펜타토닉. 어느 두 음을 겹쳐도 불협이 안 난다 —
+     타격음이 아무 때나 끼어드는 게임이라 이게 중요하다. */
+  var bgm = null;                         // { gain, timer, step, tense }
+  var BGM_ROOT = 55;                      // A1
+  var PENTA = [0, 3, 5, 7, 10];           // 단조 펜타토닉
+  function bgmNote(t0, hz, dur, peak, type, o) {
+    if (!ctx || muted) return;
+    try {
+      var osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.type = type || "triangle";
+      osc.frequency.setValueAtTime(hz, t0);
+      if (o && o.slide) osc.frequency.exponentialRampToValueAtTime(Math.max(20, o.slide), t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(peak, t0 + (o && o.a || 0.012));
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(g); g.connect(bgm.gain);
+      osc.start(t0); osc.stop(t0 + dur + 0.02);
+      osc.onended = function () { try { osc.disconnect(); g.disconnect(); } catch (e) {} };
+    } catch (e) {}
+  }
+  function bgmHat(t0, peak) {
+    if (!ctx || muted || !noiseBuf) return;
+    try {
+      var src = ctx.createBufferSource(); src.buffer = noiseBuf;
+      var f = ctx.createBiquadFilter(); f.type = "highpass"; f.frequency.value = 7200;
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(peak, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.035);
+      src.connect(f); f.connect(g); g.connect(bgm.gain);
+      src.start(t0); src.stop(t0 + 0.05);
+      src.onended = function () { try { src.disconnect(); f.disconnect(); g.disconnect(); } catch (e) {} };
+    } catch (e) {}
+  }
+  function bgmTick() {
+    if (!bgm || !ctx) return;
+    var t = ctx.currentTime + 0.06;
+    var k = bgm.tense;                    // 0=아침 1=마감
+    var i = bgm.step;
+    /* 베이스 — 4스텝마다. 오후엔 5도를 오간다 */
+    if (i % 4 === 0) {
+      var root = BGM_ROOT * (i % 16 < 8 ? 1 : (k > 0.5 ? 1.3348 : 1.1892));
+      bgmNote(t, root, 0.42, 0.16 + k * 0.05, "triangle", { a: 0.02 });
+    }
+    /* 아르페지오 — 오전엔 두 스텝에 한 번, 오후엔 매 스텝 */
+    if (k > 0.45 || i % 2 === 0) {
+      var deg = PENTA[(i + (i >> 2)) % PENTA.length];
+      var oct = k > 0.7 && i % 8 === 6 ? 8 : 4;
+      var hz = BGM_ROOT * Math.pow(2, (deg + 12 * oct) / 12);
+      bgmNote(t, hz, 0.17 + (1 - k) * 0.08, 0.055 + k * 0.03, "square", { a: 0.006 });
+    }
+    /* 하이햇 — 오후부터 */
+    if (k > 0.35 && i % 2 === 1) bgmHat(t, 0.028 + k * 0.03);
+    bgm.step = (i + 1) % 16;
+    var bpm = 84 + k * 54;                // 84 → 138
+    bgm.timer = setTimeout(bgmTick, (60 / bpm / 2) * 1000);
+  }
+  function bgmStart() {
+    var c = ensure(); if (!c) return;
+    if (bgm) return;
+    var g = ctx.createGain();
+    g.gain.value = 0.0001;
+    g.connect(outTail || master);
+    g.gain.linearRampToValueAtTime(0.34, ctx.currentTime + 1.4);   // 천천히 들어온다
+    bgm = { gain: g, timer: null, step: 0, tense: 0 };
+    bgmTick();
+  }
+  function bgmStop() {
+    if (!bgm) return;
+    clearTimeout(bgm.timer);
+    try { bgm.gain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.5); } catch (e) {}
+    var old = bgm; bgm = null;
+    setTimeout(function () { try { old.gain.disconnect(); } catch (e) {} }, 900);
+  }
+  /* 게임이 매 프레임 알려준다: 0=09시 1=18시 */
+  function bgmTense(v) { if (bgm) bgm.tense = Math.max(0, Math.min(1, v)); }
+
   var api = {
     place: safe(place),
     shoot: safe(shoot),
@@ -584,6 +678,9 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     levelup: safe(levelup),
     win: safe(win),
     lose: safe(lose),
+    bgmStart: safe(bgmStart),
+    bgmStop: safe(bgmStop),
+    bgmTense: safe(bgmTense),
     setMuted: safe(setMuted),
     muted: muted,
     resume: safe(resume),
@@ -2634,6 +2731,68 @@ function replaceRate(g){
   const t=g.robotWork+g.kills;
   return t>0 ? g.robotWork/t : 0;
 }
+/* ── 오늘의 사건 ────────────────────────────────────────────────
+   구역 사건은 매 판 똑같다. 그것만으로는 두 번째 판이 첫 판과 같다.
+   이 장르가 매 판을 다르게 만드는 방법은 주사위다 — 뱀서는 매 분
+   룰렛을 돌려 좋은 것·나쁜 것·그냥 웃긴 것을 섞는다.
+   우리는 구역에 들어갈 때마다 굴린다. 첫 구역은 굴리지 않는다(배우는 중).
+
+   웃긴 것을 반드시 섞는다. 회사에서 실제로 벌어지는 일들이라
+   그 자체로 농담이 되고, 그게 이 게임이 파는 것이다. */
+const RND=[
+  /* 좋은 것 */
+  {id:"cater", kind:"good", name:"케이터링 도착",
+   desc:"누가 간식을 돌렸습니다", f:(g)=>{ g.P.hp=Math.min(g.P.maxhp,g.P.hp+g.P.maxhp*0.40); }},
+  {id:"leave", kind:"good", name:"단체 연차",
+   desc:"오늘 절반이 안 나왔습니다", f:(g)=>{
+     for(let i=g.foes.length-1;i>=0;i--) if(!g.foes[i].boss && Math.random()<0.5) g.foes.splice(i,1);
+     g.rndSpawn=0.55; g.rndT=Math.max(g.rndT,26); }},
+  {id:"early", kind:"good", name:"조기 퇴근 권장",
+   desc:"위에서 일찍 가랍니다", f:(g)=>{ g.zoneBonus=(g.zoneBonus||0)+28; }},
+  {id:"itday", kind:"good", name:"전산 점검",
+   desc:"로봇이 멈춰 섰습니다", f:(g)=>{ g.rndNoBot=1; g.rndT=Math.max(g.rndT,30); }},
+  /* 나쁜 것 */
+  {id:"audit", kind:"bad", name:"감사 예고",
+   desc:"자료를 더 내라고 합니다", f:(g)=>{ g.zoneBonus=(g.zoneBonus||0)-32; }},
+  {id:"allmt", kind:"bad", name:"전 직원 회의 소집",
+   desc:"다들 급해졌습니다", f:(g)=>{ g.rndSpd=1.35; g.rndT=Math.max(g.rndT,24); }},
+  {id:"elev",  kind:"bad", name:"엘리베이터 고장",
+   desc:"계단으로 다녀야 합니다", f:(g)=>{ g.rndSlow=0.80; g.rndT=Math.max(g.rndT,24); }},
+  {id:"crunch",kind:"bad", name:"마감 앞당김",
+   desc:"오늘까지랍니다", f:(g)=>{ g.rndHp=1.30; g.rndT=Math.max(g.rndT,28); }},
+  /* 웃긴 것 */
+  {id:"net",   kind:"fun", name:"인터넷 장애",
+   desc:"아무도 일을 못 합니다", f:(g)=>{ for(const f of g.foes) if(!f.boss) f.hold=Math.max(f.hold||0,4.5); }},
+  {id:"fire",  kind:"fun", name:"소방 훈련",
+   desc:"전부 한 방향으로 나갑니다", f:(g)=>{
+     const a=Math.random()*6.283;
+     for(const f of g.foes){ if(f.boss) continue;
+       f.tx=f.x+Math.cos(a)*900; f.ty=f.y+Math.sin(a)*900; f.tauntT=8; } }},
+  {id:"cake",  kind:"fun", name:"생일 케이크",
+   desc:"다들 탕비실로 갔습니다", f:(g)=>{ g.rndNoSpawn=1; g.rndT=Math.max(g.rndT,9); }},
+  {id:"coffee",kind:"fun", name:"커피머신 고장",
+   desc:"오늘은 다 같이 느립니다", f:(g)=>{ g.rndSpd=0.72; g.rndSlow=0.86; g.rndT=Math.max(g.rndT,22); }},
+];
+function rollEvent(g){
+  if(g.zone===0) return;                    // 첫 구역은 배우는 중이라 굴리지 않는다
+  if(Math.random()<0.22) return;            // 아무 일도 없는 날도 있어야 특별함이 산다
+  const e=RND[(Math.random()*RND.length)|0];
+  g.rndT=0; g.rndSpd=1; g.rndSlow=1; g.rndHp=1; g.rndSpawn=1; g.rndNoBot=0; g.rndNoSpawn=0;
+  e.f(g);
+  g.rndName=e.name; g.rndKind=e.kind; g.rndShow=3.4;
+  flash(g, e.name+" — "+e.desc);
+  S(e.kind==="bad"?"deny":"levelup");
+  g.flash=Math.max(g.flash, e.kind==="bad"?.5:.35);
+}
+function stepRnd(g,dt){
+  if(g.rndShow>0) g.rndShow-=dt;
+  if(g.rndT>0){
+    g.rndT-=dt;
+    if(g.rndT<=0){ g.rndSpd=1; g.rndSlow=1; g.rndHp=1; g.rndSpawn=1;
+                   g.rndNoBot=0; g.rndNoSpawn=0; }
+  }
+}
+
 /* ── 구역 사건 ──────────────────────────────────────────────────
    「출구 찾고 그다음엔 뭐?」 — 지금까지는 같은 걸 아홉 번이었다.
    기획서에 「실무 이름 하나 = 규칙 하나」라고 써 놓고 배경만 바꿨다.
@@ -2755,7 +2914,7 @@ function stepEvent(g,dt){
 function stepRobots(g,dt){
   const P=g.P;
   /* 투입 — 12시(구역 4) 이후부터. 노조가 있으면 도입이 느려진다 */
-  if(g.zone>=3 && unlocked("__robot")){
+  if(g.zone>=3 && unlocked("__robot") && !g.rndNoBot){
     const live=g.foes.filter(f=>E[f.kind].robot).length;
     g.robotCd-=dt*(P.union?0.55:1);
     if(g.robotCd<=0 && live<2){
@@ -3072,6 +3231,8 @@ function newGame(grudge){
     ambCd:6, ambWarn:0, ambX:0, ambY:0, podX:0, podY:0, podOn:false,
     prnX:0, prnY:0, prnDone:0, prnSet:0, deskSet:0, podSet:0, quietSaid:0, quietK:1,
     clients:[], cliCd:9, cliSaid:0,
+    rndT:0, rndSpd:1, rndSlow:1, rndHp:1, rndSpawn:1, rndNoBot:0, rndNoSpawn:0,
+    rndName:"", rndKind:"", rndShow:0,
     ot:false, otT:0, warned:false,
     combo:0, comboT:0, comboBest:0, comboPop:0, flash:0,
     toast:"", toastT:0, paused:false, best:0,
@@ -3117,7 +3278,7 @@ function foeHpScale(g){ const u=Math.min(1,g.t/DAY); return 1+u*u*3.2; }
 function foeDmgScale(g){ return 1+Math.min(1,g.t/DAY)*0.30; }
 function spawnAt(g,kind,x,y){
   const d=E[kind];
-  const shp=d.boss ? d.hp : Math.round(d.hp*foeHpScale(g));
+  const shp=d.boss ? d.hp : Math.round(d.hp*foeHpScale(g)*(g.rndHp||1));
   const sdmg=d.boss ? d.dmg : d.dmg*foeDmgScale(g);
   g.foes.push({kind, x, y, hp:shp, maxhp:shp, spd:d.spd, dmg:sdmg,
                r:d.r, xp:d.xp, boss:!!d.boss, hit:0, slow:1, kb:0, kbx:0, kby:0,
@@ -3155,7 +3316,8 @@ function doSpawns(g,dt){
   // 야근은 시간이 갈수록 조여 온다 — 미결을 빨리 비우는 것 말고 답이 없게
   const otk = g.ot ? Math.max(0.55, 1-g.otT*0.012) : 1;
   // 보스가 살아 있으면 물량을 늦춘다. 보스전과 물량전이 겹치면 이중 부담이 된다
-  const bk = (g.foes.some(f=>f.boss) ? 1.7 : 1) * (g.quietK||1);
+  const bk = (g.foes.some(f=>f.boss) ? 1.7 : 1) * (g.quietK||1) / (g.rndSpawn||1);
+  if(g.rndNoSpawn){ g.spawnAcc=0; }              // 생일 케이크 — 잠시 아무도 안 온다
   if(g.foes.length<CAP && g.spawnAcc>=s.rate*otk*bk){
     g.spawnAcc=0;
     const k=s.kinds[(Math.random()*s.kinds.length)|0];
@@ -3258,6 +3420,7 @@ function nextZone(g){
   g.podX=0; g.podOn=false; g.podSet=0; g.deskSet=0; g.prnX=0; g.prnDone=0; g.prnSet=0;
   g.quietSaid=0; g.quietK=1;
   g.clients.length=0; g.cliCd=9;
+  rollEvent(g);           // 오늘의 사건 — 매 판을 다르게 만드는 주사위
   if(g.zone>=ZONES.length){                    // 정문을 나왔다
     // 대체 판정이 먼저다 — 정시에 나왔는데 자리가 없어진 경우
     if(replaceRate(g)>=REPLACE_LIMIT){ finish(g,"replaced"); return true; }
@@ -3753,7 +3916,7 @@ function step(g,dt){
   let iy=(keys.s||keys.ArrowDown?1:0)-(keys.w||keys.ArrowUp?1:0);
   const m=Math.hypot(ix,iy)||1; ix/=m; iy/=m;
   if(TOUCH.on){ ix=TOUCH.dx; iy=TOUCH.dy; }      // 터치가 있으면 터치 우선
-  P.x+=ix*P.spd*dt; P.y+=iy*P.spd*dt;
+  P.x+=ix*P.spd*(g.rndSlow||1)*dt; P.y+=iy*P.spd*(g.rndSlow||1)*dt;
   if(ix) P.face=ix<0?-1:1;
   P.moving = !!(ix||iy);
   if(P.moving) P.walk += dt*7.5;
@@ -3775,6 +3938,7 @@ function step(g,dt){
   stepSay(g,dt);
   stepRobots(g,dt);
   stepEvent(g,dt);
+  stepRnd(g,dt);
 
   // 퇴근 시계(지속형 감속)
   const CK = g.weapons.ontime ? WEAPONS.ontime.lv(1)
@@ -3789,7 +3953,7 @@ function step(g,dt){
     const dx=P.x-f.x, dy=P.y-f.y, d=Math.hypot(dx,dy)||1;
     /* 점심시간은 여기서 곱한다 — 적 루프가 매 프레임 slow를 되돌리기 때문에
        stepEvent에서 미리 넣어 둔 값은 지워진다 */
-    f.slow = ((CK && d<ckR) ? CK.slow : 1) * (g.lunchT>0 ? 0.42 : 1);
+    f.slow = ((CK && d<ckR) ? CK.slow : 1) * (g.lunchT>0 ? 0.42 : 1) * (g.rndSpd||1);
     f.face = dx<0 ? -1 : 1;
     if(E[f.kind].eatXp){                     // 인사팀 — 경험치를 가로챈다
       for(let k=g.orbs.length-1;k>=0;k--){
@@ -4043,6 +4207,7 @@ function hurtPlayer(g,dmg,kx,ky,power){
 function finish(g,how){
   if(g.over) return;
   g.over=how; if(raf) cancelAnimationFrame(raf); raf=null;
+  S("bgmStop");
   S(how==="win"||how==="late"?"win":"lose");
   syncHud(g);                                     // 18:00으로 맞춰 놓고 결과를 띄운다
   renderEnd(g);
@@ -4973,6 +5138,15 @@ function syncHud(g){
   const td=todoOf(g), te=$("#todo"), Z=zoneOf(g);
   te.querySelector("b").textContent=td;
   te.classList.toggle("ok",td<=0);
+  const re2=$("#rnd");
+  if(re2){
+    /* 지금 뭐가 걸려 있는지 — 효과가 있는데 안 보이면 버그처럼 느껴진다 */
+    if(g.rndName && (g.rndT>0 || g.rndShow>0)){
+      re2.style.display="";
+      re2.className=g.rndKind||"";
+      re2.innerHTML=esc(g.rndName)+(g.rndT>0?"<small>"+Math.ceil(g.rndT)+"초</small>":"");
+    } else re2.style.display="none";
+  }
   const rb=$("#repl");
   if(rb){
     if(g.robotSeen){
@@ -5261,6 +5435,7 @@ function resize(){
 function start(grudge){
   closeOverlay();
   G=newGame(grudge); applyPerks(G); syncSlots(G); markBossTicks();
+  S("bgmStart");                     // 배경음 — 하루가 흐르는 걸 귀로도
   if(G.pendingLv>0){ G.pendingLv--; levelUp(G); }   // 「짬」 — 시작부터 고를 게 있다
   let last=performance.now();
   const loop=now=>{
@@ -5270,6 +5445,8 @@ function start(grudge){
     if(g.hitstop>0){ g.hitstop-=dt; dt*=0.12; }   // 히트스톱
     if(!g.paused) step(g,dt);
     if(!G||G.over) return;
+      // 배경음 긴장도 — 시각이 갈수록 템포가 빨라진다
+    S("bgmTense", g.ot ? 1 : Math.min(1, g.t/DAY));
     draw(g); syncHud(g);
     raf=requestAnimationFrame(loop);
   };
@@ -5412,6 +5589,7 @@ window.__finish=finish;                 // 결말 화면 검증용
 window.__offers=offers;                 // 선택지 검증용
 window.__applyPerks=applyPerks;         // 강화 반영 검증용
 window.__icon=icon;                     // 아이콘 검증용
+window.__RND=RND;                       // 무작위 사건 검증용
 window.__api={WEAPONS,PERKS,E,ZONES,DAY,hourOf,clockStr,spawnRing,start,todoOf,zoneOf,gateReady};
 renderStart();
 
