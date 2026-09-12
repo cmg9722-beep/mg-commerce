@@ -2526,14 +2526,26 @@ const clamp = (v,a,b) => v<a?a:v>b?b:v;
 /* 소리 — 산 음원이 있으면 그걸 쓰고, 없으면 합성음.
    음원 이름은 효과음 이름 그대로다(hit·kill·killBoss·coin·levelup…). */
 const _sfxPool={};
+/* 음량 — 받은 음원들의 평균 음량이 0.014~0.268로 19배 차이가 났다.
+   그대로 쓰면 동전은 안 들리고 보스는 귀를 때린다. 재서 맞춘다.
+   의도적으로 어긋낸 곳: 명중은 초당 여러 번이라 더 낮추고,
+   보스 처치는 커야 하니 덜 낮춘다. */
+const SFX_GAIN={ hit:.28, kill:.50, killBoss:.72, coin:.85, place:.90,
+                 levelup:.55, win:.62, lose:.60 };
+/* 같은 소리가 연달아 나면 귀가 기계음으로 듣는다. 재생 속도를 살짝 흔든다 */
+const SFX_VARY={ hit:.10, kill:.07, coin:.06 };
 function playAsset(name){
   const src=AST.sfx[name]; if(!src) return false;
   try{
     if(window.SFX && window.SFX.muted) return true;          // 음소거면 소리만 안 낸다
     let pool=_sfxPool[name];
-    if(!pool){ pool=_sfxPool[name]=[]; for(let i=0;i<4;i++){ const a=new Audio(src); a.preload="auto"; pool.push(a); } }
+    if(!pool){ pool=_sfxPool[name]=[];
+               for(let i=0;i<5;i++){ const a=new Audio(src); a.preload="auto"; pool.push(a); } }
     const a=pool.find(v=>v.paused||v.ended)||pool[0];
-    a.currentTime=0; a.volume=0.62;
+    a.currentTime=0;
+    a.volume=clamp((SFX_GAIN[name]!==undefined?SFX_GAIN[name]:.6),0,1);
+    const v=SFX_VARY[name];
+    if(v) a.playbackRate=1+(Math.random()*2-1)*v;
     const pr=a.play(); if(pr&&pr.catch) pr.catch(()=>{});
     return true;
   }catch(e){ return false; }
