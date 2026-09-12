@@ -1865,13 +1865,17 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
   var CARPET = 66;                 // 카펫타일 한 변 (1056/66 = 16, 정확히 나눠떨어짐)
 
   /* 팔레트 — 전부 상한 #2a3444 이하 */
-  var FLOOR = "#0b0e14";
-  var FLOOR2 = "#0d1119";          // 카펫 체커 밝은 쪽
-  var PART = "#1b2331";            // 파티션
-  var DESK = "#151b26";
-  var DESKEDGE = "#1d2534";
-  var DARKOBJ = "#10141c";         // 모니터·의자 등 짙은 사물
-  var LIT = [158, 200, 255];       // #9ec8ff 형광등 (악센트 1)
+  /* 팔레트 — 「형광등 꺼진 심야 사무실」로 잡았더니 대비 상한이
+     #2a3444에 묶여, 일반인 눈에는 「검은 화면에 도형」으로 읽혔다.
+     기법이 아니라 방향이 문제였다. 불을 켠 낮 사무실로 바꾼다.
+     베이지 카펫 + 나무 책상. 캐릭터가 어두운 정장이라 대비도 살아난다. */
+  var FLOOR = "#3a3630";           // 베이지 카펫 (어두운 쪽)
+  var FLOOR2 = "#433f38";          // 카펫 체커 밝은 쪽
+  var PART = "#6d6a62";            // 파티션 — 회색 패브릭
+  var DESK = "#8a6b47";            // 책상 — 나무
+  var DESKEDGE = "#a2825b";
+  var DARKOBJ = "#262a33";         // 모니터·의자 등 짙은 사물
+  var LIT = [255, 244, 214];       // 따뜻한 형광등
 
   function la(a) { return "rgba(" + LIT[0] + "," + LIT[1] + "," + LIT[2] + "," + a + ")"; }
   function m(a, n) { return ((a % n) + n) % n; }
@@ -2049,8 +2053,8 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     c.save(); c.translate(132, 132);
     /* 바닥 빛 웅덩이 — 상한 아래에 머무는 저알파, 관 방향으로 긴 타원 */
     var g = c.createRadialGradient(0, 0, 6, 0, 0, 126);
-    g.addColorStop(0, la(0.045));          // 0.10 → 화면 중앙을 먹어 캐릭터가 묻혔다
-    g.addColorStop(0.55, la(0.022));
+    g.addColorStop(0, la(0.09));           // 밝은 바닥 위에서는 이 정도가 웅덩이로 읽힌다
+    g.addColorStop(0.55, la(0.045));
     g.addColorStop(1, la(0));
     c.fillStyle = g;
     c.save(); c.scale(1, 0.76);
@@ -2058,7 +2062,7 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     c.restore();
     /* 직근 글로우 (허용 예외, 소면적) */
     var g2 = c.createRadialGradient(0, 0, 2, 0, 0, 46);
-    g2.addColorStop(0, la(0.15));          // 0.34 → 관 바로 아래만 밝게
+    g2.addColorStop(0, la(0.22));          // 관 바로 아래
     g2.addColorStop(1, la(0));
     c.fillStyle = g2;
     c.save(); c.scale(1.6, 0.62);
@@ -2194,8 +2198,8 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     var c = cv.getContext("2d");
     var R = Math.hypot(W, H) / 2;
     var g = c.createRadialGradient(W / 2, H / 2, R * 0.42, W / 2, H / 2, R * 1.02);
-    g.addColorStop(0, "rgba(4,7,12,0)");
-    g.addColorStop(1, "rgba(4,7,12,.42)");
+    g.addColorStop(0, "rgba(28,22,14,0)");
+    g.addColorStop(1, "rgba(28,22,14,.26)");
     c.fillStyle = g; c.fillRect(0, 0, W, H);
     vigCache[key] = cv; vigKeys.push(key);
     if (vigKeys.length > 4) delete vigCache[vigKeys.shift()];
@@ -2798,7 +2802,11 @@ function stepGate(g,dt){
   }
   if(!g.gate){ if(gateReady(g)) openGate(g); return; }
   g.gate.t+=dt;
-  if(Math.hypot(P.x-g.gate.x,P.y-g.gate.y) < g.gate.r) nextZone(g);
+  const gd=Math.hypot(P.x-g.gate.x,P.y-g.gate.y);
+  // 너무 멀어지면 문을 다시 놓는다. 끝없는 필드라 랜드마크가 없어서
+  // 한 번 등지고 달리면 「출구 11746」 같은 게 뜬다(측정에서 실제로 나왔다).
+  if(gd>1500){ openGate(g); return; }
+  if(gd < g.gate.r) nextZone(g);
 }
 
 function stepBuilds(g,dt){
@@ -3506,7 +3514,7 @@ function drawFloor(g,camX,camY,VW,VH){
   const B=window.BACKDROP;
   if(B && B.office){ try{ B.office(ctx,VW,VH,camX,camY,g.t); return; }catch(e){} }
   // 폴백 — 배경 모듈이 없어도 게임은 돈다
-  ctx.fillStyle="#0b0e14"; ctx.fillRect(0,0,VW,VH);
+  ctx.fillStyle="#3a3630"; ctx.fillRect(0,0,VW,VH);
   const T=96, ox=-((camX%T)+T)%T, oy=-((camY%T)+T)%T;
   ctx.strokeStyle="rgba(158,200,255,.055)"; ctx.lineWidth=1;
   ctx.beginPath();
