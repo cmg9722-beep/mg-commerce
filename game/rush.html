@@ -2470,9 +2470,22 @@ function schedFor(h){
   for(const e of SCHED) if(h>=e.h) s=e;
   return s;
 }
+/* ── 적 강화 ────────────────────────────────────────────────────
+   시간이 갈수록 단단해지고 아프다. 이게 없으면 Lv20대 빌드의 화력이
+   적 체력을 완전히 추월해, 오후 내내 적이 닿기도 전에 녹는다
+   — 시드 고정 측정에서 하루 종일 맞은 횟수가 1~6회였다.
+   17시 필드에 적이 54명밖에 안 남는 게 그 증거다.
+   보스는 자체 체력 예산이 있으니 제외한다.
+   세기: 4배·1.8배로 재 보니 도망 전략이 15:35에 죽었다 — 두 시간 반을
+   잘라먹는 건 과하고, 특히 피해 배수가 셌다(4대에 100→25).
+   체력 위주로 조이고 피해는 약하게 둔다. */
+function foeHpScale(g){ const u=Math.min(1,g.t/DAY); return 1+u*u*3.2; }
+function foeDmgScale(g){ return 1+Math.min(1,g.t/DAY)*0.45; }
 function spawnAt(g,kind,x,y){
   const d=E[kind];
-  g.foes.push({kind, x, y, hp:d.hp, maxhp:d.hp, spd:d.spd, dmg:d.dmg,
+  const shp=d.boss ? d.hp : Math.round(d.hp*foeHpScale(g));
+  const sdmg=d.boss ? d.dmg : d.dmg*foeDmgScale(g);
+  g.foes.push({kind, x, y, hp:shp, maxhp:shp, spd:d.spd, dmg:sdmg,
                r:d.r, xp:d.xp, boss:!!d.boss, hit:0, slow:1, kb:0, kbx:0, kby:0,
                walk:Math.random(), face:-1,
                atkT:d.atkCd?d.atkCd*0.6:0, sumT:d.summonCd||0,
