@@ -77,6 +77,52 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-acti
 .slot canvas{position:static;width:34px;height:34px}
 .slot b{position:absolute;right:2px;bottom:0;font-size:10px;color:var(--accent)}
 
+/* ── 로비 ──────────────────────────────────────────────────
+   타이틀에서 HUD를 안 숨기면 09:00 · 1/9 · 체력바가 오버레이 너머로
+   비친다. 「게임 도중 멈춘 화면」으로 읽혀서 미완성 인상의 절반이
+   여기서 나왔다. 게임이 돌 때만 보여준다. */
+body.lobby #hud, body.lobby #slots, body.lobby #bars, body.lobby #toast{display:none}
+/* 하단 고정 — 「출근」이 접힘 아래로 밀리면 안 된다.
+   폰에서 통계가 두 줄로 꺾이면 버튼이 스크롤 밖으로 나갔다. */
+.dock{position:sticky;bottom:-24px;z-index:2;margin:18px -24px -24px;padding:16px 24px 20px;
+  background:linear-gradient(180deg,rgba(24,28,36,0) 0,var(--panel) 22%)}
+.dock .primary{margin-top:0}
+.nav{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.nav button{background:#232936;color:var(--ink);border:1px solid var(--line);border-radius:8px;
+  padding:11px 6px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1.2}
+.nav button:hover{border-color:var(--accent)}
+.nav button small{font-size:10px;color:var(--dim);font-weight:400}
+/* 최고 점수 — 「내가 잘하고 있나」를 한 숫자로 */
+.hi{display:flex;align-items:baseline;gap:8px;margin:2px 0 0}
+.hi b{font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400;
+  font-size:30px;line-height:1;color:var(--accent)}
+.hi span{font-size:12px;color:var(--dim)}
+/* 아홉 구역 — 어디까지 갔는지가 글자 없이 읽혀야 한다 */
+.zmap{display:flex;gap:3px;margin:12px 0 0}
+.zmap i{flex:1;height:6px;border-radius:2px;background:#242a36}
+.zmap i.on{background:var(--accent)}
+.zmap i.now{background:var(--good)}
+.zlab{display:flex;justify-content:space-between;font-size:10.5px;color:var(--dim);margin-top:5px}
+/* 해금 진행 — 다음에 뭐가 오는지 */
+.unl{display:flex;align-items:center;gap:7px;margin-top:9px;font-size:12px;color:var(--dim)}
+.unl .dots{display:flex;gap:3px}
+.unl .dots i{width:12px;height:4px;border-radius:2px;background:#2c3442}
+.unl .dots i.on{background:var(--accent)}
+.unl b{color:var(--ink)}
+/* 설정 줄 */
+.setrow{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:13px 2px;border-bottom:1px solid var(--line)}
+.setrow:last-of-type{border-bottom:0}
+.setrow .k{font-size:14px;font-weight:700}
+.setrow .k small{display:block;font-size:11.5px;color:var(--dim);font-weight:400;margin-top:2px}
+.tg{flex:none;width:52px;height:30px;border-radius:15px;border:1px solid var(--line);
+  background:#1a1f29;position:relative;cursor:pointer;padding:0}
+.tg i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;
+  background:#5a6478;transition:left .14s,background .14s}
+.tg.on{background:#26402f;border-color:#3f7a52}
+.tg.on i{left:26px;background:var(--good)}
+
 /* ── 오버레이(레벨업/시작/결과) ── */
 #ov{position:absolute;inset:0;z-index:20;display:none;align-items:center;justify-content:center;
   background:rgba(8,10,15,.82);padding:20px}
@@ -143,6 +189,9 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
 .cstat b{font-size:26px;line-height:1;
   font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
 .cstat span{font-size:11px;color:var(--dim)}
+/* 기록 여덟 칸 — auto-fit에 맡기면 6+2로 꺾여 빈칸 넷이 남는다 */
+.crow.four{grid-template-columns:repeat(4,1fr)}
+@media (max-width:560px){ .crow.four{grid-template-columns:repeat(2,1fr)} }
 /* 적용 중인 영구 능력 — 한 줄 텍스트로는 뭐가 켜졌는지 안 읽힌다 */
 .mbon{margin-top:12px;padding:10px 12px;border:1px solid #2a3a2f;border-radius:8px;
   background:#101a14;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -675,18 +724,21 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
       MUS.buf = out; MUS.loading = 0; then();
     }).catch(function () { MUS.loading = 2; then(); });   // 2 = 실패, 합성으로 간다
   }
-  function musLayer(buf, t0) {
+  /* 패드는 필터를 안 거친다. 이 패드는 원래 어두워서(2.6kHz 위가 −61dB)
+     로우패스를 걸어도 1.9dB밖에 안 깎이고, 대신 폰 스피커에서 안 들릴
+     위험만 커진다. 필터가 실제로 듣는 건 하이햇이 있는 드럼 쪽이다. */
+  function musLayer(buf, t0, thru) {
     var s = ctx.createBufferSource(), g = ctx.createGain();
     s.buffer = buf; s.loop = true; s.loopStart = 0; s.loopEnd = MUS.loop;
     g.gain.value = 0.0001;
-    s.connect(g); g.connect(bgm.filt);
+    s.connect(g); g.connect(thru ? bgm.gain : bgm.filt);
     s.start(t0);
-    return { src: s, gain: g, now: 0.0001 };
+    return { src: s, gain: g, now: 0.0001, rate: s.playbackRate };
   }
   function musStart() {
     var t0 = ctx.currentTime + 0.06;
-    bgm.pad = musLayer(MUS.buf.pad, t0);
-    bgm.drum = musLayer(MUS.buf.drum, t0);
+    bgm.pad = musLayer(MUS.buf.pad, t0, true);   // 패드는 필터 우회
+    bgm.drum = musLayer(MUS.buf.drum, t0, false);
     bgm.music = 1;
     musMix(0, 1.6);
   }
@@ -694,10 +746,11 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
   function musMix(k, ramp) {
     if (!bgm || !bgm.music) return;
     var t = ctx.currentTime, r = ramp || 0.45;
-    /* 하루가 갈수록 커져야 한다. 패드를 많이 줄이면 중간이 오히려 조용해진다 */
+    /* 하루가 갈수록 커져야 한다. 그리고 난이도가 정점인 마지막 한 시간에
+       음악이 더 갈 데가 없으면 안 된다 — 드럼이 다 차는 지점을 0.75로 미룬다 */
     var padG  = 0.62 - k * 0.10;                       // 패드는 늘 깔린다
-    var drumG = k < 0.22 ? 0.0001 : Math.min(1, (k - 0.22) / 0.40) * 0.95;
-    var cut   = 420 * Math.pow(38, k);                 // 420Hz → 16kHz
+    var drumG = k < 0.22 ? 0.0001 : Math.min(1, (k - 0.22) / 0.53) * 0.95;
+    var cut   = 900 * Math.pow(17.8, k);               // 900Hz → 16kHz (드럼에만)
     set(bgm.pad,  padG,  r, t); set(bgm.drum, drumG, r, t);
     if (Math.abs(cut - bgm.cutNow) / bgm.cutNow > 0.04) {
       bgm.cutNow = cut;
@@ -715,11 +768,13 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     var g = ctx.createGain();
     g.gain.value = 0.0001;
     var filt = ctx.createBiquadFilter();
-    filt.type = "lowpass"; filt.frequency.value = 420; filt.Q.value = 0.6;
+    filt.type = "lowpass"; filt.frequency.value = 900; filt.Q.value = 0.6;
     filt.connect(g);
-    g.connect(outTail || master);
+    /* master 뒤(outTail=컴프레서)에 물리면 음소거도 마스터 볼륨도 음악을
+       비켜간다. 반드시 master 앞이어야 한다 */
+    g.connect(master);
     g.gain.linearRampToValueAtTime(0.52, ctx.currentTime + 1.4);   // 천천히 들어온다
-    bgm = { gain: g, filt: filt, cutNow: 420, timer: null, step: 0, tense: 0,
+    bgm = { gain: g, filt: filt, cutNow: 900, timer: null, step: 0, tense: 0, ot: 0,
             music: 0, pad: null, drum: null };
     var mine = bgm;
     musDecode(function () {
@@ -742,10 +797,22 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     }, 900);
   }
   /* 게임이 매 프레임 알려준다: 0=09시 1=18시 */
-  function bgmTense(v) {
+  function bgmTense(v, ot) {
     if (!bgm) return;
     bgm.tense = Math.max(0, Math.min(1, v));
-    if (bgm.music) musMix(bgm.tense);
+    if (!bgm.music) return;
+    musMix(bgm.tense);
+    /* 야근 — 에너지는 이미 최대라 더 올릴 게 없다. 대신 성격을 바꾼다.
+       박자를 밀고(170→최대 184BPM) 낮의 위안인 패드를 걷어낸다.
+       loopEnd는 버퍼 시간 기준이라 둘을 같이 밀면 동기는 유지된다. */
+    var o = Math.max(0, Math.min(1, ot || 0));
+    if (o === bgm.ot) return;
+    bgm.ot = o;
+    var t = ctx.currentTime, r = 1 + o * 0.082;
+    try { bgm.pad.rate.setTargetAtTime(r, t, 4); } catch (e) {}
+    try { bgm.drum.rate.setTargetAtTime(r, t, 4); } catch (e) {}
+    try { bgm.pad.gain.gain.setTargetAtTime(0.52 - o * 0.40, t, 3); } catch (e) {}
+    if (o > 0) bgm.pad.now = -1;                    // musMix가 다시 덮지 않게
   }
 
   var api = {
@@ -2753,7 +2820,11 @@ function playAsset(name){
     return true;
   }catch(e){ return false; }
 }
+/* 설정에서 효과음을 끄면 여기서 막는다. 배경음(bgm*)과 컨텍스트 깨우기는
+   효과음이 아니므로 통과시킨다 — 안 그러면 음악까지 같이 죽는다 */
+const SFX_ALWAYS={bgmStart:1,bgmStop:1,bgmTense:1,bgmSrc:1,resume:1,setMuted:1};
 const S = (m,...a) => { try{
+  if(!SFX_ALWAYS[m] && typeof opt==="function" && !opt("sfx")) return;
   const alias = (m==="kill" && a[0]) ? "killBoss" : m;        // 보스 처치는 따로
   if(playAsset(alias)) return;
   if(alias!==m && playAsset(m)) return;
@@ -4942,8 +5013,10 @@ function drawWorld(g){
   const P=g.P;
   const VWz=VW/ZOOM, VHz=VH/ZOOM;
   let camX=P.x-VWz/2, camY=P.y-VHz/2;
-  camX+=g.shakeX; camY+=g.shakeY;
-  if(g.shake>0){ camX+=(Math.random()-.5)*g.shake*.7; camY+=(Math.random()-.5)*g.shake*.7; }
+  if(opt("shake")){                          // 설정 — 어지러운 사람을 위해
+    camX+=g.shakeX; camY+=g.shakeY;
+    if(g.shake>0){ camX+=(Math.random()-.5)*g.shake*.7; camY+=(Math.random()-.5)*g.shake*.7; }
+  }
   const X=v=>v-camX, Y=v=>v-camY;
 
   drawFloor(g,camX,camY,VWz,VHz);
@@ -5499,12 +5572,19 @@ const CAREER={
   stamp :{name:"요령",      max:3, cost:l=>110+l*150,desc:l=>"반려 도장 시작 Lv +"+l,   f:(M,l)=>M.stampLv+=l},
   revive:{name:"비상금",    max:1, cost:l=>600,      desc:l=>"쓰러져도 한 번 일어난다", f:(M,l)=>M.revive+=l},
 };
+const BLANK_SAVE = () => ({career:0, lv:{}, best:0, days:0, cleared:false, rank:0, last:null,
+  score:0, clear:0, wins:0, unions:0, runs:0, zone:0, combo:0, opt:{}});
 function loadSave(){
   try{ const j=JSON.parse(localStorage.getItem(SAVE_KEY)||"{}");
        return {career:+j.career||0, lv:j.lv&&typeof j.lv==="object"?j.lv:{},
                best:+j.best||0, days:+j.days||0, cleared:!!j.cleared, rank:+j.rank||0,
-               last:j.last||null, seen:j.seen&&typeof j.seen==="object"?j.seen:{}}; }
-  catch(e){ return {career:0, lv:{}, best:0, days:0, cleared:false, rank:0, last:null, seen:{}}; }
+               last:j.last||null,
+               /* 기록 — 「어제의 나를 이겼다」가 이 장르의 재플레이 동력이다.
+                  그동안 최다 처리 하나만 남기고 나머지는 판이 끝나면 사라졌다 */
+               score:+j.score||0, clear:+j.clear||0, wins:+j.wins||0, unions:+j.unions||0,
+               runs:+j.runs||0, zone:+j.zone||0, combo:+j.combo||0,
+               opt:j.opt&&typeof j.opt==="object"?j.opt:{}}; }
+  catch(e){ return BLANK_SAVE(); }
 }
 function writeSave(sv){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(sv)); }catch(e){} }
 let SAVE=loadSave();
@@ -5513,6 +5593,20 @@ function metaBonus(){
   const M={hp:0, spd:0, haste:0, xp:0, magnet:0, startLv:0, stampLv:0, revive:0};
   for(const k in CAREER){ const l=SAVE.lv[k]|0; if(l>0) CAREER[k].f(M,l); }
   return M;
+}
+/* ── 점수 ──────────────────────────────────────────────────────
+   경력은 화폐다 — 쓰면 줄어드니 「내가 얼마나 잘하나」를 못 나타낸다.
+   출근 일수는 실력과 무관하고, 최다 처리는 오래 살기만 해도 오른다.
+   다섯 숫자가 동등하게 놓여 있어서 어느 것도 나를 대표하지 못했다.
+
+   그래서 한 판을 하나의 정수로 접는다. 경력과 따로 계산한다 —
+   상점 물가를 조정할 때마다 옛 기록이 깨지면 기록이 아니다. */
+function scoreOf(g){
+  const hours=(Math.min(g.t,DAY)/DAY)*(H1-H0);
+  const end = g.over==="union"?2200 : g.over==="win"?1500
+            : g.over==="late"?600 : g.over==="replaced"?250 : 0;
+  return Math.round((hours*120 + g.kills*2.2 + (g.comboBest||0)*3
+                    + Math.min(g.zone,ZONES.length)*160 + end) * (1+rankOf(g)*0.12));
 }
 /* 하루 결과 → 경력. 오래 버틸수록, 많이 처리할수록. */
 function careerEarned(g){
@@ -5568,9 +5662,62 @@ const AFTER={
 };
 
 /* ── 화면 ────────────────────────────────────────────────────── */
+/* ── 로비 ──────────────────────────────────────────────────────
+   이 화면은 「게임의 홈」이어야 하는데 「시작 전 안내문」이었다.
+   세로의 60%가 게임 설명이라 두 번째 판부터는 전부 소음이고,
+   그 소음이 「출근」을 접힘 아래로 밀어냈다.
+
+   구조를 넷으로 나눈다 — 상위 게임 로비가 공통으로 가진 것들이다.
+     ① 내 상태  : 최고 점수 하나. 다섯 숫자를 나열하면 어느 것도 나를 대표 못 한다
+     ② 진행     : 이야기 + 다음 해금 + 아홉 구역 중 어디까지
+     ③ 시작     : 하단 고정. 스크롤과 무관하게 항상 같은 자리
+     ④ 갈 곳    : 자기계발 · 기록 · 설정. 「플레이 말고도 할 일이 있다」는 신호
+
+   설명 3단계는 첫 판에만 띄운다. 그 뒤로는 「?」 뒤로 들어간다.
+   이야기 카드는 중앙에 남긴다 — 이게 이 게임이 서바이버즈와 다른 점이라
+   흔한 로비로 갈아엎으면 남는 게 없다. */
+function lobbyOn(v){
+  document.body.classList.toggle("lobby", !!v);
+  if(v) lobbyBackdrop();
+}
+/* 로비 뒤 — 아무것도 안 그리면 새까만 화면에 카드만 뜬다.
+   게임과 같은 지하 주차장을 한 장 깔고 어둡게 덮는다. 카드가 주인공이라
+   배경은 「여기가 그 건물이다」만 말하면 된다. */
+function lobbyBackdrop(){
+  if(!ctx||G) return;
+  try{
+    ctx.setTransform(DPR*ZOOM,0,0,DPR*ZOOM,0,0);
+    const W=VW/ZOOM, H=VH/ZOOM;
+    ctx.clearRect(0,0,W,H);
+    const B=window.BACKDROP;
+    if(B&&B.office) B.office(ctx,W,H,140,90,0,0);
+    else { ctx.fillStyle="#0b0e14"; ctx.fillRect(0,0,W,H); }
+    ctx.fillStyle="rgba(8,10,15,.55)"; ctx.fillRect(0,0,W,H);
+  }catch(e){}
+}
+
+function zmapHTML(){
+  const mx=Math.min(SAVE.zone|0, ZONES.length);
+  const cells=ZONES.map((z,i)=>`<i class="${i<mx?"on":""}${i===mx-1?" now":""}"></i>`).join("");
+  return `<div class="zmap">${cells}</div>
+    <div class="zlab"><span>${esc(ZONES[0].name)}</span>
+      <span>${mx>0?"최고 "+mx+" / "+ZONES.length+" 구역":"아직 출근 전"}</span>
+      <span>${esc(ZONES[ZONES.length-1].name)}</span></div>`;
+}
+function unlockHTML(){
+  const d=SAVE.days|0, NX=nextStage(d);
+  const dots=DAYS.filter(x=>x.unlock).map(x=>`<i class="${d>=x.d?"on":""}"></i>`).join("");
+  if(!NX) return `<div class="unl"><div class="dots">${dots}</div>
+    <span style="color:var(--good)">이야기를 끝까지 봤습니다</span></div>`;
+  return `<div class="unl"><div class="dots">${dots}</div>
+    <span><b>${NX.d-d}일</b> 뒤 — ${NX.unlockName?"<b>"+esc(NX.unlockName)+"</b> 합류":"다음 이야기"}</span></div>`;
+}
+
 function renderStart(){
+  lobbyOn(true);
   const M=metaBonus();
-  const ST=dayStage(SAVE.days|0), NX=nextStage(SAVE.days|0);
+  const ST=dayStage(SAVE.days|0);
+  const first=(SAVE.days|0)===0;
   const bon=[
     M.hp?"체력 +"+M.hp:"", M.spd?"속도 +"+Math.round(M.spd*100)+"%":"",
     M.haste?"공속 +"+Math.round(M.haste*100)+"%":"", M.xp?"경험치 +"+Math.round(M.xp*100)+"%":"",
@@ -5583,17 +5730,18 @@ function renderStart(){
       <h1 class="ttl">정시 퇴근</h1>
       <span class="when">09:00 — 18:00</span>
     </div>
-    <div class="story">
+    ${first?`<div class="sub" style="margin:10px 0 0;line-height:1.7">
+      <b style="color:var(--ink);font-size:15px">18:00까지 회사 건물을 뚫고 정문으로 나가는 게임입니다.</b><br>
+      지하주차장에서 출근해 아홉 개 구역을 지납니다.</div>`
+     :`<div class="hi"><b>${(SAVE.score|0).toLocaleString()}</b><span>최고 점수</span>
+        <span style="margin-left:auto">${SAVE.days}일차 · ${esc(rankName(SAVE.rank|0))}</span></div>`}
+    <div class="story" style="margin-top:14px">
       <div class="sd">${esc(ST.head)}</div>
       <div class="sl">${SAVE.days>0&&AFTER[SAVE.last]?esc(AFTER[SAVE.last])+"<br>":""}${esc(ST.line)}</div>
-      ${NX?`<div class="sn">다음 이야기까지 <b>${NX.d-SAVE.days}일</b></div>`:
-            `<div class="sn" style="color:var(--good)">이야기를 끝까지 봤습니다</div>`}
+      ${unlockHTML()}
     </div>
-    <div class="sub" style="margin:14px 0 0;line-height:1.7">
-      <b style="color:var(--ink);font-size:15px">18:00까지 회사 건물을 뚫고 정문으로 나가는 게임입니다.</b><br>
-      지하주차장에서 출근해 아홉 개 구역을 지납니다.
-    </div>
-    <div class="how">
+    ${zmapHTML()}
+    ${first?`<div class="how">
       <div class="hw"><b>1</b><div><span>움직이기만 하세요</span>
         공격은 자동입니다. 사장님이 하는 건 이동뿐입니다.</div></div>
       <div class="hw"><b>2</b><div><span>구역의 일을 끝내면 문이 열립니다</span>
@@ -5602,39 +5750,102 @@ function renderStart(){
       <div class="hw"><b>3</b><div><span>레벨업 카드가 전투 방식을 정합니다</span>
         복사기는 사방으로 서류를 뿌리고, 쏟은 커피는 바닥에 장판을 깝니다.
         조합해서 내 방식을 만듭니다.</div></div>
-    </div>
-    <div class="crow">
-      <div class="cstat"><b class="num" style="color:var(--accent)">${SAVE.career.toLocaleString()}</b><span>보유 경력</span></div>
-      <div class="cstat"><b class="num">${SAVE.days}</b><span>출근 일수</span></div>
-      <div class="cstat"><b class="num"${(SAVE.rank|0)>0?' style="color:#c9a227"':''}>${
-        esc(rankName(SAVE.rank|0))}</b><span>직급</span></div>
-      <div class="cstat"><b class="num">${SAVE.best.toLocaleString()}</b><span>최다 처리</span></div>
-      <div class="cstat"><b class="ttl" style="color:${SAVE.cleared?"var(--good)":"var(--dim)"}">${SAVE.cleared?"있음":"없음"}</b><span>정시 퇴근</span></div>
-    </div>
-    ${bon?`<div class="mbon"><span class="k">적용 중</span><div class="chips">${bon}</div></div>`:""}
+    </div>`:""}
+    ${bon?`<div class="mbon" style="margin-top:14px"><span class="k">적용 중</span><div class="chips">${bon}</div></div>`:""}
     <label>오늘 누구 때문에 힘드셨나요? <span style="color:#59627a">적 대사가 됩니다</span></label>
     <input id="grudge" maxlength="40" placeholder="이거 오늘 안에 되죠?" autocomplete="off">
-    <button class="primary" id="go">출근</button>
-    <button class="ghost" id="shop" style="color:var(--ink);font-size:14px;padding:13px;
-      display:flex;align-items:center;justify-content:center;gap:8px">
-      <span>자기계발</span><span style="color:var(--accent);font-weight:800">경력 ${SAVE.career.toLocaleString()}</span>
-    </button>
-    <div class="hintrow">
-      <span>이동 <b>${isTouch?"WASD · 드래그":"WASD · 마우스 드래그"}</b></span>
-      <span>공격 <b>자동</b></span>
-      <span>퇴근 조건 <b>미결 0</b></span>
-      <span>음소거 <b>M</b></span>
+    <div class="dock">
+      <button class="primary" id="go">출근</button>
+      <div class="nav">
+        <button id="shop">자기계발<small>경력 ${SAVE.career.toLocaleString()}</small></button>
+        <button id="recs">기록<small>${SAVE.runs|0}번 출근</small></button>
+        <button id="opts">설정<small>${first?"조작 · 소리":"도움말 · 소리"}</small></button>
+      </div>
     </div>`;
   $("#go").onclick=()=>{
     S("resume");
     start(($("#grudge").value||"").trim()||"이거 오늘 안에 되죠?");
   };
   $("#shop").onclick=()=>{ S("resume"); S("select"); renderShop(); };
+  $("#recs").onclick=()=>{ S("resume"); S("select"); renderRecords(); };
+  $("#opts").onclick=()=>{ S("resume"); S("select"); renderOptions(); };
+  openOverlay();
+}
+
+/* ── 기록 ──────────────────────────────────────────────────────
+   사용자가 찾은 「랭킹」의 실체는 「내 기록이 남는 곳」이다.
+   서버 랭킹은 계정·치트 방어·개인정보 처리가 따라오고, 무엇보다
+   「내가 1,000등」이라는 정보는 스트레스 해소와 정면으로 충돌한다.
+   이 게임에서 이겨야 하는 상대는 남이 아니라 어제의 나다. */
+function clockOfT(t){
+  const h=H0+(Math.min(t,DAY)/DAY)*(H1-H0);
+  return String(Math.floor(h)).padStart(2,"0")+":"+String(Math.floor((h%1)*60)).padStart(2,"0");
+}
+function renderRecords(){
+  lobbyOn(true);
+  const R=[
+    ["최고 점수",  (SAVE.score|0).toLocaleString(), "var(--accent)"],
+    ["가장 빠른 퇴근", SAVE.clear?clockOfT(SAVE.clear):"—", SAVE.clear?"var(--good)":"var(--dim)"],
+    ["정시 퇴근",  (SAVE.wins|0)+"회", (SAVE.wins|0)?"var(--good)":"var(--dim)"],
+    ["단체협약",   (SAVE.unions|0)+"회", (SAVE.unions|0)?"#5fe0c0":"var(--dim)"],
+    ["최다 처리",  (SAVE.best|0).toLocaleString(), "var(--ink)"],
+    ["최고 연속",  (SAVE.combo|0).toLocaleString(), "var(--ink)"],
+    ["최고 도달",  (SAVE.zone|0)?((SAVE.zone|0)+" / "+ZONES.length+" 구역"):"—", "var(--ink)"],
+    ["최고 직급",  rankName(SAVE.rank|0), (SAVE.rank|0)?"#c9a227":"var(--dim)"],
+  ];
+  $("#card").innerHTML=`
+    <div class="title"><h1 class="ttl" style="font-size:30px">기록</h1>
+      <span class="when">${SAVE.runs|0}번 출근 · ${SAVE.days|0}일차</span></div>
+    <div class="sub" style="margin:6px 0 0">이겨야 하는 건 남이 아니라 어제의 나입니다.</div>
+    <div class="crow four">${R.map(r=>
+      `<div class="cstat"><b class="num" style="color:${r[2]};font-size:${r[1].length>7?20:26}px">${
+        esc(r[1])}</b><span>${esc(r[0])}</span></div>`).join("")}</div>
+    ${zmapHTML()}
+    <div class="dock"><button class="primary" id="back">돌아가기</button></div>`;
+  $("#back").onclick=()=>{ S("select"); renderStart(); };
+  openOverlay();
+}
+
+/* ── 설정 ──────────────────────────────────────────────────────
+   「소리를 못 끈다 / 흔들려서 멀미난다」는 1점 리뷰 단골이다.
+   기록 초기화도 여기로 옮긴다 — 상점 첫 화면에 「지우기」가 있으면
+   살 때마다 그게 눈에 들어온다. */
+const OPT_DEF={ bgm:1, sfx:1, shake:1 };
+function opt(k){ const v=(SAVE.opt||{})[k]; return v===undefined?OPT_DEF[k]:!!v; }
+function setOpt(k,v){ SAVE.opt=SAVE.opt||{}; SAVE.opt[k]=v?1:0; writeSave(SAVE);
+  if(k==="bgm"){ if(v){ if(G&&!G.over) S("bgmStart"); } else S("bgmStop"); } }
+function renderOptions(){
+  lobbyOn(true);
+  const row=(k,name,desc)=>`<div class="setrow"><div class="k">${esc(name)}<small>${desc}</small></div>
+    <button class="tg${opt(k)?" on":""}" data-k="${k}" role="switch" aria-checked="${opt(k)}"><i></i></button></div>`;
+  $("#card").innerHTML=`
+    <div class="title"><h1 class="ttl" style="font-size:30px">설정</h1></div>
+    ${row("bgm","배경음","하루가 갈수록 조여 오는 음악")}
+    ${row("sfx","효과음","타격·처치·획득")}
+    ${row("shake","화면 흔들림","보스와 큰 타격에 화면이 흔들립니다. 어지러우면 끄세요")}
+    <div class="setrow"><div class="k">조작<small>${isTouch?"화면 드래그 · WASD":"WASD · 마우스 드래그"} · 공격은 자동 · 음소거 M · 일시정지 P</small></div></div>
+    <div class="setrow"><div class="k">소리<small>Abstraction · Kenney — CC0 1.0 (상업 이용 가능)</small></div></div>
+    <div class="dock">
+      <button class="primary" id="back">돌아가기</button>
+      <div class="nav" style="grid-template-columns:1fr">
+        <button id="wipe" style="color:var(--bad);border-color:#3a2530">기록 초기화<small>되돌릴 수 없습니다</small></button>
+      </div>
+    </div>`;
+  $("#card").querySelectorAll(".tg").forEach(b=>{
+    b.onclick=()=>{ const k=b.dataset.k, v=!opt(k); setOpt(k,v);
+      b.classList.toggle("on",v); b.setAttribute("aria-checked",String(v)); S("select"); };
+  });
+  $("#back").onclick=()=>{ S("select"); renderStart(); };
+  $("#wipe").onclick=()=>{
+    if(!confirm("경력과 기록을 전부 지웁니다. 되돌릴 수 없습니다.")) return;
+    SAVE=BLANK_SAVE(); writeSave(SAVE); S("deny"); renderStart();
+  };
   openOverlay();
 }
 
 /* 자기계발 — 경력으로 영구 능력을 산다 */
 function renderShop(){
+  lobbyOn(true);
   const card=$("#card");
   const rows=Object.keys(CAREER).map(k=>{
     const C=CAREER[k], l=SAVE.lv[k]|0, maxed=l>=C.max, cost=C.cost(l+1);
@@ -5660,8 +5871,7 @@ function renderShop(){
     </div>
     <div class="rule"></div>
     <div class="shop">${rows}</div>
-    <button class="primary" id="back">← 돌아가기</button>
-    <button class="ghost" id="reset">기록 초기화</button>`;
+    <div class="dock"><button class="primary" id="back">← 돌아가기</button></div>`;
   card.querySelectorAll("[data-k]").forEach(b=>{
     b.onclick=()=>{
       const k=b.dataset.k, C=CAREER[k], l=SAVE.lv[k]|0;
@@ -5673,11 +5883,6 @@ function renderShop(){
     };
   });
   $("#back").onclick=()=>{ S("select"); renderStart(); };
-  $("#reset").onclick=()=>{
-    if(!confirm("경력과 기록을 전부 지웁니다. 되돌릴 수 없습니다.")) return;
-    SAVE={career:0, lv:{}, best:0, days:0, cleared:false, rank:0, last:null, seen:{}}; writeSave(SAVE);
-    S("deny"); renderShop();
-  };
   openOverlay();
 }
 
@@ -5695,7 +5900,17 @@ function renderEnd(g){
   SAVE.rank=rk;
   SAVE.career+=earn; SAVE.days++;
   SAVE.last=g.over;                       // 어제가 오늘 첫 줄을 바꾼다
+  /* 오늘의 점수 — 최고를 넘었으면 그 자리에서 말해 줘야 한다.
+     갱신만 하고 화면에 안 알리면 기록이 있으나 마나다 */
+  const sc=scoreOf(g), hiOld=SAVE.score|0, isHi=sc>hiOld;
+  SAVE.runs=(SAVE.runs|0)+1;
+  if(isHi) SAVE.score=sc;
   if(g.kills>SAVE.best) SAVE.best=g.kills;
+  if((g.comboBest|0)>(SAVE.combo|0)) SAVE.combo=g.comboBest|0;
+  if(Math.min(g.zone+1,ZONES.length)>(SAVE.zone|0)) SAVE.zone=Math.min(g.zone+1,ZONES.length);
+  if(win||uni){ SAVE.wins=(SAVE.wins|0)+1;
+                if(!SAVE.clear || g.t<SAVE.clear) SAVE.clear=g.t; }   // 가장 빨리 나온 날
+  if(uni) SAVE.unions=(SAVE.unions|0)+1;
   if(win||late||uni) SAVE.cleared=true;
   writeSave(SAVE);
   const NXT=nextStage(SAVE.days|0);      // 다음 이야기 — 「한 판 더」가 여기서 나온다
@@ -5714,6 +5929,8 @@ function renderEnd(g){
       </div>
     </div>
     <div class="crow">
+      <div class="cstat"><b class="num" style="color:${isHi?'var(--accent)':'var(--ink)'}">${
+        sc.toLocaleString()}</b><span>${isHi?"오늘 점수 — 신기록":"오늘 점수 · 최고 "+hiOld.toLocaleString()}</span></div>
       <div class="cstat"><b class="num">${g.kills.toLocaleString()}</b><span>처리</span></div>
       <div class="cstat"><b class="num" style="color:var(--bad)">${g.comboBest.toLocaleString()}</b><span>최고 연속</span></div>
       <div class="cstat"><b class="num"${rk>rk0?' style="color:#c9a227"':''}>${
@@ -5761,11 +5978,12 @@ function resize(){
   cv.width=Math.round(VW*DPR); cv.height=Math.round(VH*DPR);
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ZOOM=calcZoom();
+  if(!G) lobbyBackdrop();          // 로비에서 창 크기가 바뀌면 다시 깔아야 한다
 }
 function start(grudge){
-  closeOverlay();
+  closeOverlay(); lobbyOn(false);
   G=newGame(grudge); applyPerks(G); syncSlots(G); markBossTicks();
-  S("bgmStart");                     // 배경음 — 하루가 흐르는 걸 귀로도
+  if(opt("bgm")) S("bgmStart");      // 배경음 — 하루가 흐르는 걸 귀로도
   if(G.pendingLv>0){ G.pendingLv--; levelUp(G); }   // 「짬」 — 시작부터 고를 게 있다
   let last=performance.now();
   const loop=now=>{
@@ -5776,7 +5994,9 @@ function start(grudge){
     if(!g.paused) step(g,dt);
     if(!G||G.over) return;
       // 배경음 긴장도 — 시각이 갈수록 템포가 빨라진다
-    S("bgmTense", g.ot ? 1 : Math.min(1, g.t/DAY));
+    /* 야근이면 얼마나 깊이 들어왔는지까지 넘긴다 — 18시 이후엔 음악이
+       세지는 게 아니라 성격이 바뀐다(박자가 밀리고 패드가 빠진다) */
+    S("bgmTense", g.ot ? 1 : Math.min(1, g.t/DAY), g.ot ? Math.min(1, g.otT/90) : 0);
     draw(g); syncHud(g);
     raf=requestAnimationFrame(loop);
   };
