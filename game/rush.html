@@ -357,8 +357,10 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
   }
 
   /* ── 고빈도 사운드 스로틀 (ms) ── */
-  var THROTTLE = { shoot: 26, hit: 16, chew: 160, select: 40 };
-  var lastAt = { shoot: -1e9, hit: -1e9, chew: -1e9, select: -1e9 };
+  /* 초당 여러 번 나는 소리는 막아야 한다. 관통탄이 한 프레임에 여덟을
+     맞히면 여덟 번 울리는데, 귀는 그걸 구분하지 못하고 합산만 커진다 */
+  var THROTTLE = { shoot: 26, hit: 22, chew: 160, select: 40, coin: 18 };
+  var lastAt = { shoot: -1e9, hit: -1e9, chew: -1e9, select: -1e9, coin: -1e9 };
   function gate(name) {
     var t = Date.now();
     if (t - lastAt[name] < THROTTLE[name]) return false;
@@ -387,6 +389,7 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
       // 화이트 노이즈 버퍼 — 1초, 1회만 생성해서 전 사운드가 공유
       var n = Math.max(1, Math.floor(ctx.sampleRate));
       noiseBuf = ctx.createBuffer(1, n, ctx.sampleRate);
+      setTimeout(sampleDecode, 0);             // 컨텍스트가 생겼으니 샘플을 굽는다
       var d = noiseBuf.getChannelData(0);
       for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
     }
@@ -554,11 +557,71 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
   }
 
   /* 보스 등장 — 낮은 드론이 부풀었다 멎는다 (~1.2초). 놀래키지 않는다 */
+  /* 보스 등장 — 원래 52/55.5Hz 서브 드론뿐이었다. 폰 스피커는 200Hz
+     아래를 못 낸다. 게임에서 제일 중요한 순간이 모바일에서 무음이었다.
+     저역은 그대로 두되(헤드폰에서는 그게 무게다) 중역을 얹는다. */
   function bossIn() {
     var t0 = ready(); if (t0 < 0) return;
     tone(t0, 1.2, 0.15, "sawtooth", 52, 47, { a: 0.75, filter: ["lowpass", 270, 130, 4] });
     tone(t0, 1.2, 0.15, "sawtooth", 55.5, 50, { a: 0.75, filter: ["lowpass", 270, 130, 4] });
     tone(t0, 1.1, 0.03, "sine", 208, 197, { a: 0.7 });   // 형광등 험 같은 잔음
+    /* 폰에서 실제로 들리는 몫 — 문이 닫히는 듯한 중역 한 방 + 낮은 화음 */
+    noise(t0, 0.30, 0.30, { filter: ["bandpass", 620, 520, 0.9], a: 0.004 });
+    tone(t0 + 0.02, 0.95, 0.20, "triangle", 312, 208, { a: 0.02 });
+    tone(t0 + 0.02, 0.95, 0.13, "triangle", 416, 277, { a: 0.02 });
+    tone(t0 + 0.02, 0.70, 0.07, "square", 624, 416, { a: 0.03, filter: ["lowpass", 2400, 1200, 1] });
+  }
+
+  /* 보스 예비동작 — 돌진·충격파가 나가기 0.45~0.55초 전에 울린다.
+     그동안 소리는 「나간 뒤」에만 있었다. 미리 들리면 귀로 피할 수 있고,
+     그때부터 그건 반사신경이 아니라 실력이 된다. */
+  function windup() {
+    var t0 = ready(); if (t0 < 0) return;
+    noise(t0, 0.42, 0.26, { filter: ["bandpass", 700, 500, 1.2], a: 0.14, rate: 1.2 });
+    tone(t0, 0.44, 0.20, "sawtooth", 180, 620, { a: 0.10, filter: ["lowpass", 1800, 3000, 1] });
+  }
+  /* 18:00 — 정시가 지났다. 형광등 릴레이가 탁 하고 절반이 꺼진다.
+     여기서도 저역만 쓰면 폰에서 아무 일도 안 일어난 게 된다. */
+  function overtimeIn() {
+    var t0 = ready(); if (t0 < 0) return;
+    noise(t0, 0.05, 0.34, { filter: ["highpass", 1400, 900, 0.8], a: 0.0005 });   // 릴레이 탁
+    noise(t0 + 0.06, 0.10, 0.16, { filter: ["bandpass", 900, 700, 0.9], a: 0.002 });
+    tone(t0, 1.5, 0.10, "sawtooth", 240, 120, { a: 0.01, filter: ["lowpass", 1200, 380, 2] });
+    tone(t0 + 0.04, 1.4, 0.05, "sine", 120, 60, { a: 0.02 });                     // 험이 꺼진다
+  }
+  /* 문이 열린다 — 카드키 삑 두 번. 팡파르가 아니라 물리적인 소리여야
+     「나가도 된다」로 읽힌다(그동안 승리 징글을 판당 아홉 번 썼다). */
+  function doorOpen() {
+    var t0 = ready(); if (t0 < 0) return;
+    tone(t0, 0.07, 0.14, "square", 1760, 1760, { a: 0.002 });
+    tone(t0 + 0.11, 0.09, 0.16, "square", 2637, 2637, { a: 0.002 });
+    noise(t0 + 0.20, 0.22, 0.09, { filter: ["lowpass", 900, 420, 1], a: 0.02 });  // 문이 밀린다
+  }
+  /* 문을 지난다 — 짧은 훅 + 5도. 다음 구역으로 넘어간 게 귀로 닫혀야 한다 */
+  function doorThru() {
+    var t0 = ready(); if (t0 < 0) return;
+    noise(t0, 0.30, 0.13, { filter: ["bandpass", 1100, 900, 0.8], a: 0.03, rate: 0.9 });
+    tone(t0 + 0.02, 0.30, 0.10, "triangle", 392, 588, { a: 0.006 });
+    tone(t0 + 0.02, 0.30, 0.07, "triangle", 262, 392, { a: 0.006 });
+  }
+  /* 맞았다 — 그동안 적이 갉는 소리(chew)를 그대로 썼다.
+     내가 맞은 건지 남이 맞은 건지 귀로 구분이 안 됐다. */
+  function hurt() {
+    var t0 = ready(); if (t0 < 0) return;
+    noise(t0, 0.13, 0.22, { filter: ["bandpass", 320, 260, 0.9], a: 0.001 });
+    tone(t0, 0.16, 0.17, "sawtooth", 150, 62, { a: 0.001, filter: ["lowpass", 900, 300, 1] });
+  }
+  /* 체력이 얼마 안 남았다 — 야근엔 시간이 곧 체력이라, 경고가 없으면
+     갑자기 죽는다. 두 번 치는 심장. */
+  function lowhp() {
+    var t0 = ready(); if (t0 < 0) return;
+    tone(t0, 0.13, 0.14, "sine", 74, 52, { a: 0.004 });
+    tone(t0 + 0.19, 0.16, 0.10, "sine", 66, 46, { a: 0.004 });
+    /* 폰에서 실제로 들리는 몫 — 가슴을 치는 둔탁한 중역 */
+    noise(t0, 0.11, 0.22, { filter: ["bandpass", 420, 300, 1.1], a: 0.002 });
+    noise(t0 + 0.19, 0.13, 0.16, { filter: ["bandpass", 360, 260, 1.1], a: 0.002 });
+    tone(t0, 0.12, 0.10, "triangle", 296, 208, { a: 0.003 });
+    tone(t0 + 0.19, 0.14, 0.07, "triangle", 264, 185, { a: 0.003 });
   }
 
   /* UI 클릭 — 아주 작은 클릭 */
@@ -693,6 +756,50 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     var bpm = 84 + k * 54;                // 84 → 138
     bgm.timer = setTimeout(bgmTick, (60 / bpm / 2) * 1000);
   }
+  /* ── 샘플 효과음 ───────────────────────────────────────────────
+     원래는 게임 쪽에서 <audio> 풀 5개로 틀었다. 그게 만든 문제들:
+       · master를 안 거쳐서 음소거도 마스터 볼륨도 안 먹었다
+       · 안전망 컴프레서를 안 거쳐서 떼로 죽을 때 합산이 그대로 나갔다
+       · 합성 쪽에만 있던 스로틀이 없어, 한 프레임에 여덟 대를 맞히면
+         풀 5개가 동시에 시작하고 셋은 currentTime=0으로 강제 재시작됐다
+       · HTMLAudio는 모바일에서 지연이 크다
+       · 콤보에 따라 처치음이 올라가던 사다리가 사라졌다(인자를 버렸다)
+     전부 Web Audio로 옮기면 한 번에 풀린다. */
+  var SMP = { src: {}, buf: {}, state: 0 };      // 0=미시작 1=디코드중 2=끝
+  function sampleSrc(map) {
+    for (var k in map) if (!SMP.src[k]) SMP.src[k] = map[k];
+  }
+  function sampleDecode() {
+    if (!ctx || SMP.state) return;
+    SMP.state = 1;
+    var names = Object.keys(SMP.src);
+    Promise.all(names.map(function (k) {
+      return fetch(SMP.src[k]).then(function (r) { return r.arrayBuffer(); })
+        .then(function (ab) { return ctx.decodeAudioData(ab); })
+        .then(function (b) { SMP.buf[k] = b; })
+        .catch(function () {});                  // 하나가 실패해도 나머지는 산다
+    })).then(function () { SMP.state = 2; });
+  }
+  function sampleReady(name) { return !!SMP.buf[name]; }
+  function playSample(name, vol, rate) {
+    var b = SMP.buf[name]; if (!b) return false;
+    if (!ensure()) return false;
+    if (muted) return true;                      // 처리는 했다 — 합성으로 새지 않게
+    if (THROTTLE[name] !== undefined && !gate(name)) return true;
+    if (live >= MAX_VOICES) { dropped++; return true; }
+    try {
+      var s = ctx.createBufferSource(), g = ctx.createGain();
+      s.buffer = b;
+      if (rate) s.playbackRate.value = rate;
+      g.gain.value = vol === undefined ? 0.6 : vol;
+      s.connect(g); g.connect(master);           // master 앞 — 음소거가 먹어야 한다
+      live++; created++;
+      s.onended = function () { live--; try { s.disconnect(); g.disconnect(); } catch (e) {} };
+      s.start();
+      return true;
+    } catch (e) { return false; }
+  }
+
   /* ── 음악 — 두 겹을 겹쳐 하루를 따라간다 ────────────────────
      합성 아르페지오는 사각파 한 음씩이라 「띡 띡 띡」으로 들렸다.
      그건 음악이 아니라 삐 소리다. 실제 게임들은 합성하지 않고 곡을 깐다.
@@ -824,11 +931,20 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
     coin: safe(coin),
     nuke: safe(nuke),
     bossIn: safe(bossIn),
+    windup: safe(windup),
+    overtimeIn: safe(overtimeIn),
+    doorOpen: safe(doorOpen),
+    doorThru: safe(doorThru),
+    hurt: safe(hurt),
+    lowhp: safe(lowhp),
     select: safe(select),
     deny: safe(deny),
     levelup: safe(levelup),
     win: safe(win),
     lose: safe(lose),
+    sampleSrc: safe(sampleSrc),
+    sampleReady: sampleReady,
+    playSample: safe(playSample),
     bgmSrc: safe(bgmSrc),
     bgmStart: safe(bgmStart),
     bgmStop: safe(bgmStop),
@@ -2795,30 +2911,35 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">"
 const clamp = (v,a,b) => v<a?a:v>b?b:v;
 /* 소리 — 산 음원이 있으면 그걸 쓰고, 없으면 합성음.
    음원 이름은 효과음 이름 그대로다(hit·kill·killBoss·coin·levelup…). */
-const _sfxPool={};
-/* 음량 — 받은 음원들의 평균 음량이 0.014~0.268로 19배 차이가 났다.
-   그대로 쓰면 동전은 안 들리고 보스는 귀를 때린다. 재서 맞춘다.
-   의도적으로 어긋낸 곳: 명중은 초당 여러 번이라 더 낮추고,
-   보스 처치는 커야 하니 덜 낮춘다. */
-const SFX_GAIN={ hit:.28, kill:.50, killBoss:.72, coin:.85, place:.90,
-                 levelup:.55, win:.62, lose:.60 };
+/* 음량 — 파일들을 진피크 −3dBTP로 먼저 맞췄다(원래 평균이 26dB,
+   400배 차이가 나서 어떤 건 안 들리고 어떤 건 귀를 때렸다. 게다가
+   명중음과 보스 처치음은 원본이 이미 0dB에 붙어 찌그러져 있었다).
+   그 위에서 이 표는 「역할」만 정한다 — 자주 나는 건 낮게, 판을
+   가르는 순간은 높게. 정규화 뒤 평균(dB)과 목표는 이렇다:
+     hit −21.5 → −34   초당 여러 번. 여기서 피로가 온다
+     kill −21.6 → −28  주된 피드백
+     killBoss −15.8 → −23   판당 3회. 음악과 같은 높이로 튀어나온다
+     coin −26.6 → −33  경험치 구슬마다. 틱 수준이어야 한다
+     place −26.1 → −30
+     levelup −14.4 → −24 · win −19.4 → −22 · lose −13.0 → −22
+       (이 셋은 화면이 멈춘 뒤에 울리니 앞에 나와도 된다) */
+const SFX_GAIN={ hit:.237, kill:.478, killBoss:.437, coin:.478, place:.638,
+                 levelup:.331, win:.741, lose:.355 };
 /* 같은 소리가 연달아 나면 귀가 기계음으로 듣는다. 재생 속도를 살짝 흔든다 */
 const SFX_VARY={ hit:.10, kill:.07, coin:.06 };
-function playAsset(name){
-  const src=AST.sfx[name]; if(!src) return false;
-  try{
-    if(window.SFX && window.SFX.muted) return true;          // 음소거면 소리만 안 낸다
-    let pool=_sfxPool[name];
-    if(!pool){ pool=_sfxPool[name]=[];
-               for(let i=0;i<5;i++){ const a=new Audio(src); a.preload="auto"; pool.push(a); } }
-    const a=pool.find(v=>v.paused||v.ended)||pool[0];
-    a.currentTime=0;
-    a.volume=clamp((SFX_GAIN[name]!==undefined?SFX_GAIN[name]:.6),0,1);
-    const v=SFX_VARY[name];
-    if(v) a.playbackRate=1+(Math.random()*2-1)*v;
-    const pr=a.play(); if(pr&&pr.catch) pr.catch(()=>{});
-    return true;
-  }catch(e){ return false; }
+/* 콤보 사다리 — 연속으로 처치할수록 처치음이 올라간다.
+   합성 쪽에만 있던 것이라 음원을 붙이면서 사라졌다. 짧은 소리라
+   재생 속도만 밀어도 그대로 산다. */
+const SFX_LADDER=[1, 1.125, 1.25, 1.5, 1.6875, 2, 2.25, 2.5, 3];
+function playAsset(name, combo){
+  const X=window.SFX;
+  if(!X || !X.sampleReady || !X.sampleReady(name)) return false;
+  let rate=1;
+  const v=SFX_VARY[name];
+  if(v) rate=1+(Math.random()*2-1)*v;
+  if(name==="kill" && combo)                     // 사다리는 흔들림 위에 얹는다
+    rate*=SFX_LADDER[Math.min(SFX_LADDER.length-1, Math.floor(combo/6))];
+  return X.playSample(name, SFX_GAIN[name]!==undefined?SFX_GAIN[name]:.6, rate);
 }
 /* 설정에서 효과음을 끄면 여기서 막는다. 배경음(bgm*)과 컨텍스트 깨우기는
    효과음이 아니므로 통과시킨다 — 안 그러면 음악까지 같이 죽는다 */
@@ -2826,8 +2947,8 @@ const SFX_ALWAYS={bgmStart:1,bgmStop:1,bgmTense:1,bgmSrc:1,resume:1,setMuted:1};
 const S = (m,...a) => { try{
   if(!SFX_ALWAYS[m] && typeof opt==="function" && !opt("sfx")) return;
   const alias = (m==="kill" && a[0]) ? "killBoss" : m;        // 보스 처치는 따로
-  if(playAsset(alias)) return;
-  if(alias!==m && playAsset(m)) return;
+  if(playAsset(alias, m==="kill"?a[1]:0)) return;
+  if(alias!==m && playAsset(m, a[1])) return;
   const x=window.SFX; if(x&&typeof x[m]==="function") x[m](...a);
 }catch(e){} };
 
@@ -3524,7 +3645,7 @@ function newGame(grudge){
     blinkCd:0, annualCd:0, annualT:0,
     spawnAcc:0, bossOut:false, shake:0, shakeX:0, shakeY:0, hitstop:0,
     zone:0, zoneK0:0, zoneT:0, zoneBonus:0, gate:null, cleared:0, sayCd:2.5,
-    rank0:Math.min(RANK_MAX,SAVE.rank|0), rank:0, promoLv:0,
+    rank0:Math.min(RANK_MAX,SAVE.rank|0), rank:0, promoLv:0, lowT:0,
     meddle:0, meddleSrc:null, meddleSaid:0,
     robotWork:0, robotCd:16, robotSeen:false, robotWarn:false, userPaused:false,
     evT:0, evPhase:0, lunchT:0, killHold:0, deskX:0, deskY:0, deskOn:false, deskSaid:0,
@@ -3675,6 +3796,7 @@ function bossStep(g,f,dt){
   f.atkT-=dt;
   if(f.atkT>0) return;
   f.wind = D.atk==="shock" ? 0.45 : 0.55;
+  S("windup");                      // 0.45~0.55초 전 — 귀로 피할 수 있게
   f.pending = D.atk;
   f.atkT = D.atkCd*rk;
 }
@@ -3714,7 +3836,7 @@ function openGate(g){
   const R=560;
   g.gate={x:P.x+Math.cos(a)*R, y:P.y+Math.sin(a)*R, r:52, t:0};
   flash(g, Z.door||"문이 열렸습니다 — 표시된 곳으로");
-  S("win"); g.flash=Math.max(g.flash,.7);
+  S("doorOpen"); g.flash=Math.max(g.flash,.7);
   g.fx.push({type:"ring",x:g.gate.x,y:g.gate.y,t:0,r0:20,r1:200,c:"#57d98a"});
 }
 function nextZone(g){
@@ -3740,7 +3862,7 @@ function nextZone(g){
   g.bossOut=false;
   const Z=zoneOf(g);
   flash(g, Z.name+" — 미결 "+quotaOf(g)+"건");
-  S("levelup"); g.flash=Math.max(g.flash,.8); kick(g,0,-1,10);
+  S("doorThru"); g.flash=Math.max(g.flash,.8); kick(g,0,-1,10);
   g.fx.push({type:"ring",x:P.x,y:P.y,t:0,r0:16,r1:240,c:"#f5c451"});
   return false;
 }
@@ -4211,7 +4333,7 @@ function step(g,dt){
     if(g.t>=DAY){
       g.ot=true; g.otT=0; g.warned=true;
       flash(g,"18:00 — 아직 "+zoneOf(g).name+"입니다. 야근입니다");
-      S("bossIn"); g.flash=Math.max(g.flash,.9); kick(g,0,-1,14);
+      S("overtimeIn"); g.flash=Math.max(g.flash,.9); kick(g,0,-1,14);
     }
   }else{
     g.otT+=dt;
@@ -4243,6 +4365,9 @@ function step(g,dt){
                  P.hx+=(pdx/pd-P.hx)*k; P.hy+=(pdy/pd-P.hy)*k; } }
   if(P.inv>0) P.inv-=dt;
   if(P.hurt>0) P.hurt-=dt;
+  if(g.lowT>0) g.lowT-=dt;
+  /* 야근은 맞지 않아도 체력이 깎인다. 그쪽에도 경고가 필요하다 */
+  else if(g.ot && P.hp>0 && P.hp/P.maxhp<0.25){ g.lowT=2.6; S("lowhp"); }
   if(P.atk>0) P.atk-=dt;
 
   g.baristaOn=0;                 // 커피머신 범위 안이면 stepBuilds가 채운다
@@ -4518,7 +4643,9 @@ function hurtPlayer(g,dmg,kx,ky,power){
   P.hp -= dmg*late;
   P.inv = .62 + (P.inv0||0);
   P.hurt = .30;
-  kick(g,kx,ky,power); S("chew");
+  kick(g,kx,ky,power); S("hurt");
+  /* 야근엔 시간이 곧 체력이라, 경고가 없으면 갑자기 죽는다 */
+  if(P.hp>0 && P.hp/P.maxhp<0.25 && (g.lowT||0)<=0){ g.lowT=2.2; S("lowhp"); }
   if(P.hp<=0 && !revive(g)){ finish(g,"lose"); return true; }
   return false;
 }
@@ -4575,9 +4702,14 @@ const AST={ img:{}, sfx:{}, ready:{} };
     AST.img[k]=im;
   }
   for(const k in (A.sfx||{})) AST.sfx[k]=A.sfx[k];
-  /* 음악 두 겹은 효과음이 아니라 사운드 엔진이 직접 굴린다(게인·필터가 필요해서) */
-  if(AST.sfx.bgmPad && AST.sfx.bgmDrum && window.SFX && window.SFX.bgmSrc)
-    window.SFX.bgmSrc(AST.sfx.bgmPad, AST.sfx.bgmDrum);
+  if(window.SFX){
+    /* 효과음도 Web Audio로 — <audio>로 틀면 음소거·컴프레서·스로틀을
+       전부 비켜간다. 음악 두 겹은 게인·필터가 따로 필요해 별도로 넘긴다 */
+    const one={}; for(const k in AST.sfx) if(k!=="bgmPad"&&k!=="bgmDrum") one[k]=AST.sfx[k];
+    if(window.SFX.sampleSrc) window.SFX.sampleSrc(one);
+    if(AST.sfx.bgmPad && AST.sfx.bgmDrum && window.SFX.bgmSrc)
+      window.SFX.bgmSrc(AST.sfx.bgmPad, AST.sfx.bgmDrum);
+  }
 })();
 /* 쓸 수 있는 그림인가 — 로딩이 끝났고 실제로 픽셀이 있는 것만 */
 function asset(name){
