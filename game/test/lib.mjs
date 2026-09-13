@@ -28,7 +28,7 @@ export async function shutdown(){ if(_browser){ await _browser.close(); _browser
 export const BLANK = { career:0, lv:{}, best:0, days:0, cleared:false, rank:0, last:null };
 
 /* 페이지 하나 — 에러를 모으고, 저장소를 심고, 게임을 연다 */
-export async function open({ save=BLANK, lang='ko', viewport={width:1180,height:760}, seed=null, mute=false }={}){
+export async function open({ save=BLANK, lang='ko', viewport={width:1180,height:760}, seed=null, mute=false, dayKey='20000101' }={}){
   const b = await browser();
   const p = await b.newPage({ viewport, deviceScaleFactor:1 });
   if(seed!=null) await p.addInitScript(seedScript(seed));
@@ -54,6 +54,9 @@ export async function open({ save=BLANK, lang='ko', viewport={width:1180,height:
       localStorage.setItem(lk, lv);
     }catch(e){}
   }, [SAVE_KEY, save, LANG_KEY, lang]);
+  /* 오늘의 공지는 날짜가 정한다 — 검사가 날마다 다른 답을 보면 안 된다.
+     고정 날짜를 심는다. 다른 날을 보려면 검사에서 __dayKey 를 바꾼다. */
+  await p.addInitScript(k => { window.__dayKey = k; }, dayKey);
   await p.goto(GAME);
   await p.waitForSelector('#go', { timeout: 15000 });
   p.errors = errors;
@@ -312,7 +315,7 @@ export async function serve(root = ROOT){
 }
 
 /* http 로 띄운 게임을 연다 — open() 과 같은 저장소 시딩을 쓴다 */
-export async function openServed(url, { save=BLANK, lang='ko', viewport={width:1180,height:760} }={}){
+export async function openServed(url, { save=BLANK, lang='ko', viewport={width:1180,height:760}, dayKey='20000101' }={}){
   const b = await browser();
   const ctx = await b.newContext({ viewport, deviceScaleFactor:1 });
   const p = await ctx.newPage();
@@ -327,6 +330,7 @@ export async function openServed(url, { save=BLANK, lang='ko', viewport={width:1
       localStorage.setItem('jeongsi.tut.v1','1');
     }catch(e){}
   }, [SAVE_KEY, save, LANG_KEY, lang]);
+  await p.addInitScript(k => { window.__dayKey = k; }, dayKey);
   await p.goto(url);
   await p.waitForSelector('#go', { timeout: 15000 });
   p.errors = errors; p.ctx = ctx;

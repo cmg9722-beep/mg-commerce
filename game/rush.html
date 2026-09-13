@@ -3522,6 +3522,8 @@ const L10N = { ko:null, en:{
   "높은 자리에서":"From Up High","과장 이상으로 정시 퇴근":"Leave on time as Manager or above",
   "이사 퇴근":"Director Leaves","이사 직급으로 정시 퇴근":"Leave on time as Director",
   "진화 {0} {1}/{2} + {3} {4}/{5} → {6}":"Evolves {0} {1}/{2} + {3} {4}/{5} → {6}",
+  "오늘의 공지":"Today's notice","오늘의 기록":"Today's best","오늘 첫 출근":"First clock-in today",
+  "{0}구역 {1}":"Zone {0} {1}",
   "정문":"Main Entrance","퇴근한다":"Clock Out","오늘은 안 나간다":"Not Leaving Today",
   "나가면 오늘은 끝입니다.":"Walk out and today is over.",
   "아직 안 나갔습니다.":"Still inside.",
@@ -4046,10 +4048,54 @@ const RND=[
   {id:"coffee",kind:"fun", name:"커피머신 고장",
    desc:"오늘은 다 같이 느립니다", f:(g)=>{ g.rndSpd=0.72; g.rndSlow=0.86; g.rndT=Math.max(g.rndT,22); }},
 ];
+/* ── 오늘의 사내 공지 ──────────────────────────────────────────
+   이야기는 15일차에 끝나고, 상점은 18~35판이면 다 산다. 그 뒤로
+   15판과 60판 사이에 새로 생기는 게 없었다 — 멀리 보는 목표 셋은
+   내용이 아니라 카운터다. 「내일 또 켤 이유」가 비어 있었다.
+
+   날짜가 그날의 사건 계획표를 정한다. 어느 구역에서 무엇이 나는지가
+   로비에 미리 적혀 있어서, 오늘은 계획하고 들어갈 수 있다.
+   같은 날이면 전 세계가 같은 회사다. 서버도 계정도 필요 없다 —
+   날짜 하나면 된다.
+
+   사건의 효과·지속·배너는 RND 를 그대로 쓴다. 새 배수 층은 없다. */
+function rng32(seed){
+  let a=seed>>>0;
+  return ()=>{ a|=0; a=a+0x6D2B79F5|0;
+    let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296; };
+}
+/* 「오늘」은 기기의 자정에 바뀐다. UTC 로 하면 한국 사람에게 하루가
+   아홉 시간 어긋난 채로 바뀐다. 날짜는 아무 데도 보내지 않는다. */
+function dayKey(){
+  if(window.__dayKey) return String(window.__dayKey);
+  const d=new Date();
+  return ""+d.getFullYear()
+          +String(d.getMonth()+1).padStart(2,"0")
+          +String(d.getDate()).padStart(2,"0");
+}
+/* 보스 구역(6·8·9)에는 나쁜 공지를 두지 않는다. 거기에 겹치면
+   그날 하루가 통째로 못 넘는 날이 된다 — 재미가 아니라 사고다. */
+const BOSS_Z=[5,7,8];
+function dailyPlan(key){
+  const r=rng32((+key||20000101) ^ 0x5EED);
+  const zones=[1,2,3,4,5,6,7,8];
+  for(let i=zones.length-1;i>0;i--){ const j=(r()*(i+1))|0; const t=zones[i]; zones[i]=zones[j]; zones[j]=t; }
+  const n=2+(r()<0.5?1:0);
+  const pick=zones.slice(0,n).sort((a,b)=>a-b);
+  const used={}, plan={};
+  for(const z of pick){
+    const pool=RND.filter(e=>!used[e.id] && !(BOSS_Z.indexOf(z)>=0 && e.kind==="bad"));
+    if(!pool.length) continue;
+    const e=pool[(r()*pool.length)|0];
+    used[e.id]=1; plan[z]=e;
+  }
+  return { key:String(key), plan };
+}
 function rollEvent(g){
   if(g.zone===0) return;                    // 첫 구역은 배우는 중이라 굴리지 않는다
-  if(Math.random()<0.22) return;            // 아무 일도 없는 날도 있어야 특별함이 산다
-  const e=RND[(Math.random()*RND.length)|0];
+  const e=(g.daily&&g.daily.plan)?g.daily.plan[g.zone]:null;
+  if(!e) return;                            // 오늘 이 구역엔 공지가 없다
   g.rndT=0; g.rndSpd=1; g.rndSlow=1; g.rndHp=1; g.rndSpawn=1; g.rndNoBot=0; g.rndNoSpawn=0;
   e.f(g);
   g.rndName=e.name; g.rndKind=e.kind; g.rndShow=3.4;
@@ -4666,7 +4712,7 @@ function newGame(grudge){
     blinkCd:0, annualCd:0, annualT:0,
     spawnAcc:0, bossOut:false, shake:0, shakeX:0, shakeY:0, hitstop:0,
     zone:0, zoneK0:0, zoneT:0, zoneBonus:0, gate:null, cleared:0, sayCd:2.5,
-    rank0:rankPick(), rank:0, promoLv:0, lowT:0, propCd:0, loop:0,
+    rank0:rankPick(), rank:0, promoLv:0, lowT:0, propCd:0, loop:0, daily:dailyPlan(dayKey()),
     meddle:0, meddleSrc:null, meddleSaid:0,
     bossKill:{}, noonZone:0, cleanZone:0, zoneHit:0, declined:0,
     robotWork:0, robotCd:16, robotSeen:false, robotWarn:false, userPaused:false,
@@ -7752,7 +7798,8 @@ const CAREER={
 };
 const BLANK_SAVE = () => ({career:0, lv:{}, best:0, days:0, cleared:false, rank:0, last:null,
   score:0, clear:0, wins:0, unions:0, runs:0, zone:0, combo:0, opt:{}, ach:{},
-  char:"office", earned:0, goals:{}, rival:null, grudge:"", rankPick:null, rankBest:{}});
+  char:"office", earned:0, goals:{}, rival:null, grudge:"", rankPick:null, rankBest:{},
+  daily:{key:"",score:0,runs:0}});
 function loadSave(){
   try{ const j=JSON.parse(localStorage.getItem(SAVE_KEY)||"{}");
        return {career:+j.career||0, lv:j.lv&&typeof j.lv==="object"?j.lv:{},
@@ -7777,7 +7824,11 @@ function loadSave(){
                /* 출근 직급 — 직군과 같은 실수를 반복하지 않는다.
                   null 은 「아직 고른 적 없음」이라 천장을 그대로 쓴다 */
                rankPick:j.rankPick==null?null:(+j.rankPick|0),
-               rankBest:j.rankBest&&typeof j.rankBest==="object"?j.rankBest:{}}; }
+               rankBest:j.rankBest&&typeof j.rankBest==="object"?j.rankBest:{},
+               /* 오늘의 기록 — 자정에 스스로 비워진다 */
+               daily:(j.daily&&typeof j.daily==="object")
+                     ?{key:String(j.daily.key||""),score:+j.daily.score||0,runs:+j.daily.runs||0}
+                     :{key:"",score:0,runs:0}}; }
   catch(e){ return BLANK_SAVE(); }
 }
 function writeSave(sv){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(sv)); }catch(e){} }
@@ -8121,6 +8172,26 @@ function charHTML(){
 }
 /* 출근 직급 — 승진을 한 번도 안 받은 사람에겐 이 줄이 아예 없다.
    고를 게 하나뿐인 선택지는 화면만 복잡하게 한다. */
+/* 오늘의 공지 — 들어가기 전에 오늘이 어떤 날인지 보인다.
+   미리 알 수 있어야 「계획하고 들어간다」가 성립한다. */
+function dailyHTML(){
+  const d=dailyPlan(dayKey()), ks=Object.keys(d.plan).map(Number).sort((a,b)=>a-b);
+  const ds=d.key.slice(0,4)+"-"+d.key.slice(4,6)+"-"+d.key.slice(6,8);
+  const chips=ks.map(z=>{
+    const e=d.plan[z], c=e.kind==="bad"?"var(--bad)":e.kind==="good"?"var(--good)":"var(--accent)";
+    return `<span class="achip" style="border-color:${c}44;color:${c}">${
+      TF("{0}구역 {1}", z+1, esc(T(ZONES[z].name)))} — ${esc(T(e.name))}</span>`;
+  }).join("");
+  const dy=SAVE.daily||{key:"",score:0,runs:0};
+  const today = dy.key===d.key && (dy.runs|0)>0
+    ? `${T("오늘의 기록")} <b style="color:var(--accent)">${(dy.score|0).toLocaleString()}</b> · ${TF("{0}번 출근", dy.runs|0)}`
+    : T("오늘 첫 출근");
+  return `<div class="achrow" style="border-color:var(--line)">
+    <span class="k" style="color:var(--dim)">${T("오늘의 공지")} · ${ds}</span>
+    <div class="achs">${chips}</div>
+    <div style="flex-basis:100%;font-size:11.5px;color:var(--dim);margin-top:6px">${today}</div>
+  </div>`;
+}
 function rankHTML(){
   const top=Math.min(RANK_MAX,SAVE.rank|0), cur=rankPick();
   if(top<1) return "";
@@ -8187,6 +8258,7 @@ function renderStart(){
         esc(SAVE.days>0 ? ST.line : myChar().line)}</div>
       ${unlockHTML()}
     </div>
+    ${dailyHTML()}
     ${charHTML()}
     ${rankHTML()}
     ${rivalHTML()}
@@ -8397,6 +8469,13 @@ function renderEnd(g){
   /* 오늘의 점수 — 최고를 넘었으면 그 자리에서 말해 줘야 한다.
      갱신만 하고 화면에 안 알리면 기록이 있으나 마나다 */
   const sc=scoreOf(g), hiOld=SAVE.score|0, isHi=sc>hiOld;
+  /* 오늘의 기록 — 날이 바뀌면 스스로 0 부터 시작한다.
+     「오늘 안에 한 번 더」가 여기서 나온다 */
+  const dk=dayKey();
+  if(!SAVE.daily || SAVE.daily.key!==dk) SAVE.daily={key:dk,score:0,runs:0};
+  const dayWas=SAVE.daily.score|0, isDayHi=sc>dayWas;
+  SAVE.daily.runs=(SAVE.daily.runs|0)+1;
+  SAVE.daily.score=Math.max(dayWas,sc);
   /* 직급별 최고 — 「이사로 한 번 나가 봤다」가 기록으로 남아야
      한 직급 올려서 다시 할 이유가 된다 */
   SAVE.rankBest=SAVE.rankBest||{};
@@ -8477,6 +8556,8 @@ function renderEnd(g){
          <div class="nd">${esc(G.name)}</div>
          <div class="nt">${esc(G.d)} — ${TF("{0} 남았습니다", rest.toLocaleString())}</div></div>`;
      })()}
+    ${(isDayHi && !isHi && dayWas>0)?`<div class="rvrow"><span class="k">${T("오늘의 기록")}</span>
+       <span class="v num">${dayWas.toLocaleString()} → ${sc.toLocaleString()}</span></div>`:""}
     ${RV?`<div class="rvwin"><span class="k">${LANG==="ko" ? esc(RV.name)+josa(RV.name,"을/를")+" 넘었습니다"
                              : TF("{0} 을(를) 넘었습니다", esc(T(RV.name)))}</span>
        <span class="v num">${RV.was.toLocaleString()} → ${sc.toLocaleString()}</span></div>`
@@ -8709,7 +8790,8 @@ window.__api={WEAPONS,PERKS,E,ZONES,DAY,hourOf,clockStr,spawnRing,start,todoOf,z
              LANG:()=>LANG, setLang, T, L10N, CHARS, myChar, charOpen,
              GOALS, goalDone, rival, rivalCheck, reachGoals,
              RANK_MAX, RANK_LOAD, RANK_PWR, RANK_PAY, rankPick, quotaOf,
-             EVO, EVOLVED, evoHint, evoReady, LOOP_FROM, LOOP_MAX, loopN, loopMul, loopPay};
+             EVO, EVOLVED, evoHint, evoReady, LOOP_FROM, LOOP_MAX, loopN, loopMul, loopPay,
+             RND, dailyPlan, dayKey, rollEvent};
 window.__askLoop=g=>askLoop(g);        // 엔드리스 검증용
 $("#tutskip").onclick=()=>{ S("select"); tutStop(G); };
 window.__tut=()=>G&&G.tut;              // 안내 검증용
