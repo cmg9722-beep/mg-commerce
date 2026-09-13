@@ -28,10 +28,11 @@ export async function shutdown(){ if(_browser){ await _browser.close(); _browser
 export const BLANK = { career:0, lv:{}, best:0, days:0, cleared:false, rank:0, last:null };
 
 /* 페이지 하나 — 에러를 모으고, 저장소를 심고, 게임을 연다 */
-export async function open({ save=BLANK, lang='ko', viewport={width:1180,height:760}, seed=null }={}){
+export async function open({ save=BLANK, lang='ko', viewport={width:1180,height:760}, seed=null, mute=false }={}){
   const b = await browser();
   const p = await b.newPage({ viewport, deviceScaleFactor:1 });
   if(seed!=null) await p.addInitScript(seedScript(seed));
+  if(mute) await p.addInitScript(() => { try{ localStorage.setItem('chulgeun.muted','1'); }catch(e){} });
   const errors = [];
   p.on('pageerror', e => errors.push(String(e.message||e)));
   /* 네트워크 자원 실패는 JS 에러가 아니다 — 폰트를 못 받은 것뿐이라
@@ -97,6 +98,94 @@ export async function pickCard(p, which='first'){
   await p.evaluate(k => document.querySelectorAll('#card .pick')[k].click(), i);
   await p.waitForTimeout(60);
   return true;
+}
+
+/* ── 판을 틱으로 직접 돌린다 ──────────────────────────────────
+   autoplay 는 진짜 키 이벤트를 쓰고 실시간으로 돈다. 사람이 하는 것과
+   가장 가까워서 「굴러가는가」를 보는 데는 그게 맞다. 그런데 밸런스를
+   재려면 같은 판이 두 번 나와야 하는데, 실시간이면 그게 안 된다.
+
+   시드를 고정해도 재현되지 않았다. 원인을 찾아 보니 렌더였다 —
+   drawWorld 는 화면 흔들림에 Math.random() 을 프레임마다 두 개 쓰고,
+   draw() 는 일시정지 중에도 매 rAF 돌며, g.shake 는 step 안에서만
+   줄어든다. 그래서 레벨업 창이 떠 있는 동안(봇이 카드를 고르는 시간 =
+   실시간) 난수 스트림이 임의 길이만큼 밀렸다. 1구역 최저 체력이
+   83~97 로 흔들리던 게 이것으로 설명된다.
+
+   그래서 여기서는 draw 를 아예 부르지 않고 step 만 고정 dt 로 돌린다.
+   게임 코드는 안 건드린다 — step·keys·raf 가 전부 최상위라 그대로 쓴다.
+   README 의 「g.P.x 를 직접 옮기지 않는다」도 지킨다. 이동 규칙과 충돌은
+   step 이 그대로 돈다. 건너뛰는 건 DOM 키 이벤트 핸들러 한 겹뿐이고,
+   그 겹은 play 검사가 계속 본다.
+
+   덤으로 빠르다 — 렌더가 없으니 한 판이 20~40초다. */
+export async function driveRun(p, { seed=1, ticks=26000 }={}){
+  return p.evaluate(async ([seed, ticks]) => {
+    const mul = a => () => { a|=0; a=a+0x6D2B79F5|0;
+      let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t;
+      return ((t^t>>>14)>>>0)/4294967296; };
+    Math.random = mul(seed);              // 게임 난수
+    const pr = mul(seed ^ 0xA5A5A5);      // 봇의 선택 — 게임 스트림을 먹지 않게 따로
+    /* 판을 여기서 연다. 밖에서 열면 「클릭 → 첫 rAF → 우리가 raf 를 끄기」
+       사이에 프레임이 몇 장 도는데, 그 장수가 실시간이라 판이 달라진다.
+       click() 은 동기라 start() 가 여기서 끝나고, rAF 콜백은 아직 한 번도
+       안 돌았다 — 그 자리에서 세운다. */
+    if(!window.__g()) document.getElementById('go').click();
+    if(raf){ cancelAnimationFrame(raf); raf=null; }   // 제품 루프를 세운다
+    const g0 = window.__g(); if(g0) g0.tut = null;
+
+    const rec = {};                        // 구역별 기록
+    const note = g => {
+      const z=g.zone, r=rec[z]||(rec[z]={minHp:1e9, dmgTaken:0, ticks:0, spawnHp:0});
+      r.minHp=Math.min(r.minHp, g.P.hp/g.P.maxhp*100); r.ticks++;
+      return r;
+    };
+    let hpWas = g0 ? g0.P.hp : 0, picks=0;
+    const dtBase = 1/60;
+
+    for(let i=0;i<ticks;i++){
+      const g = window.__g(); if(!g || g.over) break;
+      const ov = document.getElementById('ov');
+      if(ov && ov.classList.contains('on')){
+        const bs = document.querySelectorAll('#card .pick');
+        if(bs.length){ bs[Math.floor(pr()*bs.length)].click(); picks++; continue; }
+        break;                              // 고를 게 없는 창이면 더 갈 수 없다
+      }
+      /* 어디로 갈까 — autoplay 와 같은 판단을 페이지 안에서 한다 */
+      const A=window.__api, P=g.P;
+      let bx=0, by=0;
+      if(g.gate){
+        const dx=g.gate.x-P.x, dy=g.gate.y-P.y, d=Math.hypot(dx,dy)||1;
+        bx=dx/d*2.4; by=dy/d*2.4;
+      }else{
+        let nx=0, ny=0, n=0;
+        for(const f of g.foes){ if(A.E[f.kind].prop) continue;
+          const d=Math.hypot(f.x-P.x,f.y-P.y); if(d<560){ nx+=f.x; ny+=f.y; n++; } }
+        if(n){ const cx=nx/n-P.x, cy=ny/n-P.y, d=Math.hypot(cx,cy)||1; bx+=cx/d*1.1; by+=cy/d*1.1; }
+        for(const f of g.foes){ if(A.E[f.kind].prop) continue;
+          const dx=P.x-f.x, dy=P.y-f.y, d=Math.hypot(dx,dy)||1;
+          if(d<135){ bx+=dx/d*(135-d)/135*3.0; by+=dy/d*(135-d)/135*3.0; } }
+        for(const e of g.eshots){ const dx=P.x-e.x, dy=P.y-e.y, d=Math.hypot(dx,dy)||1;
+          if(d<130){ bx+=dx/d*(130-d)/130*2.2; by+=dy/d*(130-d)/130*2.2; } }
+        let best=null, bd=1e9;
+        for(const o of g.orbs){ const d=Math.hypot(o.x-P.x,o.y-P.y); if(d<bd){ bd=d; best=o; } }
+        for(const o of g.drops){ const d=Math.hypot(o.x-P.x,o.y-P.y); if(d<bd*0.6){ bd=d; best=o; } }
+        if(best && bd>44){ bx+=(best.x-P.x)/bd*0.7; by+=(best.y-P.y)/bd*0.7; }
+      }
+      keys.w = by<-0.35; keys.s = by>0.35; keys.a = bx<-0.35; keys.d = bx>0.35;
+
+      let dt=dtBase;
+      if(g.hitstop>0){ g.hitstop-=dt; dt*=0.12; }     // 제품 루프의 그 줄 그대로
+      if(!g.paused) step(g,dt);
+      const r=note(g);
+      if(g.P.hp<hpWas) r.dmgTaken += (hpWas-g.P.hp)/g.P.maxhp*100;
+      hpWas=g.P.hp;
+    }
+    const g=window.__g();
+    return { rec, picks,
+      over:g?g.over:null, zone:g?g.zone:-1, lv:g?g.lv:0,
+      kills:g?g.kills:0, t:g?Math.round(g.t):0, dmgDealt:g?Math.round(g.dmgDealt):0 };
+  }, [seed, ticks]);
 }
 
 /* ── 아주 작은 단언 도구 ─────────────────────────────────────── */

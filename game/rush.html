@@ -6038,11 +6038,20 @@ function step(g,dt){
     const k=Math.sin(c.t/T*Math.PI);          // 0→1→0, 갔다가 돌아온다
     c.px=P.x+Math.cos(c.a)*c.reach*k;
     c.py=P.y+Math.sin(c.a)*c.reach*k;
+    if(c.reHit){                                   // 다시 맞을 수 있게 되는 시각
+      for(let j=c.reHit.length-1;j>=0;j--){
+        if((c.reHit[j][1]-=dt) <= 0){ c.hitSet.delete(c.reHit[j][0]); c.reHit.splice(j,1); }
+      }
+    }
     for(const f of g.foes){
       if(c.hitSet.has(f)) continue;
       if(Math.hypot(f.x-c.px,f.y-c.py) < f.r+11){
         c.hitSet.add(f); damage(g,f,c.dmg,c.px,c.py,7); S("hit");
-        setTimeout(()=>c.hitSet.delete(f), 260);   // 돌아올 때 한 번 더
+        /* 돌아올 때 한 번 더 — 게임 시간으로 센다.
+           setTimeout 이었는데 그건 벽시계라 3배속(__fast)에서 틀리게 돌고,
+           탭이 뒤로 가면 아예 안 돈다. 게임 상태를 벽시계로 바꾸면
+           같은 판이 기기마다 달라진다 — 측정이 재현되지 않던 원인 하나였다. */
+        (c.reHit=c.reHit||[]).push([f, 0.26]);
       }
     }
   }
