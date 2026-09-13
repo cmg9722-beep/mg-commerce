@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>정시 퇴근 — 오늘도 6시에 나간다</title>
+<meta name="description" content="18:00까지 회사 건물을 뚫고 정문으로 나가는 게임. 아홉 개 구역, 서른 가지 무기, 다섯 직군.">
+<meta name="theme-color" content="#0b0e14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="정시 퇴근">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="store/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="store/icon-180.png">
 <style>
 /* 글꼴 — 파일로 같이 간다. 구글에서 받아 쓰면 지하철에서 열었을 때
    글꼴이 깨지는데, 그건 출시 게임이 감당할 문제가 아니다.
@@ -387,6 +396,10 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
 @keyframes tutpulse{0%,100%{box-shadow:0 0 0 2px var(--accent),0 0 16px rgba(201,162,39,.45)}
   50%{box-shadow:0 0 0 2px var(--accent),0 0 4px rgba(201,162,39,.2)}}
 @media (prefers-reduced-motion:reduce){.tutpoint{animation:none}}
+/* hidden 은 UA 규칙이라 #tut{display:flex} 에 진다. 명시적으로 이겨 준다 —
+   이게 없으면 tutPaint 가 숨겨도 화면에는 계속 떠 있다.
+   스토어 스크린샷을 찍다가 발견했다. 검사는 속성만 봐서 통과했었다. */
+#tut[hidden]{display:none}
 body.lobby #tut{display:none}
 @media (max-width:560px){
   #tut{bottom:104px;padding:10px 12px;gap:9px}
@@ -7509,7 +7522,12 @@ function renderStart(){
      막는 문턱이었다. 대사는 게임이 주고(103줄), 내 한 줄은 설정에
      한 번만 적어두면 계속 쓰인다. */
   for(const b of $("#card").querySelectorAll(".chcard")){
-    b.onclick=()=>{ SAVE.char=b.dataset.ch; writeSave(SAVE); S("select"); renderStart(); };
+    b.onclick=()=>{ SAVE.char=b.dataset.ch; writeSave(SAVE); S("select"); /* 오프라인 — 한 번 열어 두면 그 다음부터는 네트워크가 없어도 열린다.
+   file:// 로 열면 등록이 안 되는데, 그건 개발 중에만 있는 일이라 조용히 넘어간다. */
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+  addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
+renderStart(); };
   }
   $("#go").onclick=()=>{ S("resume"); start(myGrudge()); };
   $("#shop").onclick=()=>{ S("resume"); S("select"); renderShop(); };

@@ -4,9 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>출근 저지 — 사무실 레인 디펜스</title>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;600;800&display=swap">
 <style>
+/* 글꼴 — 「정시 퇴근」과 같은 파일을 나눠 쓴다. 서브셋도 두 게임의 글자를
+   합쳐서 뽑았다. 네트워크가 없어도 같은 화면이 나와야 한다.
+   Black Han Sans · Gothic A1 — SIL OFL 1.1 (assets/fonts/OFL-*.txt) */
+@font-face{font-family:'Black Han Sans';font-style:normal;font-weight:400;font-display:swap;
+  src:url(assets/fonts/BlackHanSans-subset.woff2) format('woff2')}
+@font-face{font-family:'Gothic A1';font-style:normal;font-weight:400;font-display:swap;
+  src:url(assets/fonts/GothicA1-400-subset.woff2) format('woff2')}
+@font-face{font-family:'Gothic A1';font-style:normal;font-weight:700;font-display:swap;
+  src:url(assets/fonts/GothicA1-700-subset.woff2) format('woff2')}
+@font-face{font-family:'Gothic A1';font-style:normal;font-weight:800;font-display:swap;
+  src:url(assets/fonts/GothicA1-800-subset.woff2) format('woff2')}
 :root{--bg:#0b0e14;--panel:#141922;--line:#232a36;--ink:#e8ecf4;--dim:#7d8699;
       --accent:#f5c451;--good:#57d98a;--bad:#ff6b6b;--blue:#9ec8ff;--deep:#6f9fd8}
 *{box-sizing:border-box}

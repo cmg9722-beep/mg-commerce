@@ -5,7 +5,11 @@ import { open, startRun, suite } from '../lib.mjs';
 const tut = p => p.evaluate(() => {
   const box = document.getElementById('tut');
   const st  = window.__tut && window.__tut();
-  return { on: !!(box && !box.hidden), i: st ? st.i : -1,
+  /* 속성만 보면 안 된다 — hidden 이 걸려 있어도 CSS 가 이기면 화면에는 떠 있다.
+     실제로 그렇게 났다: #tut{display:flex} 가 UA 의 [hidden] 을 이겨서
+     안내가 영원히 안 사라졌고, 속성만 보던 검사는 통과했다. */
+  const shown = !!box && getComputedStyle(box).display !== 'none' && !!box.offsetParent;
+  return { on: shown, attr: !!(box && !box.hidden), i: st ? st.i : -1,
            title: (document.getElementById('tutt')||{}).textContent || '',
            step:  (document.getElementById('tutn')||{}).textContent || '',
            point: [...document.querySelectorAll('.tutpoint')].map(e=>'#'+e.id) };
@@ -47,7 +51,8 @@ export default async function run(){
   await p.click('#tutskip');
   await p.waitForTimeout(200);
   t = await tut(p);
-  s.ok('건너뛰면 사라진다', !t.on, JSON.stringify(t));
+  s.ok('건너뛰면 화면에서 사라진다', !t.on, JSON.stringify(t));
+  s.ok('건너뛰면 hidden 속성도 걸린다', !t.attr, JSON.stringify(t));
   const marked = await p.evaluate(() => localStorage.getItem('jeongsi.tut.v1'));
   s.ok('건너뛴 것이 저장된다', !!marked, String(marked));
   s.eq('안내 중 JS 에러 없음', p.errors.length, 0);
@@ -59,7 +64,7 @@ export default async function run(){
   await startRun(q);
   await q.waitForTimeout(500);
   const t2 = await tut(q);
-  s.ok('두 번째 판부터는 안 뜬다', !t2.on, JSON.stringify(t2));
+  s.ok('두 번째 판부터는 화면에 안 뜬다', !t2.on, JSON.stringify(t2));
   s.eq('두 번째 판 JS 에러 없음', q.errors.length, 0);
   await q.close();
 
