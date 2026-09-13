@@ -3511,6 +3511,13 @@ const L10N = { ko:null, en:{
   "움직이기만 하세요":"Just move","잘해야 열립니다":"earned, not given","WASD 이동":"WASD to move","{0}번 출근":"{0} runs",
   "{0}일 뒤":"in {0} days","← 돌아가기":"← Back","경력 {0}":"Career {0}","기록 초기화":"Erase records",
   "보유 {0}":"Balance {0}","오늘의 경력":"Career earned today","{0}일차":"Day {0}","내 한 줄":"Your line",
+  "출근 직급":"Clock-in rank","기본":"Base","몫 +{0}%":"Quota +{0}%",
+  "승진으로 엽니다":"Earn it by promotion","직급별 최고":"Best by rank",
+  "능력 +{0}% · 구역 몫 +{0}% · 경력 ×{1}":"Power +{0}% · Quota +{0}% · Career ×{1}",
+  "어제 쓰러졌습니다 — 한 직급 낮춰 출근해도 됩니다":"You went down yesterday — you can clock in one rank lower.",
+  "{0} 신기록":"New best as {0}",
+  "높은 자리에서":"From Up High","과장 이상으로 정시 퇴근":"Leave on time as Manager or above",
+  "이사 퇴근":"Director Leaves","이사 직급으로 정시 퇴근":"Leave on time as Director",
   "다시 출근":"Clock In Again","보유 경력":"Career balance","이야기 끝":"End of story","잠깐 멈춤":"Paused","{0}회":"{0}×",
   "계속하기":"Resume","돌아가기":"Back","로 멈춤":"to pause","자기계발":"Self-Development"," 해금":" unlocked","음소거":"mute",
   "기록":"Records","내일":"Tomorrow","또는":"or","레벨":"Level","소리":"Sound","출근":"Clock In",
@@ -3783,7 +3790,16 @@ const RANKS=["사원","주임","대리","과장","차장","부장","이사"];
 const RANK_MAX=RANKS.length-1;
 const RANK_PWR=0.08;                          // 직급당 능력
 const RANK_LOAD=0.08;                         // 직급당 미결
+const RANK_PAY=0.12;                          // 직급당 경력 — 몫보다 커야 올라갈 이유가 된다
 const rankOf   = g => Math.min(RANK_MAX,(g.rank0||0)+(g.rank||0));
+/* 내일 출근할 직급. SAVE.rank 는 「올라가 본 가장 높은 자리」(천장)로 두고,
+   실제로 출근하는 자리는 따로 고른다.
+   그동안 직급은 오르기만 하고 내려오지 않았다 — 이사가 되면 같은 1구역도
+   몫이 1.48배라, 오래 한 사람일수록 매일 더 어려워지고 되돌릴 방법이 없었다.
+   승진은 그대로 받되, 아래 자리로 출근하는 선택을 준다. 벌점은 없다.
+   대신 몫·능력·경력이 전부 그 직급으로 잡힌다 — 그게 거래다. */
+const rankPick = () => Math.max(0, Math.min(RANK_MAX, SAVE.rank|0,
+                                SAVE.rankPick==null ? (SAVE.rank|0) : (SAVE.rankPick|0)));
 const rankName = n => RANKS[Math.min(RANK_MAX,Math.max(0,n|0))];
 /* 이 구역 몫 — 직급이 오르면 같은 구역도 더 준다 */
 const quotaOf = g => Math.round(zoneOf(g).quota*(1+rankOf(g)*RANK_LOAD));
@@ -4597,7 +4613,7 @@ function newGame(grudge){
     blinkCd:0, annualCd:0, annualT:0,
     spawnAcc:0, bossOut:false, shake:0, shakeX:0, shakeY:0, hitstop:0,
     zone:0, zoneK0:0, zoneT:0, zoneBonus:0, gate:null, cleared:0, sayCd:2.5,
-    rank0:Math.min(RANK_MAX,SAVE.rank|0), rank:0, promoLv:0, lowT:0, propCd:0,
+    rank0:rankPick(), rank:0, promoLv:0, lowT:0, propCd:0,
     meddle:0, meddleSrc:null, meddleSaid:0,
     bossKill:{}, noonZone:0, cleanZone:0, zoneHit:0, declined:0,
     robotWork:0, robotCd:16, robotSeen:false, robotWarn:false, userPaused:false,
@@ -7586,7 +7602,7 @@ const CAREER={
 };
 const BLANK_SAVE = () => ({career:0, lv:{}, best:0, days:0, cleared:false, rank:0, last:null,
   score:0, clear:0, wins:0, unions:0, runs:0, zone:0, combo:0, opt:{}, ach:{},
-  char:"office", earned:0, goals:{}, rival:null, grudge:""});
+  char:"office", earned:0, goals:{}, rival:null, grudge:"", rankPick:null, rankBest:{}});
 function loadSave(){
   try{ const j=JSON.parse(localStorage.getItem(SAVE_KEY)||"{}");
        return {career:+j.career||0, lv:j.lv&&typeof j.lv==="object"?j.lv:{},
@@ -7607,7 +7623,11 @@ function loadSave(){
                earned:+j.earned||0,
                goals:j.goals&&typeof j.goals==="object"?j.goals:{},
                rival:j.rival&&typeof j.rival==="object"?j.rival:null,
-               grudge:typeof j.grudge==="string"?j.grudge.slice(0,40):""}; }
+               grudge:typeof j.grudge==="string"?j.grudge.slice(0,40):"",
+               /* 출근 직급 — 직군과 같은 실수를 반복하지 않는다.
+                  null 은 「아직 고른 적 없음」이라 천장을 그대로 쓴다 */
+               rankPick:j.rankPick==null?null:(+j.rankPick|0),
+               rankBest:j.rankBest&&typeof j.rankBest==="object"?j.rankBest:{}}; }
   catch(e){ return BLANK_SAVE(); }
 }
 function writeSave(sv){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(sv)); }catch(e){} }
@@ -7678,7 +7698,7 @@ function careerEarned(g){
               : g.over==="late" ? 60 : g.over==="replaced" ? 25 : 0;
   /* 직급 배수 — 승진이 순수한 함정이면 그건 선택이 아니라 실수다.
      몫이 8% 늘면 하루가 남기는 것도 12% 늘어야 어려운 쪽을 고를 이유가 생긴다 */
-  return Math.round((hours*12 + g.kills*0.22 + bonus)*(1+rankOf(g)*0.12));
+  return Math.round((hours*12 + g.kills*0.22 + bonus)*(1+rankOf(g)*RANK_PAY));
 }
 
 /* ── 이야기 ────────────────────────────────────────────────────
@@ -7813,6 +7833,8 @@ const ACH=[
   {id:"audit",  name:"점검 통과",   icon:"clock",   d:"점검단 처리",             f:(r)=>!!r.boss.audit, p:"law52"},
   {id:"ceo",    name:"마지막 문",   icon:"elev",    d:"대표이사 처리",           f:(r)=>!!r.boss.ceo,   a:"unionist"},
   {id:"win",    name:"정시 퇴근",   icon:"attend",  d:"18:00 전에 정문",         f:(r)=>r.over==="win", a:"junior"},
+  {id:"rkwin3", name:"높은 자리에서",icon:"attend",  d:"과장 이상으로 정시 퇴근", f:(r)=>r.over==="win"&&r.rank>=3},
+  {id:"rkwin6", name:"이사 퇴근",    icon:"attend",  d:"이사 직급으로 정시 퇴근", f:(r)=>r.over==="win"&&r.rank>=RANK_MAX},
   {id:"union",  name:"단체협약",    icon:"union",   d:"교섭으로 하루를 끝내기",  f:(r)=>r.over==="union", p:"union"},
   {id:"clean",  name:"무결점",      icon:"annual",  d:"한 구역을 한 대도 안 맞고",f:(r)=>!!r.cleanZone, p:"annual"},
   {id:"maxw",   name:"숙련",        icon:"jeongyeol",d:"무기 하나를 끝까지",     f:(r)=>!!r.maxed},
@@ -7946,6 +7968,29 @@ function charHTML(){
       <span class="chd">${esc(cur.desc)}</span></div>
     <div class="chlist">${cards}</div></div>`;
 }
+/* 출근 직급 — 승진을 한 번도 안 받은 사람에겐 이 줄이 아예 없다.
+   고를 게 하나뿐인 선택지는 화면만 복잡하게 한다. */
+function rankHTML(){
+  const top=Math.min(RANK_MAX,SAVE.rank|0), cur=rankPick();
+  if(top<1) return "";
+  const cards=RANKS.map((nm,i)=>{
+    const on=i<=top, sel=on&&i===cur;
+    return `<button class="chcard${sel?" on":""}${on?"":" lock"}" data-rk="${i}"
+       ${on?"":"disabled"} aria-pressed="${sel}">
+      <span class="chn">${esc(nm)}</span>
+      <span class="cht">${on?(i?TF("몫 +{0}%", Math.round(i*RANK_LOAD*100)):T("기본"))
+                           :T("승진으로 엽니다")}</span></button>`;
+  }).join("");
+  /* 어제 쓰러진 사람에게만 「내려도 된다」고 말한다. 늘 띄우면 잔소리다 */
+  const hint=(SAVE.last==="lose"&&cur>0)
+    ? `<div class="chd" style="color:var(--dim);margin-top:7px;white-space:normal">${
+        T("어제 쓰러졌습니다 — 한 직급 낮춰 출근해도 됩니다")}</div>` : "";
+  return `<div class="chrow">
+    <div class="chhead"><span class="k">${T("출근 직급")}</span>
+      <span class="chd">${TF("능력 +{0}% · 구역 몫 +{0}% · 경력 ×{1}",
+        Math.round(cur*RANK_PWR*100), (1+cur*RANK_PAY).toFixed(2))}</span></div>
+    <div class="chlist">${cards}</div>${hint}</div>`;
+}
 function zmapHTML(){
   const mx=Math.min(SAVE.zone|0, ZONES.length);
   const cells=ZONES.map((z,i)=>`<i class="${i<mx?"on":""}${i===mx-1?" now":""}"></i>`).join("");
@@ -7984,7 +8029,7 @@ function renderStart(){
       <b style="color:var(--ink);font-size:15px">18:00까지 회사 건물을 뚫고 정문으로 나가는 게임입니다.</b><br>
       지하주차장에서 출근해 아홉 개 구역을 지납니다.</div>`
      :`<div class="hi"><b>${(SAVE.score|0).toLocaleString()}</b><span>최고 점수</span>
-        <span style="margin-left:auto">${TF("{0}일차", SAVE.days)} · ${esc(rankName(SAVE.rank|0))}</span></div>`}
+        <span style="margin-left:auto">${TF("{0}일차", SAVE.days)} · ${esc(rankName(rankPick()))}</span></div>`}
     <div class="story" style="margin-top:14px">
       <div class="sd">${esc(ST.head)}</div>
       <div class="sl">${SAVE.days>0&&AFTER[SAVE.last]?esc(AFTER[SAVE.last])+"<br>":""}${
@@ -7992,6 +8037,7 @@ function renderStart(){
       ${unlockHTML()}
     </div>
     ${charHTML()}
+    ${rankHTML()}
     ${rivalHTML()}
     ${zmapHTML()}
     ${(SAVE.runs|0)>0 ? goalsHTML() : ""}
@@ -8017,8 +8063,11 @@ function renderStart(){
   /* 매 판 타이핑을 시키지 않는다 — 폰에서 키보드를 여는 게 플레이를
      막는 문턱이었다. 대사는 게임이 주고(103줄), 내 한 줄은 설정에
      한 번만 적어두면 계속 쓰인다. */
-  for(const b of $("#card").querySelectorAll(".chcard")){
+  for(const b of $("#card").querySelectorAll(".chcard[data-ch]")){
     b.onclick=()=>{ SAVE.char=b.dataset.ch; writeSave(SAVE); S("select"); renderStart(); };
+  }
+  for(const b of $("#card").querySelectorAll(".chcard[data-rk]")){
+    b.onclick=()=>{ SAVE.rankPick=+b.dataset.rk|0; writeSave(SAVE); S("select"); renderStart(); };
   }
   $("#go").onclick=()=>{ S("resume"); start(myGrudge()); };
   $("#shop").onclick=()=>{ S("resume"); S("select"); renderShop(); };
@@ -8056,6 +8105,15 @@ function renderRecords(){
       `<div class="cstat"><b class="num" style="color:${r[2]};font-size:${r[1].length>7?20:26}px">${
         esc(r[1])}</b><span>${esc(r[0])}</span></div>`).join("")}</div>
     ${zmapHTML()}
+    ${(()=>{ /* 직급별 최고 — 한 직급 올려서 다시 할 이유가 여기 남는다 */
+      const rb=SAVE.rankBest||{}, ks=Object.keys(rb).map(Number).sort((a,b)=>a-b);
+      if(!ks.length) return "";
+      return `<div class="achrow" style="border-color:var(--line)">
+        <span class="k" style="color:var(--dim)">${T("직급별 최고")}</span>
+        <div class="achs">${ks.map(k=>`<span class="achip">${esc(rankName(k))}
+          <b>${(rb[k].score|0).toLocaleString()}</b>${
+          (rb[k].wins|0)?" "+TF("{0}회", rb[k].wins|0):""}</span>`).join("")}</div></div>`;
+    })()}
     <div class="sub" style="margin:18px 0 0">업적 <b style="color:var(--accent)">${
       ACH.filter(a=>achDone(a.id)).length}</b> / ${ACH.length} — ${T("잘해야 열립니다")}</div>
     <div class="achgrid" id="achg"></div>
@@ -8180,13 +8238,20 @@ function renderEnd(g){
   // 경력 정산 — 이 판이 남긴 것
   const earn=careerEarned(g);
   /* 직급은 남는다 — 받은 승진은 내일 출근할 때 이미 그 자리다 */
-  const rk0=Math.min(RANK_MAX,SAVE.rank|0), rk=rankOf(g);
-  SAVE.rank=rk;
+  const rk0=rankPick(), rk=rankOf(g);
+  SAVE.rank=Math.max(SAVE.rank|0, rk);        // 천장은 내려오지 않는다
+  SAVE.rankPick=rk;                           // 받은 승진은 내일도 따라온다
   SAVE.career+=earn; SAVE.earned=(SAVE.earned|0)+earn; SAVE.days++;
   SAVE.last=g.over;                       // 어제가 오늘 첫 줄을 바꾼다
   /* 오늘의 점수 — 최고를 넘었으면 그 자리에서 말해 줘야 한다.
      갱신만 하고 화면에 안 알리면 기록이 있으나 마나다 */
   const sc=scoreOf(g), hiOld=SAVE.score|0, isHi=sc>hiOld;
+  /* 직급별 최고 — 「이사로 한 번 나가 봤다」가 기록으로 남아야
+     한 직급 올려서 다시 할 이유가 된다 */
+  SAVE.rankBest=SAVE.rankBest||{};
+  const rb=SAVE.rankBest[rk]||{score:0,wins:0}, rbWas=rb.score|0;
+  SAVE.rankBest[rk]={score:Math.max(rbWas,sc), wins:(rb.wins|0)+((win||uni)?1:0)};
+  const isRankHi=sc>rbWas;
   SAVE.runs=(SAVE.runs|0)+1;
   if(isHi) SAVE.score=sc;
   if(g.kills>SAVE.best) SAVE.best=g.kills;
@@ -8228,7 +8293,8 @@ function renderEnd(g){
       <div class="cstat"><b class="num">${g.kills.toLocaleString()}</b><span>처리</span></div>
       <div class="cstat"><b class="num" style="color:var(--bad)">${g.comboBest.toLocaleString()}</b><span>최고 연속</span></div>
       <div class="cstat"><b class="num"${rk>rk0?' style="color:#c9a227"':''}>${
-        esc(rankName(rk))}</b><span>${rk>rk0?"승진 "+(rk-rk0):"직급"}</span></div>
+        esc(rankName(rk))}</b><span>${rk>rk0?"승진 "+(rk-rk0)
+          :isRankHi?TF("{0} 신기록", esc(rankName(rk))):"직급"}</span></div>
       <div class="cstat"><b class="num">${g.lv}</b><span>레벨</span></div>
       <div class="cstat"><b class="num"${g.robotSeen&&replaceRate(g)>=0.3?' style="color:'+acc+'"':''}>${
         g.robotSeen?Math.round(replaceRate(g)*100)+"%":Math.round(g.dmgDealt).toLocaleString()}</b><span>${
@@ -8490,7 +8556,8 @@ window.__RND=RND;                       // 무작위 사건 검증용
 window.__api={WEAPONS,PERKS,E,ZONES,DAY,hourOf,clockStr,spawnRing,start,todoOf,zoneOf,gateReady,
              RANKS,rankOf,rankName,quotaOf,promoDue,stats,SAVE:()=>SAVE,
              LANG:()=>LANG, setLang, T, L10N, CHARS, myChar, charOpen,
-             GOALS, goalDone, rival, rivalCheck, reachGoals};
+             GOALS, goalDone, rival, rivalCheck, reachGoals,
+             RANK_MAX, RANK_LOAD, RANK_PWR, RANK_PAY, rankPick, quotaOf};
 $("#tutskip").onclick=()=>{ S("select"); tutStop(G); };
 window.__tut=()=>G&&G.tut;              // 안내 검증용
 window.__TUT=TUT;
