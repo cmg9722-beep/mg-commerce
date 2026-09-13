@@ -5,10 +5,17 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve, extname, normalize } from 'node:path';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const GAME = 'file://' + resolve(ROOT, 'rush.html');
 export const SAVE_KEY = 'jeongsi.save.v1';
+/* rush.html 의 내용 해시 — 서비스워커 CACHE 가 이걸 달고 있어야
+   판올림이 이미 설치한 사람에게 간다. offline 검사가 대조한다. */
+export function gameHash(){
+  return createHash('sha256').update(readFileSync(resolve(ROOT,'rush.html'))).digest('hex').slice(0,12);
+}
 export const LANG_KEY = 'jeongsi.lang';
 
 let _browser = null;

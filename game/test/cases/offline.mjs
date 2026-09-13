@@ -1,7 +1,9 @@
 /* 오프라인 — 앱스토어 게임이 지하철에서 열리면 안 되는 게 아니다.
    바깥으로 나가는 요청이 하나라도 있으면 그 자원은 없는 셈 치고 굴러야 하는데,
    글꼴은 없으면 화면이 통째로 달라 보인다. 그래서 아예 안 나가게 한다. */
-import { open, startRun, suite, serve, openServed } from '../lib.mjs';
+import { open, startRun, suite, serve, openServed, ROOT, gameHash } from '../lib.mjs';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 export default async function run(){
   const s = suite('오프라인');
@@ -110,6 +112,23 @@ export default async function run(){
     await q.ctx.setOffline(false);
     s.eq('서버로 띄웠을 때 JS 에러 없음', q.errors.length, 0, q.errors.join(' / '));
     await q.close();
+
+    /* 판올림이 실제로 사용자에게 가는가 —
+       브라우저는 sw.js 가 한 바이트도 안 바뀌면 서비스워커를 다시 설치하지
+       않는다. 캐시는 「히트하면 네트워크를 안 본다」라, 게임만 고치고
+       CACHE 를 그대로 두면 고친 것이 이미 설치한 사람에게 영영 안 간다.
+       실제로 여섯 커밋 동안 그 상태였다(sw.js 커밋 1회 vs rush.html 6회).
+       그래서 CACHE 에 rush.html 의 내용 해시를 박고 여기서 대조한다. */
+    const swSrc = readFileSync(resolve(ROOT, 'sw.js'), 'utf8');
+    const want = gameHash();
+    const m = swSrc.match(/const CACHE\s*=\s*['"]([^'"]+)['"]/);
+    s.ok('sw.js 에 CACHE 가 있다', !!m, swSrc.slice(0, 200));
+    s.ok('CACHE 가 지금 rush.html 을 가리킨다', !!m && m[1].includes(want),
+         `sw.js: ${m ? m[1] : '없음'} · rush.html 해시: ${want}\n` +
+         `     → game/sw.js 의 CACHE 를 'jeongsi-v2-${want}' 로 바꿔야 합니다`);
+    s.ok('rush.html 이 열 때마다 판올림을 확인한다',
+         readFileSync(resolve(ROOT, 'rush.html'), 'utf8').includes('r.update()'),
+         'navigator.serviceWorker.register 뒤에 r.update() 가 없습니다');
   } finally { await srv.close(); }
   return s;
 }

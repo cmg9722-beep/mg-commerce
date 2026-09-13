@@ -4800,6 +4800,11 @@ const FORMS=[
   "close",              // 4 구내식당 — 배식 줄이 둘러싼다
   "wall",               // 5 소회의실 복도 — 복도라 한쪽에서 민다
   "close",              // 6 대회의실 — 둘러앉는다
+  /* 여기를 "wall" 로 바꿔 봤다. 발표 규칙이 사람을 연단에 묶어 두는 구역이라
+     close 로 열여섯이 그 자리로 수렴하는 게 6구역 절벽의 원인이라고 봤다.
+     재 보니 아니었다 — 6구역 평균 최저 31% → 20%, 승률 1/6 그대로.
+     대형이 아니라 물량이다: 5구역 7/0.70 = 초당 10명, 6구역 9/0.58 = 초당 15.5명.
+     적 종류도 평균 체력 90 → 171 로 뛴다. 다음은 그쪽을 건드린다. */
   "spiral",             // 7 탕비실·복사실 — 줄이 감긴다
   "close",              // 8 임원층 — 조여 온다
   "spiral",             // 9 대표이사실 — 전부
@@ -8487,7 +8492,9 @@ i18nDOM(document.body);                 // 정적 HTML(버튼·라벨)도 한 �
    조용한 catch 때문에 「등록이 안 된다」는 사실조차 안 보였다. */
 if("serviceWorker" in navigator && location.protocol.startsWith("http")){
   const reg=()=>navigator.serviceWorker.register("sw.js")
-    .then(r=>{ window.__sw=r; })
+    /* 브라우저는 등록된 워커를 최대 하루까지 다시 안 받아 온다.
+       판올림이 하루 늦게 도착하지 않도록 열 때마다 확인한다. */
+    .then(r=>{ window.__sw=r; try{ r.update(); }catch(e){} })
     .catch(e=>{ window.__swErr=String(e&&e.message||e); });
   if(document.readyState==="complete") reg();
   else addEventListener("load", reg);
