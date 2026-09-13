@@ -3522,6 +3522,13 @@ const L10N = { ko:null, en:{
   "높은 자리에서":"From Up High","과장 이상으로 정시 퇴근":"Leave on time as Manager or above",
   "이사 퇴근":"Director Leaves","이사 직급으로 정시 퇴근":"Leave on time as Director",
   "진화 {0} {1}/{2} + {3} {4}/{5} → {6}":"Evolves {0} {1}/{2} + {3} {4}/{5} → {6}",
+  "정문":"Main Entrance","퇴근한다":"Clock Out","오늘은 안 나간다":"Not Leaving Today",
+  "나가면 오늘은 끝입니다.":"Walk out and today is over.",
+  "아직 안 나갔습니다.":"Still inside.",
+  "가방을 들고 정문을 나섭니다. 오늘은 여기까지.":"Bag in hand, out the main entrance. That's today.",
+  "야근 {0}바퀴":"Overtime lap {0}","{0}바퀴":"{0} laps",
+  "6구역부터 다시. 적이 {0}% 세지고, 남기는 것도 {1}% 커집니다.":"From zone 6 again. Enemies {0}% stronger, rewards {1}% bigger.",
+  "야근 {0}바퀴 — 다시 시작합니다":"Overtime lap {0} — starting over",
   "다시 출근":"Clock In Again","보유 경력":"Career balance","이야기 끝":"End of story","잠깐 멈춤":"Paused","{0}회":"{0}×",
   "계속하기":"Resume","돌아가기":"Back","로 멈춤":"to pause","자기계발":"Self-Development"," 해금":" unlocked","음소거":"mute",
   "기록":"Records","내일":"Tomorrow","또는":"or","레벨":"Level","소리":"Sound","출근":"Clock In",
@@ -3841,6 +3848,19 @@ const gateReady = g => todoOf(g)<=0;
    오늘 처리된 일 중 로봇이 한 몫의 비율. 45%를 넘긴 채로 하루가 끝나면
    정시 퇴근한 채로 진다 — 「내일부터는 안 나오셔도 됩니다」. */
 const REPLACE_LIMIT = 0.45;
+/* ── 야근 엔드리스 ─────────────────────────────────────────────
+   한 판이 4분이라 빌드가 완성되기 전에 하루가 끝난다. 이 장르가 주는
+   「후반에 화면이 터지는 순간」이 이 게임엔 없었다 — 외부 검토가 짚은 것이다.
+   정문 앞에서 한 번 더 묻는다: 나갈 것인가, 오늘은 안 나갈 것인가.
+   이미 한 번 나가 본 사람에게만 묻는다. 첫 퇴근의 순간은 건드리지 않는다.
+
+   돌 때마다 6구역부터 다시 돌고, 적이 세지고, 남기는 것도 커진다.
+   야근 피로가 시계처럼 깎으니 영원히는 못 돈다 — 그게 이 모드의 끝이다. */
+const LOOP_FROM = 5;                          // 6구역(대회의실)부터 다시
+const LOOP_MAX  = 9;                          // 아홉 바퀴면 충분히 멀리 왔다
+const loopN     = g => g.loop|0;
+const loopMul   = g => 1 + loopN(g)*0.35;     // 적 체력·피해
+const loopPay   = g => 1 + loopN(g)*0.55;     // 경력·점수
 function replaceRate(g){
   const t=g.robotWork+g.kills;
   return t>0 ? g.robotWork/t : 0;
@@ -4646,7 +4666,7 @@ function newGame(grudge){
     blinkCd:0, annualCd:0, annualT:0,
     spawnAcc:0, bossOut:false, shake:0, shakeX:0, shakeY:0, hitstop:0,
     zone:0, zoneK0:0, zoneT:0, zoneBonus:0, gate:null, cleared:0, sayCd:2.5,
-    rank0:rankPick(), rank:0, promoLv:0, lowT:0, propCd:0,
+    rank0:rankPick(), rank:0, promoLv:0, lowT:0, propCd:0, loop:0,
     meddle:0, meddleSrc:null, meddleSaid:0,
     bossKill:{}, noonZone:0, cleanZone:0, zoneHit:0, declined:0,
     robotWork:0, robotCd:16, robotSeen:false, robotWarn:false, userPaused:false,
@@ -4758,8 +4778,8 @@ const diffIdx = g => Math.max(g.zone, Math.min(8, Math.floor(g.t / DIFF_PACE)));
 const zCurve = (g,T) => T[Math.min(diffIdx(g), T.length-1)];
 /* 야근 — 18시를 넘기면 시계가 다시 조인다. 여기서만 시간이 난이도다 */
 const otMul = g => g.ot ? 1 + Math.min(1, (g.otT||0)/150) * 0.6 : 1;
-function foeHpScale(g){  return zCurve(g,ZHP)  * otMul(g); }
-function foeDmgScale(g){ return zCurve(g,ZDMG) * otMul(g); }
+function foeHpScale(g){  return zCurve(g,ZHP)  * otMul(g) * loopMul(g); }
+function foeDmgScale(g){ return zCurve(g,ZDMG) * otMul(g) * loopMul(g); }
 function foeSpdScale(g){ return zCurve(g,ZSPD); }   // 보스도 걸린다 — 느린 보스는 위협이 아니다
 function spawnAt(g,kind,x,y){
   const d=E[kind];
@@ -5030,6 +5050,9 @@ function nextZone(g){
   if(g.zone>=ZONES.length){                    // 정문을 나왔다
     // 대체 판정이 먼저다 — 정시에 나왔는데 자리가 없어진 경우
     if(replaceRate(g)>=REPLACE_LIMIT){ finish(g,"replaced"); return true; }
+    /* 한 번이라도 나가 본 사람에게만 묻는다. 첫 퇴근은 그대로 끝난다 —
+       그 순간에 선택지를 들이밀면 이야기가 깨진다. */
+    if(SAVE.cleared && loopN(g)<LOOP_MAX){ askLoop(g); return true; }
     finish(g, g.ot?"late":"win"); return true;
   }
   // 구역 통과 보상 — 긴장 뒤에 한숨 한 번. 이 리듬이 있어야 하루가 읽힌다
@@ -5061,6 +5084,45 @@ function nextZone(g){
   S("doorThru"); g.flash=Math.max(g.flash,.8); kick(g,0,-1,10);
   g.fx.push({type:"ring",x:P.x,y:P.y,t:0,r0:16,r1:240,c:"#f5c451"});
   return false;
+}
+/* 정문 앞 — 나갈 것인가, 오늘은 안 나갈 것인가.
+   레벨업 카드와 같은 .pick 문법을 쓴다. 새 CSS 도, 새 조작도 없다. */
+function askLoop(g){
+  g.paused=true; S("doorOpen");
+  const n=loopN(g)+1;
+  setHTML($("#card"),
+    '<div class="title"><h1 class="ttl" style="font-size:30px">'+T("정문")+'</h1>'
+    +'<span class="when">'+esc(clockStr(g.t))+'</span></div>'
+    +'<div class="sub" style="margin:6px 0 14px">'
+    +esc(loopN(g)?T("아직 안 나갔습니다."):T("나가면 오늘은 끝입니다."))+'</div>'
+    +'<div class="picks"></div>');
+  const box=$("#card").querySelector(".picks");
+
+  const mk=(cls,name,lvl,desc,fn)=>{
+    const b=document.createElement("button");
+    b.className=cls;
+    const t=document.createElement("div");
+    setHTML(t,'<span class="n">'+esc(name)+'</span><span class="lvl">'+esc(lvl)
+             +'</span><span class="d">'+esc(desc)+'</span>');
+    b.appendChild(t);
+    b.onclick=()=>{ S("place"); closeOverlay(); g.paused=false; fn(); };
+    box.appendChild(b);
+  };
+  mk("pick", T("퇴근한다"), clockStr(g.t),
+     T("가방을 들고 정문을 나섭니다. 오늘은 여기까지."),
+     ()=>finish(g, g.ot?"late":"win"));
+  mk("pick evo", T("오늘은 안 나간다"), TF("야근 {0}바퀴", n),
+     TF("6구역부터 다시. 적이 {0}% 세지고, 남기는 것도 {1}% 커집니다.",
+        Math.round(loopMul({loop:n})*100-100), Math.round(loopPay({loop:n})*100-100)),
+     ()=>{
+       g.loop=n;
+       if(!g.ot){ g.ot=true; g.otT=0; }        // 안 나갔으니 야근이다
+       g.zone=LOOP_FROM-1;                      // nextZone 이 한 칸 올린다
+       flash(g, TF("야근 {0}바퀴 — 다시 시작합니다", n), 2);
+       S("overtimeIn"); g.flash=Math.max(g.flash,1); kick(g,0,-1,14);
+       nextZone(g);
+     });
+  openOverlay();
 }
 function stepGate(g,dt){
   const P=g.P, Z=zoneOf(g);
@@ -5773,7 +5835,10 @@ function step(g,dt){
     g.otT+=dt;
     // 야근 피로 — 버티기만 해선 끝나지 않는다. 시간이 그대로 체력이다.
     // 이게 없으면 계속 도망치는 플레이가 야근에서 영영 안 끝난다(무한 루프).
-    P.hp -= (0.8 + g.otT*0.045)*dt*(P.fatigue||1);           // 노동조합 — 야근 피로 감소
+    /* 엔드리스에서는 피로가 완만하다 — 원래 곡선이면 한 바퀴도 못 돈다.
+       대신 바퀴가 늘수록 다시 가팔라져서 언젠가는 반드시 끝난다. */
+    const fw = g.loop ? (0.30 + loopN(g)*0.10) : 1;
+    P.hp -= (0.8 + g.otT*0.045)*fw*dt*(P.fatigue||1);        // 노동조합 — 야근 피로 감소
     if(P.hp<=0 && !revive(g)){ finish(g,"lose"); return; }
   }
   if(g.toastT>0){ g.toastT-=dt; if(g.toastT<=0) g.toast=""; }
@@ -7774,7 +7839,8 @@ function scoreOf(g){
   const end = g.over==="union"?2200 : g.over==="win"?1500
             : g.over==="late"?600 : g.over==="replaced"?250 : 0;
   return Math.round((hours*120 + g.kills*2.2 + (g.comboBest||0)*3
-                    + Math.min(g.zone,ZONES.length)*160 + end) * (1+rankOf(g)*0.12));
+                    + Math.min(g.zone,ZONES.length)*160 + end)
+                    * (1+rankOf(g)*0.12) * loopPay(g));
 }
 /* 하루 결과 → 경력. 오래 버틸수록, 많이 처리할수록. */
 function careerEarned(g){
@@ -7783,7 +7849,7 @@ function careerEarned(g){
               : g.over==="late" ? 60 : g.over==="replaced" ? 25 : 0;
   /* 직급 배수 — 승진이 순수한 함정이면 그건 선택이 아니라 실수다.
      몫이 8% 늘면 하루가 남기는 것도 12% 늘어야 어려운 쪽을 고를 이유가 생긴다 */
-  return Math.round((hours*12 + g.kills*0.22 + bonus)*(1+rankOf(g)*RANK_PAY));
+  return Math.round((hours*12 + g.kills*0.22 + bonus)*(1+rankOf(g)*RANK_PAY)*loopPay(g));
 }
 
 /* ── 이야기 ────────────────────────────────────────────────────
@@ -8380,7 +8446,7 @@ function renderEnd(g){
       <div class="cstat"><b class="num"${rk>rk0?' style="color:#c9a227"':''}>${
         esc(rankName(rk))}</b><span>${rk>rk0?"승진 "+(rk-rk0)
           :isRankHi?TF("{0} 신기록", esc(rankName(rk))):"직급"}</span></div>
-      <div class="cstat"><b class="num">${g.lv}</b><span>레벨</span></div>
+      <div class="cstat"><b class="num"${loopN(g)?' style="color:#c9a227"':''}>${loopN(g)?TF("{0}바퀴",loopN(g)):g.lv}</b><span>${loopN(g)?T("야근"):"레벨"}</span></div>
       <div class="cstat"><b class="num"${g.robotSeen&&replaceRate(g)>=0.3?' style="color:'+acc+'"':''}>${
         g.robotSeen?Math.round(replaceRate(g)*100)+"%":Math.round(g.dmgDealt).toLocaleString()}</b><span>${
         g.robotSeen?"대체율":"누적 피해"}</span></div>
@@ -8643,7 +8709,8 @@ window.__api={WEAPONS,PERKS,E,ZONES,DAY,hourOf,clockStr,spawnRing,start,todoOf,z
              LANG:()=>LANG, setLang, T, L10N, CHARS, myChar, charOpen,
              GOALS, goalDone, rival, rivalCheck, reachGoals,
              RANK_MAX, RANK_LOAD, RANK_PWR, RANK_PAY, rankPick, quotaOf,
-             EVO, EVOLVED, evoHint, evoReady};
+             EVO, EVOLVED, evoHint, evoReady, LOOP_FROM, LOOP_MAX, loopN, loopMul, loopPay};
+window.__askLoop=g=>askLoop(g);        // 엔드리스 검증용
 $("#tutskip").onclick=()=>{ S("select"); tutStop(G); };
 window.__tut=()=>G&&G.tut;              // 안내 검증용
 window.__TUT=TUT;
