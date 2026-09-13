@@ -6150,17 +6150,30 @@ function step(g,dt){
     if(E[f.kind].prop) continue;                      // 집기 — 가만히 서서 맞기만 한다
     /* 던지는 놈 — 사거리 안이면 멈춰서 던지고, 너무 가까우면 물러난다 */
     const SH=E[f.kind].shoot;
+    /* 묶이거나 밀리면 겨눔이 풀린다. 아래 블록은 hold>0 이면 통째로 안 도니
+       해제를 그 안에 두면 영영 안 풀린다 — 회의 소집이 헛돌던 자리다. */
+    if(SH && f.aim>0 && (f.hold>0 || f.kb>0)) f.aim=0;
     /* hold는 회의에 묶일 때 비로소 생기는 값이라 undefined일 수 있다.
        undefined<=0 은 false여서 조건이 통째로 안 걸렸다 */
     if(SH && !(f.hold>0) && !(f.kb>0) && !f.mv){
       f.shT=(f.shT===undefined?Math.random()*SH.cd:f.shT)-dt;
-      if(d<SH.r && f.shT<=0){
-        f.shT=SH.cd*(0.75+Math.random()*0.5);
-        const a=Math.atan2(dy,dx);
-        g.eshots.push({x:f.x, y:f.y, vx:Math.cos(a)*SH.spd, vy:Math.sin(a)*SH.spd,
-                       dmg:SH.dmg*(g.ot?1.2:1), t:0, c:SH.c, sp:Math.random()*8-4});
-        f.walk+=0.3;
+      /* 겨눔 — 던지기 0.4초 전에 멈춰 선다. 그동안 점선이 나에게 닿아 있다.
+         전에는 예고 없이 날아와서, 무리 속에서 누가 던지는지 알 수 없었고
+         맞아도 「어디서 왔지」로 끝났다. 보스는 예비동작이 있는데
+         일반 원거리는 없었다 — 6~8구역 피해의 큰 몫이 여기서 왔다. */
+      if(f.aim>0){
+        f.aim-=dt;
+        if(f.aim<=0){
+          f.shT=SH.cd*(0.75+Math.random()*0.5);
+          const a=Math.atan2(dy,dx);
+          g.eshots.push({x:f.x, y:f.y, vx:Math.cos(a)*SH.spd, vy:Math.sin(a)*SH.spd,
+                         dmg:SH.dmg*(g.ot?1.2:1), t:0, c:SH.c, sp:Math.random()*8-4});
+          f.walk+=0.3; f.aim=0;
+        }
+        f.face=dx<0?1:-1;
+        continue;                                     // 겨누는 동안은 안 움직인다
       }
+      if(d<SH.r && f.shT<=0){ f.aim=0.4; S("windup"); continue; }
       if(d<SH.keep){                                  // 붙으면 물러난다
         f.x-=dx/d*f.spd*f.slow*dt*0.85; f.y-=dy/d*f.spd*f.slow*dt*0.85;
         f.face=dx<0?1:-1;
@@ -6649,7 +6662,9 @@ const BODY={
   drunk  :[1.12,0.90],   // 퍼지고 낮다
   hrteam :[0.88,1.14],   // 가장 마르고 길다
   vendor :[1.28,0.88],   // 상자를 안아 가장 넓고 낮다
-  gm     :[1.32,1.07],   // 크고 넓다
+  gm     :[1.44,1.14],   /* 크고 넓다. 한 단계 더 키웠다 — 간섭 반경을 가진
+                            유일한 일반 적인데 무리에 섞이면 안 보였다.
+                            8~9구역 피해의 큰 몫이 「부장인 줄 몰랐다」였다. */
   chief  :[1.03,1.24],   // 크고 길다
   audit  :[1.22,1.15],   // 각지고 크다
   ceo    :[1.15,1.30],   // 가장 크고 길다
@@ -6761,12 +6776,33 @@ function poseOf(f,g){
 function drawFoe(g,f,sx,sy){
   /* 상태가 몸에 보여야 반응이 우연으로 안 읽힌다.
      젖음은 발밑 웅덩이, 참조는 머리 위 점, 반응이 난 순간은 한 번 번쩍. */
+  if(E[f.kind].spd>=140 && !f.boss && !E[f.kind].prop){
+    /* 가장 빠른 적은 잔상을 남긴다 — 속도가 숫자가 아니라 눈으로 읽혀야 한다 */
+    ctx.save(); ctx.globalAlpha=.16;
+    ctx.fillStyle="#0b0e14";
+    ctx.beginPath(); ctx.ellipse(sx-f.face*11,sy,f.r*.62,f.r*.9,0,0,7); ctx.fill();
+    ctx.globalAlpha=.09;
+    ctx.beginPath(); ctx.ellipse(sx-f.face*20,sy,f.r*.5,f.r*.78,0,0,7); ctx.fill();
+    ctx.restore();
+  }
   if(f.wet>0){ ctx.save(); ctx.globalAlpha=Math.min(.45,f.wet*.16);
     ctx.fillStyle="#6f9fd8"; ctx.beginPath();
     ctx.ellipse(sx,sy+f.r*0.55,f.r*1.15,f.r*0.42,0,0,7); ctx.fill(); ctx.restore(); }
   if(f.cc>0){ ctx.save(); ctx.globalAlpha=Math.min(.85,f.cc*.28);
     ctx.fillStyle="#57d98a"; ctx.beginPath();
     ctx.arc(sx+f.r*0.72,sy-f.r-6,3.2,0,7); ctx.fill(); ctx.restore(); }
+  /* 겨누는 중 — 나에게 닿는 점선. 무리 속에서 누가 던지는지가 이걸로 읽힌다 */
+  if(f.aim>0){
+    const P=g.P, px=sx+(P.x-f.x), py=sy+(P.y-f.y), u=1-f.aim/0.4;
+    ctx.save(); ctx.globalAlpha=.20+u*.45;
+    ctx.strokeStyle="#ff6b6b"; ctx.lineWidth=1.8;
+    ctx.setLineDash([7,7]); ctx.lineDashOffset=-g.t*60;
+    ctx.beginPath(); ctx.moveTo(sx,sy-f.r*0.4); ctx.lineTo(px,py); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha=.35+u*.5; ctx.fillStyle="#ff6b6b";
+    ctx.beginPath(); ctx.arc(sx,sy-f.r-9,3+u*2,0,7); ctx.fill();
+    ctx.restore();
+  }
   if(f.react>0){ ctx.save(); ctx.globalAlpha=Math.min(.6,f.react*2);
     ctx.strokeStyle="#ffd66e"; ctx.lineWidth=2.4;
     ctx.beginPath(); ctx.arc(sx,sy,f.r+6,0,7); ctx.stroke(); ctx.restore(); }
