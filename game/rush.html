@@ -80,8 +80,18 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-acti
 #repl b{color:var(--blue);font-size:17px}
 #repl.warn b{color:var(--accent)}
 #repl.hot b{color:var(--bad)}
+/* 구역 규칙 — 이 구역이 뭐가 다른지. 걸려 있을 때만 색이 산다 */
+#zrule{display:flex;align-items:baseline;gap:7px;padding:4px 10px;border-radius:999px;
+  border:1px solid var(--line);background:rgba(11,14,20,.5);white-space:nowrap;max-width:46vw;
+  overflow:hidden}
+#zrule b{font-size:12px;font-weight:800;color:var(--dim)}
+#zrule span{font-size:11px;color:var(--faint,#5b6577);overflow:hidden;text-overflow:ellipsis}
+#zrule.on{border-color:var(--accent);background:rgba(245,196,81,.12)}
+#zrule.on b{color:var(--accent)}
+#zrule.on span{color:var(--ink)}
+#zrule[hidden]{display:none}
 #todo{font-size:13px;color:var(--dim)}
-#todo b{color:var(--bad);font-size:17px}
+#todo b{color:var(--blue);font-size:17px}   /* 미결은 파랑 — 체력(빨강)과 뜻이 다르다 */
 #todo.ok b{color:var(--good)}
 #daybar.ot i{background:linear-gradient(90deg,#b93b3b,#ff6b6b)}
 
@@ -89,6 +99,26 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-acti
 #bars{position:absolute;left:14px;right:14px;bottom:12px;z-index:5;pointer-events:none}
 .bar{height:12px;background:#0b0d12;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-top:6px}
 .bar i{display:block;height:100%;width:100%;border-radius:6px;transition:width .08s linear}
+/* 미결 — 이 게임의 목표는 이 막대를 0으로 만드는 것이다.
+   그런데 HUD 오른쪽 끝에 제일 작은 숫자로 있었고, 부수적인 「연속 처리」가
+   화면 한복판에 64px로 떴다. 주객이 뒤바뀌어 있었다.
+   이제 체력·경험치 위에 제일 굵게 놓는다 — 보는 순서가 곧 중요한 순서다. */
+/* 색은 뜻으로 가른다 — 미결(서류)은 파랑, 체력은 빨강, 경험치는 금색.
+   처음엔 미결도 빨강으로 뒀더니 체력 막대와 구별이 안 됐다(찍어 보고 알았다).
+   압박은 색이 아니라 줄어드는 숫자와 시계가 만든다. */
+#tdlab{font-size:12px;font-weight:700;color:var(--ink);display:flex;
+  justify-content:space-between;align-items:baseline;margin-bottom:3px}
+#tdlab #tdn{font-size:17px;font-weight:800;color:var(--blue)}
+#tdb{height:16px;border-color:#2a3648;margin-bottom:9px}
+#tdb i{background:linear-gradient(90deg,#4a6fa5,#9ec8ff);
+  transition:width .22s cubic-bezier(.2,.8,.3,1)}
+/* 다 비우면 색이 바뀌고 숨을 쉰다 — 「문이 열렸다」를 몸으로 안다 */
+#bars.done #tdb{border-color:#2c4a37}
+#bars.done #tdb i{background:linear-gradient(90deg,#2f7d52,#57d98a);
+  animation:tdpulse 1.3s ease-in-out infinite}
+#bars.done #tdlab #tdn{color:var(--good)}
+@keyframes tdpulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.45)}}
+@media (prefers-reduced-motion:reduce){#bars.done #tdb i{animation:none}}
 #hpb i{background:linear-gradient(90deg,#b93b3b,#ff6b6b)}
 #xpb i{background:linear-gradient(90deg,#d9a94e,#f5c451);width:0}
 #hplab{font-size:11px;color:var(--dim);display:flex;justify-content:space-between}
@@ -181,6 +211,8 @@ body.lobby #hud, body.lobby #slots, body.lobby #bars, body.lobby #toast{display:
 @media (max-width:430px){
   #kills,#lv,#clock small{display:none}
   #zone{font-size:0}                      /* 「7 / 9」는 접고 구역 이름만 */
+  #zrule{padding:3px 8px;max-width:40vw}
+  #zrule span{display:none}               /* 폰에선 규칙 이름만 — 설명은 토스트가 한다 */
   #zone b{font-size:12px;margin-left:0;max-width:96px;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:middle}
   #todo{white-space:nowrap}
   #daybar{min-width:88px}
@@ -407,8 +439,10 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
   font-weight:800;font-size:15px;color:var(--accent);text-shadow:0 2px 10px #000;pointer-events:none}
 /* 첫 판 안내 — 화면 아래에 한 줄. 게임은 뒤에서 계속 돌아간다.
    글을 읽는 동안 멈추면 「설명을 듣는 시간」이 되고, 그러면 안 읽는다. */
+/* 폭을 내용에 맡기면 폰에서 「움직이기 / 만 하면 됩 / 니다」로 깨진다.
+   쓸 수 있는 폭을 처음부터 다 쓰게 한다. */
 #tut{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);z-index:9;
-  display:flex;align-items:center;gap:12px;max-width:min(560px,calc(100vw - 28px));
+  display:flex;align-items:center;gap:12px;width:min(560px,calc(100vw - 28px));
   padding:12px 14px;border-radius:13px;border:1px solid var(--line);
   background:rgba(17,20,27,.94);box-shadow:0 10px 30px rgba(0,0,0,.5);
   animation:tutin .32s ease-out both}
@@ -437,7 +471,7 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
 #tut[hidden]{display:none}
 body.lobby #tut{display:none}
 @media (max-width:560px){
-  #tut{bottom:104px;padding:10px 12px;gap:9px}
+  #tut{bottom:128px;padding:10px 12px;gap:9px}   /* 막대가 셋이라 그만큼 위로 */
   #tut .tbody strong{font-size:13.5px} #tut .tbody span{font-size:11.5px}
 }
 </style>
@@ -451,6 +485,7 @@ body.lobby #tut{display:none}
     <div id="lv">Lv <b class="num">1</b></div>
     <div id="kills">처리 <b class="num">0</b></div>
     <div id="zone">1 / 9 <b>지하 주차장</b></div>
+    <div id="zrule" hidden><b></b><span></span></div>
     <div id="todo" class="ok">미결 <b class="num">0</b></div>
     <div id="repl" style="display:none">대체율 <b class="num">0%</b></div>
     <div id="rnd" style="display:none"></div>
@@ -458,6 +493,8 @@ body.lobby #tut{display:none}
   </div>
   <div id="slots"></div>
   <div id="bars">
+    <div id="tdlab"><span id="tdname">이 구역에서 할 일</span><span id="tdn" class="num">0</span></div>
+    <div class="bar" id="tdb"><i></i></div>
     <div id="hplab"><span>체력</span><span id="hpn" class="num">100 / 100</span></div>
     <div class="bar" id="hpb"><i></i></div>
     <div class="bar" id="xpb"><i></i></div>
@@ -3504,6 +3541,12 @@ const L10N = { ko:null, en:{
   "전부 도달":"All reached","세 가지 끝을 다 봤습니다. 남은 건 기록입니다.":"You've seen all three endings. What's left is the records.","{0} 남았습니다":"{0} to go",
   "바퀴 의자":"Wheeled Chair","바퀴 의자 — 밀고 지나갑니다":"Wheeled chair — plow right through","의자에서 내렸습니다":"You got off the chair",
   "김주임":"Kim","박대리":"Park","이사원":"Lee","최대리":"Choi","정주임":"Jung","한사원":"Han","오대리":"Oh","윤주임":"Yoon",
+  "이 구역에서 할 일":"Work left in this zone","문이 열렸습니다":"The door is open",
+  "서 있으면 체력이 차고 일이 쌓입니다":"Stand here to heal — work piles up",
+  "복합기를 고치면 한 방 나옵니다":"Fix the printer for a big hit","파란 표시는 건드리면 안 됩니다":"Do not touch the blue markers",
+  "표시된 자리에서만 처리됩니다":"Only work on the marker counts","몰아칠수록 더 몰려옵니다":"The harder you push, the more come",
+  "바로 옆에서 튀어나옵니다":"They burst out right beside you","미결이 멈춥니다":"Backlog is paused","용지 걸림":"Paper jam",
+  "조용한 층":"Quiet floor","점심시간":"Lunch","기습":"Ambush","발표":"Presentation",
 } };
 /* 원문 그대로 돌려주는 게 기본. 한국어면 표를 아예 안 본다.
 
@@ -3591,6 +3634,7 @@ function localizeData(){
   localizeTable(BOSSES,  ["msg"]);
   localizeTable(CHARS,   ["name","tag","desc","line"]);
   localizeTable(GOALS,   ["name","d","title","line"]);
+  localizeTable(ZRULE,   ["name","d"]);
   for(const k in RANKS) RANKS[k]=T(RANKS[k]);
   for(const k in SAY) SAY[k]=SAY[k].map(T);
   for(const k in AFTER) if(typeof AFTER[k]==="string") AFTER[k]=T(AFTER[k]);
@@ -3658,7 +3702,13 @@ function clockStr(t){
 
    방어가 아니라 돌파다. 그래서 「무엇을 방어하는지」라는 질문이 없어진다. */
 const ZONES=[
-  {h:9,  name:"지하 주차장",     quota:25,  kinds:["rookie","intern"],                    rate:1.30, n:2,
+  /* 1구역 — 재 보니 화면에 보이는 적이 내내 0~8명이었다(후반은 71~100명).
+     적이 화면 밖에서 걸어 들어오는데 초당 1.5명씩만 와서 그렇다.
+     이 장르의 첫인상은 「몰려온다」인데 우리는 「한적하다」로 시작하고 있었다.
+     밀도를 올리고 몫도 같이 올려 구역 길이를 되돌린다 — 몫을 36으로 두니
+     14.5초 만에 끝나서(다른 구역은 18~31초) 1구역을 구경도 못 했다.
+     여긴 신입·인턴이라 숫자가 늘어도 위험이 아니라 「할 일이 보인다」가 된다. */
+  {h:9,  name:"지하 주차장",     quota:48,  kinds:["rookie","intern"],                    rate:0.72, n:3,
    story:"오늘은 다르다. 6시에 나갈 거다.", ev:"none"},
   {h:10, name:"출입구 · 로비",   quota:40,  kinds:["intern","staff","rookie"],            rate:1.10, n:3,
    story:"게이트를 찍는 순간부터 하루가 시작된다.", ev:"client"},
@@ -3678,6 +3728,30 @@ const ZONES=[
    story:"마지막 문. 저 너머가 정문이다.", ev:"client"},
 ];
 const zoneOf = g => ZONES[Math.min(g.zone,ZONES.length-1)];
+/* ══════════════ 구역 규칙을 화면에 ═══════════════════════════
+   구역마다 규칙이 다른 게 이 게임이 같은 장르 다른 작품과 다른 점인데,
+   그 규칙이 화면 어디에도 없었다. 토스트로 한 줄 스쳐 지나가고 끝이라
+   플레이어는 왜 미결이 안 줄어드는지 모른 채 싸운다.
+   (실제로 한 판을 찍어서 보다가 알았다 — 구내식당인데 화면엔 아무 표시가 없었다.)
+
+   이제 구역에 들어가 있는 동안 계속 보인다. on() 이 참이면 「지금 걸려 있다」로
+   색이 바뀐다 — 규칙이 있는 것과 지금 작동하는 것은 다르다. */
+const ZRULE={
+  lunch  :{ name:"점심시간", d:"미결이 멈춥니다",
+            on:g=>g.lunchT>0 },
+  desk   :{ name:"내 자리",  d:"서 있으면 체력이 차고 일이 쌓입니다",
+            on:g=>!!g.deskOn },
+  present:{ name:"발표",     d:"표시된 자리에서만 처리됩니다",
+            on:g=>!!g.podOn },
+  printer:{ name:"용지 걸림", d:"복합기를 고치면 한 방 나옵니다",
+            on:g=>!g.prnDone },
+  quiet  :{ name:"조용한 층", d:"몰아칠수록 더 몰려옵니다",
+            on:g=>(g.quietK||1)<0.99 },
+  client :{ name:"고객사",   d:"파란 표시는 건드리면 안 됩니다",
+            on:g=>g.clients && g.clients.length>0 },
+  ambush :{ name:"기습",     d:"바로 옆에서 튀어나옵니다",
+            on:g=>(g.ambWarn||0)>0 },
+};
 /* ── 직급 ──────────────────────────────────────────────────────
    승진은 보상이 아니라 거래다. 능력이 오르는 만큼 몫도 오른다.
    그리고 직급은 남는다 — 내일 출근할 때 이미 그 자리에서 시작한다.
@@ -4503,7 +4577,7 @@ function newGame(grudge){
     rndName:"", rndKind:"", rndShow:0, barOn:0, barP:0,
     ot:false, otT:0, warned:false,
     combo:0, comboT:0, comboBest:0, comboPop:0, flash:0,
-    toast:"", toastT:0, paused:false, best:0, tut:null, lvWait:0, uid:0,
+    toast:"", toastT:0, toastPr:0, paused:false, best:0, tut:null, lvWait:0, uid:0,
   };
 }
 
@@ -4610,7 +4684,7 @@ function spawnWall(g,kind,n){                        // 복도 한쪽에서 밀�
     const f=g.foes[g.foes.length-1];
     f.mv=1; f.mvx=-ux; f.mvy=-uy; f.mvT=5.5;         // 나를 안 쫓고 지나간다
   }
-  flash(g,"줄지어 옵니다");
+  flash(g,"줄지어 옵니다",0);          // 늘 나오는 말이라 낮게
 }
 function spawnClose(g,kind,n){                       // 둘러싸고 조여든다
   const P=g.P, R=Math.max(VW,VH)/ZOOM*0.60+90;
@@ -4623,7 +4697,7 @@ function spawnClose(g,kind,n){                       // 둘러싸고 조여든�
     f.mv=2; f.cx=cx; f.cy=cy; f.mvT=6.5;
   }
   g.fx.push({type:"ring",x:cx,y:cy,t:0,r0:R,r1:R*0.3,c:"#ff6b6b"});
-  flash(g,"둘러쌉니다");
+  flash(g,"둘러쌉니다",0);
 }
 function spawnSpiral(g,kind,n){                      // 나선으로 감아 들어온다
   const P=g.P, R=Math.max(VW,VH)/ZOOM*0.62+90;
@@ -4636,7 +4710,7 @@ function spawnSpiral(g,kind,n){                      // 나선으로 감아 들�
 /* 어떤 대형이 나올지는 구역이 정한다 — 구역마다 오는 모양이 달라야
    「여기는 복도구나」가 눈으로 읽힌다 */
 const FORMS=[
-  null,                 // 1 지하 주차장 — 배우는 중. 흩어져서만
+  "wall",               // 1 지하 주차장 — 출근길이라 줄지어 들어온다
   "wall",               // 2 로비 — 게이트를 지나 줄지어 들어온다
   null,                 // 3 사무실 — 사방에서
   "close",              // 4 구내식당 — 배식 줄이 둘러싼다
@@ -4646,6 +4720,22 @@ const FORMS=[
   "close",              // 8 임원층 — 조여 온다
   "spiral",             // 9 대표이사실 — 전부
 ];
+/* 출근 시간 주차장이 텅 비어 있을 리 없다. 판이 열릴 때 이미 사람이 있어야
+   「몰려온다」로 시작한다 — 이게 없으면 첫 20초가 빈 화면이다.
+   화면 밖 링이 아니라 화면 안에 흩어 놓는다. 단, 발밑엔 두지 않는다. */
+function seedZone(g,n){
+  const P=g.P, Z=zoneOf(g), W=VW/ZOOM, H=VH/ZOOM;
+  for(let i=0;i<n;i++){
+    const k=Z.kinds[(Math.random()*Z.kinds.length)|0];
+    let x,y,d,tries=0;
+    do{
+      x=P.x+(Math.random()-0.5)*W*0.92;
+      y=P.y+(Math.random()-0.5)*H*0.92;
+      d=Math.hypot(x-P.x,y-P.y);
+    }while(d<110 && ++tries<12);          // 시작하자마자 붙어 있으면 안 된다
+    spawnAt(g,k,x,y);
+  }
+}
 function doSpawns(g,dt){
   const s=zoneOf(g);                 // 구성·밀도는 시간이 아니라 구역이 정한다
   g.spawnAcc+=dt;
@@ -5379,14 +5469,14 @@ function takeDrop(g,d){
   const P=g.P;
   if(d.kind==="heal"){
     P.hp=Math.min(P.maxhp, P.hp+Math.round(P.maxhp*0.3));
-    flash(g,"믹스커피 — 체력 회복"); S("coin");
+    flash(g,"믹스커피 — 체력 회복",2); S("coin");
   } else if(d.kind==="magnet"){
     g.orbs.forEach(o=>{ o.x=P.x+(o.x-P.x)*0.06; o.y=P.y+(o.y-P.y)*0.06; });
-    flash(g,"텀블러 — 경험치 전부 수집"); S("coin");
+    flash(g,"텀블러 — 경험치 전부 수집",2); S("coin");
   } else if(d.kind==="chair"){
     P.ride=RIDE_T; P.rideHit={};
     g.fx.push({type:"ring",x:P.x,y:P.y,t:0,r0:14,r1:190,c:"#9ec8ff"});
-    kick(g,0,-1,7); S("place"); flash(g,"바퀴 의자 — 밀고 지나갑니다");
+    kick(g,0,-1,7); S("place"); flash(g,"바퀴 의자 — 밀고 지나갑니다",2);
   } else if(d.kind==="chest"){
     openChest(g);
   } else {
@@ -5541,6 +5631,7 @@ function step(g,dt){
     if(g.lvWait<=0){ g.lvWait=0; levelUp(g); }
   }
   if(g.tut) tutStep(g,dt);
+  maybeLevel(g);                       // 미뤄 둔 레벨업이 있으면 여기서 열린다
   if(g.comboT>0){ g.comboT-=dt; if(g.comboT<=0) g.combo=0; }
   if(g.comboPop>0) g.comboPop=Math.max(0,g.comboPop-dt*4.5);
   if(g.flash>0) g.flash=Math.max(0,g.flash-dt*2.2);
@@ -5927,14 +6018,23 @@ function levelBurst(g){
     el.classList.add("pop"); if(tier) el.classList.add("big");
   }
 }
+/* 레벨업을 지금 열어도 되나.
+   1구역을 빽빽하게 만든 뒤로 처음 여는 사람에게 3초 만에 카드가 떴다.
+   「움직여 보세요」를 읽기도 전에 화면이 덮이는 건 안내가 아니라 방해다.
+   그래서 안내 1단계(이동) 동안은 미룬다 — 경험치는 그대로 쌓이고,
+   단계를 넘어가는 즉시 열린다. */
+const lvBlocked = g => !!(g.tut && g.tut.i===0);
+function maybeLevel(g){
+  if(g.paused || g.lvWait>0 || lvBlocked(g)) return;
+  if(g.xp < g.next) return;
+  g.xp-=g.next; g.lv++;
+  g.next=Math.round(g.next*1.34+3);
+  levelBurst(g);                                      // 불꽃 먼저, 카드는 그 다음
+  g.lvWait = LV_WAIT[LV_TIER(g.lv)];
+}
 function gainXp(g,n){
   g.xp += n*g.P.xpMul; S("coin");
-  if(g.xp>=g.next && !g.paused && !(g.lvWait>0)){    // 오버레이는 한 번에 하나만
-    g.xp-=g.next; g.lv++;
-    g.next=Math.round(g.next*1.34+3);
-    levelBurst(g);                                    // 불꽃 먼저, 카드는 그 다음
-    g.lvWait = LV_WAIT[LV_TIER(g.lv)];
-  }
+  maybeLevel(g);
 }
 /* 비상금 — 한 번은 다시 일어난다 */
 function revive(g){
@@ -5945,11 +6045,22 @@ function revive(g){
   g.fx.push({type:"quit",t:0});
   g.fx.push({type:"ring",x:g.P.x,y:g.P.y,t:0,r0:20,r1:340,c:"#57d98a"});
   kick(g,0,-1,16); g.hitstop=Math.max(g.hitstop,.2); g.flash=Math.max(g.flash,1);
-  S("nuke"); flash(g,"비상금 — 다시 일어납니다");
+  S("nuke"); flash(g,"비상금 — 다시 일어납니다",2);
   return true;
 }
-/* 안내 문구 — 만드는 자리가 서른 곳이라 여기서 한 번에 번역한다 */
-function flash(g,msg){ g.toast=T(msg); g.toastT=2.6; }
+/* 안내 문구 — 만드는 자리가 서른 곳이라 여기서 한 번에 번역한다.
+
+   우선순위가 필요했다. 1구역에 대형을 넣었더니 「줄지어 옵니다」(늘 나오는 말)가
+   「바퀴 의자 — 밀고 지나갑니다」(판에 한 번 나오는 말)를 덮어썼다.
+   낮은 것은 높은 것이 떠 있는 동안 끼어들지 못한다. 같은 등급끼리는 최신이 이긴다.
+     0 일상 — 대형·구역 분위기
+     1 기본 — 구역 사건·안내
+     2 한 번 — 줍기·진화·승진처럼 그 판에 몇 번 없는 것 */
+function flash(g,msg,prio){
+  const pr = prio===undefined ? 1 : prio;
+  if(g.toastT>0 && (g.toastPr|0) > pr) return;
+  g.toast=T(msg); g.toastT=2.6; g.toastPr=pr;
+}
 
 /* ── 일시정지 ──────────────────────────────────────────────────
    모바일에서 전화가 오면, PC에서 누가 부르면 멈출 방법이 있어야 한다.
@@ -6675,17 +6786,21 @@ function drawCombo(g){
   const pop=1+g.comboPop*0.30;
   const tier=g.combo>=40?"#ff6b6b":g.combo>=20?"#f5c451":"#9ec8ff";
   ctx.save();
-  ctx.translate(VW*0.5, VH*0.30);
+  /* 연속 처리는 부수적인 숫자다. 화면 한복판에 64px로 뜨니 정작 봐야 할
+     미결을 가리고 있었다. 위로 올리고 크기를 절반으로 줄인다.
+     0.175로 뒀더니 이번엔 안내 문구(top:110px)와 겹쳤다 — 그 아래로 내린다. */
+  ctx.translate(VW*0.5, VH*0.26);
   ctx.scale(pop,pop);
+  ctx.globalAlpha=0.85;
   ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.font="400 "+(38+Math.min(26,g.combo*0.5))+"px 'Black Han Sans','Malgun Gothic',sans-serif";
+  ctx.font="400 "+(22+Math.min(14,g.combo*0.28))+"px 'Black Han Sans','Malgun Gothic',sans-serif";
   ctx.fillStyle="rgba(11,14,20,"+(a*.8)+")";
   ctx.fillText(g.combo,2,3);
   ctx.globalAlpha=a; ctx.fillStyle=tier;
   ctx.fillText(g.combo,0,0);
-  ctx.font="800 14px 'Gothic A1','Malgun Gothic',sans-serif";
-  ctx.fillStyle="rgba(232,236,244,"+(a*.75)+")";
-  ctx.fillText(T("연속 처리"),0,34);
+  ctx.font="800 11px 'Gothic A1','Malgun Gothic',sans-serif";
+  ctx.fillStyle="rgba(232,236,244,"+(a*.6)+")";
+  ctx.fillText(T("연속 처리"),0,21);
   ctx.restore();
 }
 function drawWorld(g){
@@ -7236,7 +7351,7 @@ function levelUp(g){
         if(o.kind==="e"){
         delete g.weapons[o.base]; delete g.cds[o.base];
         g.weapons[o.id]=1;
-        flash(g,WEAPONS[o.id].name+" — 진화");
+        flash(g,WEAPONS[o.id].name+" — 진화",2);
         S("nuke"); g.flash=Math.max(g.flash,1); kick(g,0,-1,12);
       }
       else if(o.kind==="w") g.weapons[o.id]=(g.weapons[o.id]||0)+1;
@@ -7313,6 +7428,20 @@ function syncHud(g){
       rb.className = rr>=45?"hot" : rr>=30?"warn" : "";
     } else rb.style.display="none";
   }
+  /* 구역 규칙 — 들어가 있는 동안 계속 보인다 */
+  {
+    const R=ZRULE[(Z.ev||"none")], el=$("#zrule");
+    if(el){
+      if(!R) el.hidden=true;
+      else{
+        el.hidden=false;
+        const b=el.querySelector("b"), sp=el.querySelector("span");
+        if(b.textContent!==T(R.name)) b.textContent=T(R.name);
+        if(sp.textContent!==T(R.d)) sp.textContent=T(R.d);
+        el.classList.toggle("on", !!R.on(g));
+      }
+    }
+  }
   const zn=$("#zone");
   if(zn){
     setHTML(zn, (g.zone+1)+" / "+ZONES.length+" <b>"+esc(Z.name)+"</b>");
@@ -7320,6 +7449,16 @@ function syncHud(g){
   }
   $("#lv b").textContent=g.lv;
   $("#kills b").textContent=g.kills;
+  /* 미결 — 숫자와 막대를 같이. 남은 몫이 아니라 「해낸 비율」로 채운다 */
+  {
+    const todo=todoOf(g), quota=Math.max(1,quotaOf(g));
+    const donePct=clamp((quota-todo)/quota,0,1)*100;
+    const tn=$("#tdn"), tb=$("#tdb i"), bars=$("#bars"), nm=$("#tdname");
+    if(tn) tn.textContent=todo;
+    if(tb) tb.style.width=donePct+"%";
+    if(bars) bars.classList.toggle("done", todo<=0);
+    if(nm) nm.textContent = todo<=0 ? T("문이 열렸습니다") : T("이 구역에서 할 일");
+  }
   $("#hpn").textContent=Math.max(0,Math.ceil(P.hp))+" / "+P.maxhp;
   $("#hpb i").style.width=clamp(P.hp/P.maxhp,0,1)*100+"%";
   $("#xpb i").style.width=clamp(g.xp/g.next,0,1)*100+"%";
@@ -8049,6 +8188,7 @@ function resize(){
 function start(grudge){
   closeOverlay(); lobbyOn(false);
   G=newGame(grudge); applyPerks(G); syncSlots(G); markBossTicks(); tutStart(G);
+  seedZone(G,14);                    // 09:00 주차장엔 이미 사람이 있다
   if(opt("bgm")) S("bgmStart");      // 배경음 — 하루가 흐르는 걸 귀로도
   if(G.pendingLv>0){ G.pendingLv--; levelUp(G); }   // 「짬」 — 시작부터 고를 게 있다
   let last=performance.now();

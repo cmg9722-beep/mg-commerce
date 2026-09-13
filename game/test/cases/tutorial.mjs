@@ -1,6 +1,6 @@
 /* 첫 판 안내 — 처음 여는 사람에게만 뜨고, 실제로 했을 때 넘어가고,
    건너뛰면 다시 안 뜬다. 이 셋이 어긋나면 첫 인상이 망가진다. */
-import { open, startRun, suite } from '../lib.mjs';
+import { open, startRun, pickCard, suite } from '../lib.mjs';
 
 const tut = p => p.evaluate(() => {
   const box = document.getElementById('tut');
@@ -18,6 +18,20 @@ const hold = async (p, keys, ms) => {
   for(const k of keys) await p.keyboard.down(k);
   await p.waitForTimeout(ms);
   for(const k of keys) await p.keyboard.up(k);
+};
+/* 1구역이 빽빽해진 뒤로 안내 중에도 레벨업 카드가 뜬다. 그건 정상이다 —
+   4단계가 「카드가 싸우는 방식을 정합니다」이므로 오히려 맞다.
+   다만 카드가 떠 있으면 화면을 덮어서 건너뛰기를 못 누른다. 먼저 치운다. */
+const clearCard = async p => {
+  for(let i=0;i<4;i++){
+    const on = await p.evaluate(() => {
+      const ov = document.getElementById('ov');
+      return !!(ov && ov.classList.contains('on'));
+    });
+    if(!on) return;
+    if(!(await pickCard(p, 'first'))) return;
+    await p.waitForTimeout(150);
+  }
 };
 
 export default async function run(){
@@ -41,13 +55,19 @@ export default async function run(){
   s.ok('움직이면 2단계로', t.i >= 1, `i=${t.i} ${t.title}`);
   s.ok('2단계는 처리 칸을 가리킨다', t.point.includes('#kills') || t.i>1, JSON.stringify(t.point));
 
-  /* 처리하면 계속 넘어간다 */
+  /* 처리하면 계속 넘어간다 — 그 사이 레벨업 카드가 뜨면 게임이 멈추니
+     카드를 치우면서 기다린다. 카드가 뜨는 것 자체는 정상이다. */
   await p.evaluate(() => { const g=window.__g(); g.kills = 40; });
-  await p.waitForTimeout(1400);
-  t = await tut(p);
+  for(let i=0; i<20; i++){
+    await clearCard(p);
+    await p.waitForTimeout(250);
+    t = await tut(p);
+    if(t.i >= 2) break;
+  }
   s.ok('처리하면 더 넘어간다', t.i >= 2, `i=${t.i} ${t.title}`);
 
   /* 건너뛰기 */
+  await clearCard(p);
   await p.click('#tutskip');
   await p.waitForTimeout(200);
   t = await tut(p);
