@@ -127,6 +127,16 @@ export default async function(){
   s.eq('노트북을 올리면 전결', ready.b.join(','), 'jeongyeol');
   s.eq('강화가 없으면 진화도 없다', ready.c.join(','), '');
 
+  /* 짝이 둘 다 준비되면 둘 다 내민다 — 하나만 내밀면 「고른다」가 아니라 「받는다」다 */
+  const both = await p.evaluate(() => {
+    const g = window.__g(), A = window.__api;
+    g.weapons = { stamp: A.WEAPONS.stamp.max };
+    g.perks = { laptop: A.PERKS.laptop.max, contract: A.PERKS.contract.max };
+    return { ready: A.evoReady(g).map(o => o.id), offer: window.__offers(g).map(o => o.id) };
+  });
+  s.eq('둘 다 조건이 맞는다', both.ready.sort().join(','), 'jeongyeol,rejectdoc');
+  s.eq('둘 다 카드로 나온다', both.offer.sort().join(','), 'jeongyeol,rejectdoc');
+
   s.eq('반응 검사 중 JS 에러 없음', p.errors.length, 0, p.errors.join(' / '));
   await p.close();
 
