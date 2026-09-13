@@ -28,9 +28,10 @@ export async function shutdown(){ if(_browser){ await _browser.close(); _browser
 export const BLANK = { career:0, lv:{}, best:0, days:0, cleared:false, rank:0, last:null };
 
 /* 페이지 하나 — 에러를 모으고, 저장소를 심고, 게임을 연다 */
-export async function open({ save=BLANK, lang='ko', viewport={width:1180,height:760} }={}){
+export async function open({ save=BLANK, lang='ko', viewport={width:1180,height:760}, seed=null }={}){
   const b = await browser();
   const p = await b.newPage({ viewport, deviceScaleFactor:1 });
+  if(seed!=null) await p.addInitScript(seedScript(seed));
   const errors = [];
   p.on('pageerror', e => errors.push(String(e.message||e)));
   /* 네트워크 자원 실패는 JS 에러가 아니다 — 폰트를 못 받은 것뿐이라
@@ -56,6 +57,25 @@ export async function open({ save=BLANK, lang='ko', viewport={width:1180,height:
   await p.waitForSelector('#go', { timeout: 15000 });
   p.errors = errors;
   return p;
+}
+
+/* 같은 시드면 같은 판 — 밸런스를 잴 때 없으면 안 되는 것.
+   축 하나를 바꾸고 6판을 재 봤더니, 손도 안 댄 4구역 최저 체력이
+   78 → 74 → 54 로 흔들렸다. 노이즈가 신호보다 컸다는 뜻이라 어느 축도
+   판정할 수 없었다. 게임 안 난수를 통째로 시드 PRNG 로 갈아 끼워
+   스폰 위치·무작위 사건·카드 목록까지 같은 판을 재현한다.
+   (봇의 키 입력 타이밍은 실시간이라 완전히 같지는 않지만, 분산의
+    가장 큰 몫인 빌드와 스폰이 고정된다.)
+
+   open()·openServed() 의 seed 옵션으로 켠다. 게임 코드는 안 건드린다 —
+   검사용 장치가 제품에 새어 들어가면 그게 다음 버그다. */
+export function seedScript(seed){
+  return `(()=>{ let a=${seed>>>0};
+    Math.random=()=>{ a|=0; a=a+0x6D2B79F5|0;
+      let t=Math.imul(a^a>>>15,1|a);
+      t=t+Math.imul(t^t>>>7,61|t)^t;
+      return ((t^t>>>14)>>>0)/4294967296; };
+  })()`;
 }
 
 /* 판 시작 — 로비에서 출근 버튼을 누른다 */
