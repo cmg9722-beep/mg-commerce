@@ -3522,6 +3522,8 @@ const L10N = { ko:null, en:{
   "높은 자리에서":"From Up High","과장 이상으로 정시 퇴근":"Leave on time as Manager or above",
   "이사 퇴근":"Director Leaves","이사 직급으로 정시 퇴근":"Leave on time as Director",
   "진화 {0} {1}/{2} + {3} {4}/{5} → {6}":"Evolves {0} {1}/{2} + {3} {4}/{5} → {6}",
+  "오늘 한 장 남기기":"Save today's card","만드는 중…":"Making…",
+  "{0}에 나왔습니다 — 정시 퇴근":"Out at {0} — On-Time Departure","구역":"Zone",
   "오늘의 공지":"Today's notice","오늘의 기록":"Today's best","오늘 첫 출근":"First clock-in today",
   "{0}구역 {1}":"Zone {0} {1}",
   "정문":"Main Entrance","퇴근한다":"Clock Out","오늘은 안 나간다":"Not Leaving Today",
@@ -8451,6 +8453,64 @@ function renderShop(){
   openOverlay();
 }
 
+/* ── 결과 카드 ─────────────────────────────────────────────────
+   마케팅 예산이 0이면 퍼지는 길은 하나뿐이다 — 하고 난 사람이 보여 주는 것.
+   그런데 보여 줄 것이 없었다. 스크린샷은 화면 전체라 무엇이 자랑인지
+   안 읽힌다.
+
+   퇴근 시각과 그날 들은 말 한 줄을 정사각형 한 장으로 굽는다.
+   퍼지는 건 게임이 아니라 대사다 — 「우리 팀은 가족이야」에 반려 도장을
+   찍고 13:25에 나왔다는 것, 그게 이 게임의 한 장이다.
+
+   바깥으로 아무것도 보내지 않는다. 만든 그림을 OS 공유 시트에 넘길 뿐이고,
+   그걸 누를지는 사람이 정한다. */
+function shareCard(g){
+  const W=1080, c=document.createElement("canvas");
+  c.width=W; c.height=W;
+  const x=c.getContext("2d");
+  const win=g.over==="win", uni=g.over==="union", late=g.over==="late", repl=g.over==="replaced";
+  const acc = uni?"#5fe0c0" : win?"#57d98a" : late?"#f5c451" : repl?"#c9a227" : "#ff6b6b";
+  x.fillStyle="#0b0e14"; x.fillRect(0,0,W,W);
+  x.fillStyle="#141922"; x.fillRect(56,56,W-112,W-112);
+  x.fillStyle=acc; x.fillRect(56,56,10,W-112);
+
+  const F=(w,sz)=>x.font=w+" "+sz+"px 'Gothic A1','Malgun Gothic',sans-serif";
+  const HAN=sz=>x.font="400 "+sz+"px 'Black Han Sans','Malgun Gothic',sans-serif";
+  x.textAlign="left"; x.textBaseline="alphabetic";
+
+  HAN(108); x.fillStyle=acc;
+  x.fillText(T(uni?"단체협약":win?"정시 퇴근":late?"야근 퇴근":repl?"대체":"자리에서 쓰러짐"), 112, 230);
+
+  F("800",46); x.fillStyle="#e8ecf4";
+  x.fillText(g.ot?T("야근"):clockStr(g.t), 112, 306);
+  F("700",30); x.fillStyle="#7d8699";
+  x.fillText(T(zoneOf(g).name)+" · "+T(rankName(rankOf(g))), 112, 352);
+
+  /* 그날 들은 말 — 이 한 줄이 이 게임의 전부다 */
+  const q='"'+String(g.grudge||"").slice(0,34)+'"';
+  x.fillStyle="#1b2130"; x.fillRect(112,400,W-224,150);
+  x.fillStyle="#ff6b6b"; x.fillRect(112,400,6,150);
+  F("800",40); x.fillStyle="#e8ecf4"; x.fillText(q, 148, 462);
+  F("700",26); x.fillStyle=acc;
+  x.fillText(T(uni?"이제 이 말은 규정 위반입니다.":win?"이제 안 들립니다."
+              :late?"늦었지만, 끝내고 나왔습니다.":repl?"이제 아무도 이 말을 하지 않습니다."
+              :"내일 또 듣습니다."), 148, 512);
+
+  const cells=[[T("처리"),g.kills.toLocaleString()],
+               [T("최고 연속"),(g.comboBest|0).toLocaleString()],
+               [T("레벨"),String(g.lv)],
+               [loopN(g)?T("야근"):T("구역"),
+                loopN(g)?TF("{0}바퀴",loopN(g)):Math.min(g.zone+1,ZONES.length)+" / "+ZONES.length]];
+  cells.forEach((cl,i)=>{
+    const cx=112+(i%2)*((W-224)/2), cy=620+((i/2)|0)*120;
+    F("800",54); x.fillStyle="#e8ecf4"; x.fillText(cl[1], cx, cy+46);
+    F("700",24); x.fillStyle="#7d8699"; x.fillText(cl[0], cx, cy+82);
+  });
+
+  F("800",28); x.fillStyle="#5b6577";
+  x.fillText(T("정시 퇴근")+" · 09:00 — 18:00", 112, W-96);
+  return c;
+}
 function renderEnd(g){
   const repl=g.over==="replaced", uni=g.over==="union";
   const win=g.over==="win", late=g.over==="late", done=win||late||repl||uni;
@@ -8576,9 +8636,33 @@ function renderEnd(g){
     <button class="ghost" id="toShop" style="color:var(--ink);font-size:14px;padding:13px;
       display:flex;align-items:center;justify-content:center;gap:8px">
       <span>자기계발</span><span style="color:var(--accent);font-weight:800">${TF("경력 {0}", SAVE.career.toLocaleString())}</span>
-    </button></div>`);
+    </button>
+    <button class="ghost" id="toShare" style="font-size:13px;padding:11px">${T("오늘 한 장 남기기")}</button>
+    </div>`);
   $("#again").onclick=()=>{ S("select"); start(myGrudge()); };
   $("#toShop").onclick=()=>{ S("select"); renderShop(); };
+  /* 한 장 남기기 — 공유 시트가 되면 그걸로, 안 되면 내려받기로.
+     둘 다 막힌 브라우저면 조용히 아무 일도 안 한다(단추는 그대로 둔다). */
+  $("#toShare").onclick=async()=>{
+    const b=$("#toShare"); if(b.dataset.busy) return;
+    b.dataset.busy="1"; const was=b.textContent; b.textContent=T("만드는 중…");
+    try{
+      const cv2=shareCard(g);
+      const blob=await new Promise(r=>cv2.toBlob(r,"image/png"));
+      const file=blob && window.File ? new File([blob],"jeongsi.png",{type:"image/png"}) : null;
+      const txt=TF("{0}에 나왔습니다 — 정시 퇴근", g.ot?T("야근"):clockStr(g.t));
+      if(file && navigator.canShare && navigator.canShare({files:[file]})){
+        await navigator.share({files:[file], text:txt});
+      }else if(blob){
+        const u=URL.createObjectURL(blob), a=document.createElement("a");
+        a.href=u; a.download="jeongsi-"+clockStr(g.t).replace(":","")+".png";
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(()=>URL.revokeObjectURL(u), 4000);
+      }
+      S("select");
+    }catch(e){ /* 사용자가 공유를 취소한 것도 여기로 온다 — 조용히 넘긴다 */ }
+    b.textContent=was; delete b.dataset.busy;
+  };
   openOverlay();
 }
 
@@ -8792,6 +8876,7 @@ window.__api={WEAPONS,PERKS,E,ZONES,DAY,hourOf,clockStr,spawnRing,start,todoOf,z
              RANK_MAX, RANK_LOAD, RANK_PWR, RANK_PAY, rankPick, quotaOf,
              EVO, EVOLVED, evoHint, evoReady, LOOP_FROM, LOOP_MAX, loopN, loopMul, loopPay,
              RND, dailyPlan, dayKey, rollEvent};
+window.__shareCard=g=>shareCard(g);    // 결과 카드 검증용
 window.__askLoop=g=>askLoop(g);        // 엔드리스 검증용
 $("#tutskip").onclick=()=>{ S("select"); tutStop(G); };
 window.__tut=()=>G&&G.tut;              // 안내 검증용
