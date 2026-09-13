@@ -91,6 +91,42 @@ export default async function(){
   s.ok('젖음 카드에도 뜬다', /번짐|Bleed/.test(hints.b), hints.b);
   s.eq('관계없는 카드엔 안 뜬다', hints.c, '');
 
+  /* 진화 짝이 둘 — 같은 무기라도 무엇과 같이 올렸느냐가 갈 길을 가른다.
+     짝이 하나뿐이면 무기를 끝까지 올린 순간 답이 정해진다. */
+  const evo = await p.evaluate(() => {
+    const A = window.__api, W = A.WEAPONS, E = A.EVO;
+    const bases = Object.keys(E);
+    const pairs = bases.map(b => (Array.isArray(E[b]) ? E[b] : [E[b]]));
+    const tos = [].concat(...pairs).map(e => e.to);
+    return { bases: bases.length, total: tos.length,
+             minPer: Math.min(...pairs.map(a => a.length)),
+             missing: tos.filter(t => !W[t]),
+             dupPerk: pairs.filter(a => a.length > 1 && a[0].perk === a[1].perk).length,
+             dupTo: tos.length !== new Set(tos).size };
+  });
+  s.eq('원본 무기 여섯', evo.bases, 6);
+  s.eq('진화형 열둘', evo.total, 12);
+  s.ge('무기마다 짝이 둘 이상', evo.minPer, 2, String(evo.minPer));
+  s.eq('전부 실제 무기로 정의돼 있다', evo.missing.join(','), '');
+  s.eq('한 무기의 두 짝이 같은 강화를 쓰지 않는다', evo.dupPerk, 0);
+  s.ok('진화형 이름이 겹치지 않는다', !evo.dupTo, String(evo.dupTo));
+
+  /* 조건이 맞으면 실제로 그 진화가 나온다 — 그리고 다른 짝은 안 나온다 */
+  const ready = await p.evaluate(() => {
+    const g = window.__g(), A = window.__api;
+    g.weapons = { stamp: A.WEAPONS.stamp.max };
+    g.perks = { contract: A.PERKS.contract.max };
+    const a = A.evoReady(g).map(o => o.id);
+    g.perks = { laptop: A.PERKS.laptop.max };
+    const b = A.evoReady(g).map(o => o.id);
+    g.perks = {};
+    const c = A.evoReady(g).map(o => o.id);
+    return { a, b, c };
+  });
+  s.eq('근로계약서를 올리면 반려 사유서', ready.a.join(','), 'rejectdoc');
+  s.eq('노트북을 올리면 전결', ready.b.join(','), 'jeongyeol');
+  s.eq('강화가 없으면 진화도 없다', ready.c.join(','), '');
+
   s.eq('반응 검사 중 JS 에러 없음', p.errors.length, 0, p.errors.join(' / '));
   await p.close();
 

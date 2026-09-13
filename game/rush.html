@@ -3537,6 +3537,14 @@ const L10N = { ko:null, en:{
   "후배가 후배를 데리고 왔다. 나한테 묻지 않고 자기가 답했다.":"My junior brought their own junior. Answered for me without asking.",
   "이제 이 이야기는 내 것이 아니다. 그래서 끝이 아니다.":"This story isn't mine anymore. That's why it isn't over.",
   "젖음":"Wet","묶임":"Held","참조":"CC'd","서류":"Paper",
+  "반려 사유서":"Rejection Memo","재택 공지":"Remote Notice","회신 요청":"Reply Requested",
+  "아메리카노 벤티":"Venti Americano","칼퇴 선언":"Hard Stop","읽씹":"Left on Read",
+  "사유를 적어 돌려보낸다. 느리지만 무겁고, 받은 사람은 한동안 못 움직인다":"Sent back with reasons. Slow but heavy, and they can't move for a while",
+  "멀리까지 간다. 관통하며 끝까지 날아간다":"Reaches far. Pierces and keeps going",
+  "받은 사람은 전부 참조로 묶인다. 하나가 정리되면 다 같이 받는다":"Everyone gets CC'd. Clear one and they all get it",
+  "한 잔이 크다. 밟은 사람은 오래 젖어 있는다":"One big cup. Whoever steps in stays wet",
+  "좁게, 대신 아무도 못 버틴다":"Narrow, but nobody holds out",
+  "답을 안 한다. 조용히, 자주, 가까이서 정리된다":"No reply. Quiet, often, and close",
   "번짐 — 젖은 적을 서류로 때리면 둘레에 번집니다":"Bleed — hit a wet target with paper and it spreads",
   "번짐 — 젖은 적을 때리면 둘레에 번집니다":"Bleed — hitting a wet target spreads it",
   "지적 — 회의에 묶인 적은 더 아픕니다":"Called out — targets held in a meeting take more",
@@ -4393,20 +4401,32 @@ const WEAPONS = {
 /* ── 진화 ──────────────────────────────────────────────────────
    무기를 끝까지 올리고 짝이 되는 강화도 끝까지 올리면 진화한다.
    이 장르에서 사람을 붙잡아두는 가장 큰 장치다. */
+/* 진화 짝이 하나뿐이라 답이 정해져 있었다 — 무기를 끝까지 올리면 갈 길이
+   한 곳이다. 짝을 둘로 둔다. 한쪽은 「넓게」(범위·수), 다른 쪽은
+   「깊게」(단일·큰 피해·상태 강화). 같은 무기라도 무엇과 같이 올렸느냐가
+   판을 가른다. 여섯이 열둘이 되고, 조합은 그보다 훨씬 많아진다. */
 const EVO={
-  stamp   :{ perk:"laptop", to:"jeongyeol", name:"전결" },
-  copy    :{ perk:"card",   to:"notice",    name:"전사 공지" },
-  mail    :{ perk:"cup",    to:"replyall",  name:"전체 답장" },
-  coffee  :{ perk:"shoes",  to:"caffeine",  name:"카페인 중독" },
-  clock   :{ perk:"leave",  to:"ontime",    name:"정시 퇴근" },
-  quit    :{ perk:"suit",   to:"resign",    name:"퇴사" },
+  stamp   :[{ perk:"laptop",   to:"jeongyeol", name:"전결" },
+            { perk:"contract", to:"rejectdoc", name:"반려 사유서" }],
+  copy    :[{ perk:"card",     to:"notice",    name:"전사 공지" },
+            { perk:"remote",   to:"remotenote",name:"재택 공지" }],
+  mail    :[{ perk:"cup",      to:"replyall",  name:"전체 답장" },
+            { perk:"leave",    to:"askreply",  name:"회신 요청" }],
+  coffee  :[{ perk:"shoes",    to:"caffeine",  name:"카페인 중독" },
+            { perk:"suit",     to:"venti",     name:"아메리카노 벤티" }],
+  clock   :[{ perk:"leave",    to:"ontime",    name:"정시 퇴근" },
+            { perk:"law52",    to:"declare",   name:"칼퇴 선언" }],
+  quit    :[{ perk:"suit",     to:"resign",    name:"퇴사" },
+            { perk:"earphone", to:"noreply",   name:"읽씹" }],
 };
+/* 한 무기의 짝들 */
+const evoPairs = base => { const e=EVO[base]; return e ? (Array.isArray(e)?e:[e]) : []; };
 const EVO_BASE={};   // 진화형 id → 원본 id (아이콘을 물려 쓴다)
 /* 짝이 어디에도 안 보였다. 무기를 끝까지 올려도 어느 강화와 맞는지 모르니
    진화 여섯 개가 사실상 우연이었다 — 이 장르에서 사람을 붙잡는 가장 큰
    장치가 안 보이는 채로 있었다. 카드에 짝과 진행도를 적는다. */
-const EVO_BY_PERK={};
-for(const b in EVO) EVO_BY_PERK[EVO[b].perk]=b;
+const EVO_BY_PERK={};   // 강화 id → 그 짝이 되는 무기들
+for(const b in EVO) for(const e of evoPairs(b)) (EVO_BY_PERK[e.perk]=EVO_BY_PERK[e.perk]||[]).push(b);
 /* 「반려 도장 3/8 + 노트북 2/5 → 전결」. 아직 하나도 안 가진 짝은
    이름만 말해 준다 — 다 알려 주면 고를 게 없어진다. */
 /* 반응 힌트 — 내가 이미 든 무기와 이 카드가 반응하는지.
@@ -4427,14 +4447,26 @@ function reactHint(g, kind, id){
   if(W.paper && has("wet")) return T("번짐 — 젖은 적을 때리면 둘레에 번집니다");
   return "";
 }
+/* 짝이 둘이라 「어느 쪽으로 갈까」가 카드에 보여야 한다.
+   가장 가까운 쪽 하나만 말한다 — 둘 다 적으면 카드가 길어지고,
+   어차피 먼저 닿는 쪽이 그 판의 답이다. */
 function evoHint(g, kind, id){
-  const base = kind==="w" ? (EVO[id]?id:null)
-             : kind==="p" ? (EVO_BY_PERK[id]||null) : null;
-  if(!base) return "";
-  const e=EVO[base];
-  if(g.weapons[e.to]) return "";                       // 이미 진화했다
-  const wl=g.weapons[base]|0, pl=g.perks[e.perk]|0;
-  if(!wl && !pl) return "";                            // 둘 다 없으면 아직 이르다
+  const bases = kind==="w" ? (EVO[id]?[id]:[])
+              : kind==="p" ? (EVO_BY_PERK[id]||[]) : [];
+  let best=null, bestP=-1;
+  for(const base of bases){
+    const wl=g.weapons[base]|0;
+    for(const e of evoPairs(base)){
+      if(kind==="p" && e.perk!==id) continue;          // 이 강화의 짝만
+      if(g.weapons[e.to]) continue;                    // 이미 진화했다
+      const pl=g.perks[e.perk]|0;
+      if(!wl && !pl) continue;                         // 둘 다 없으면 아직 이르다
+      const prog = wl/WEAPONS[base].max + pl/PERKS[e.perk].max;
+      if(prog>bestP){ bestP=prog; best={base,e,wl,pl}; }
+    }
+  }
+  if(!best) return "";
+  const {base,e,wl,pl}=best;
   return TF("진화 {0} {1}/{2} + {3} {4}/{5} → {6}",
     T(WEAPONS[base].name), wl, WEAPONS[base].max,
     T(PERKS[e.perk].name), pl, PERKS[e.perk].max, T(e.name));
@@ -4458,9 +4490,29 @@ const EVOLVED={
   resign:{ id:"resign", name:"퇴사", max:1, evo:true,
     desc:"전부 밀어내고 전부 정리한다",
     lv:l=>({cd:11, dmg:900, push:520}), up:l=>"" },
+  /* 「깊게」 쪽 여섯 — 넓게 가는 대신 한 번이 무겁거나 상태를 오래 건다.
+     전부 기존 동작의 숫자 변형이라 새 코드가 없다. */
+  rejectdoc:{ id:"rejectdoc", name:"반려 사유서", max:1, evo:true, paper:true, tag:"hold",
+    desc:"사유를 적어 돌려보낸다. 느리지만 무겁고, 받은 사람은 한동안 못 움직인다",
+    lv:l=>({cd:1.15, dmg:300, count:2, range:250, hold:2.0}), up:l=>"" },
+  remotenote:{ id:"remotenote", name:"재택 공지", max:1, evo:true, paper:true,
+    desc:"멀리까지 간다. 관통하며 끝까지 날아간다",
+    lv:l=>({cd:1.6, dmg:110, n:7, spd:420}), up:l=>"" },
+  askreply:{ id:"askreply", name:"회신 요청", max:1, evo:true, tag:"cc",
+    desc:"받은 사람은 전부 참조로 묶인다. 하나가 정리되면 다 같이 받는다",
+    lv:l=>({cd:1.05, dmg:60, n:4, turn:7}), up:l=>"" },
+  venti:{ id:"venti", name:"아메리카노 벤티", max:1, evo:true, tag:"wet",
+    desc:"한 잔이 크다. 밟은 사람은 오래 젖어 있는다",
+    lv:l=>({cd:2.6, dps:130, r:104, life:5.0}), up:l=>"" },
+  declare:{ id:"declare", name:"칼퇴 선언", max:1, evo:true,
+    desc:"좁게, 대신 아무도 못 버틴다",
+    lv:l=>({r:120, slow:.06, dps:400}), up:l=>"" },
+  noreply:{ id:"noreply", name:"읽씹", max:1, evo:true,
+    desc:"답을 안 한다. 조용히, 자주, 가까이서 정리된다",
+    lv:l=>({cd:4.2, dmg:330, push:180}), up:l=>"" },
 };
 Object.assign(WEAPONS, EVOLVED);
-for(const base in EVO) EVO_BASE[EVO[base].to]=base;
+for(const base in EVO) for(const e of evoPairs(base)) EVO_BASE[e.to]=base;
 /* ── 강화(패시브) ─────────────────────────────────────────────── */
 const PERKS = {
   shoes :{ id:"shoes", name:"편한 구두",   max:5, desc:"이동 속도 +12%",        f:(P,l)=>P.spd*=1.12 },
@@ -5469,7 +5521,7 @@ function fireWeapons(g,dt){
   const haste = P.haste * (1-(g.baristaOn||0)) * (1 + MEDDLE_SLOW*(g.meddle||0)) * leaving;
   for(const id in g.weapons){
     const W=WEAPONS[id], L=W.lv(g.weapons[id]);
-    if(id==="clock"||id==="ontime"||id==="overtime") continue;   // 지속형
+    if(id==="clock"||id==="ontime"||id==="declare"||id==="overtime") continue;   // 지속형
     g.cds[id]=(g.cds[id]||0)-dt;
     if(g.cds[id]>0) continue;
 
@@ -5598,17 +5650,23 @@ function fireWeapons(g,dt){
       g.cds[id]=L.cd*haste; continue;
     }
     /* ── 진화형 ── */
-    if(id==="jeongyeol"){
+    if(id==="jeongyeol" || id==="rejectdoc"){
+      /* 전결은 사거리 안 전부를, 반려 사유서는 가까운 둘만 — 대신 무겁고 묶는다 */
       const R=L.range*P.range; let n=0;
-      for(const f of g.foes){
-        if(Math.hypot(f.x-P.x,f.y-P.y)>R) continue;
+      const near = id==="rejectdoc"
+        ? g.foes.filter(f=>Math.hypot(f.x-P.x,f.y-P.y)<=R)
+                .sort((a,b)=>Math.hypot(a.x-P.x,a.y-P.y)-Math.hypot(b.x-P.x,b.y-P.y))
+                .slice(0,L.count)
+        : g.foes.filter(f=>Math.hypot(f.x-P.x,f.y-P.y)<=R);
+      for(const f of near){
         damage(g,f,L.dmg,P.x,P.y,9,id); n++;
+        if(L.hold && !f.boss) f.hold=Math.max(f.hold||0, L.hold);
         g.fx.push({type:"stamp",x:f.x,y:f.y,t:0});
       }
       if(n){ S("hit"); P.atk=.25; }
       g.cds[id]=L.cd*haste; continue;
     }
-    if(id==="notice"){
+    if(id==="notice" || id==="remotenote"){
       for(let i=0;i<L.n;i++){
         const a=(i/L.n)*Math.PI*2 + g.t*.5;
         g.shots.push({x:P.x,y:P.y,vx:Math.cos(a)*L.spd,vy:Math.sin(a)*L.spd,
@@ -5616,21 +5674,26 @@ function fireWeapons(g,dt){
       }
       S("shoot","copy"); g.cds[id]=L.cd*haste; continue;
     }
-    if(id==="replyall"){
+    if(id==="replyall" || id==="askreply"){
       for(let i=0;i<L.n;i++){
         const a=Math.random()*7;
         g.shots.push({x:P.x,y:P.y,vx:Math.cos(a)*320,vy:Math.sin(a)*320,
-                      dmg:L.dmg,life:4.5,kind:"mail",r:9,turn:L.turn});
+                      dmg:L.dmg,life:4.5,kind:"mail",r:9,turn:L.turn,src:id});
       }
       S("shoot","stap"); g.cds[id]=L.cd*haste; continue;
     }
-    if(id==="caffeine"){
+    if(id==="caffeine" || id==="venti"){
       g.pools.push({x:P.x,y:P.y,r:L.r*P.range,dps:L.dps,life:L.life,t:0,src:id});
       g.cds[id]=L.cd; continue;                 // 지나간 자리마다 남는다
     }
-    if(id==="resign"){
+    if(id==="resign" || id==="noreply"){
+      /* 퇴사는 필드 전부, 읽씹은 가까운 사람만 — 대신 자주 온다 */
       let n=0;
-      for(const f of g.foes){ damage(g,f,L.dmg,P.x,P.y,L.push/9,id); n++; }
+      const R2 = id==="noreply" ? 260*P.range : 1e9;
+      for(const f of g.foes){
+        if(Math.hypot(f.x-P.x,f.y-P.y)>R2) continue;
+        damage(g,f,L.dmg,P.x,P.y,L.push/9,id); n++;
+      }
       g.fx.push({type:"quit",t:0});
       g.fx.push({type:"ring",x:P.x,y:P.y,t:0,r0:30,r1:520,c:"#f5c451"});
       g.shake=Math.max(g.shake,20); g.hitstop=Math.max(g.hitstop,.14);
@@ -6042,8 +6105,9 @@ function step(g,dt){
   stepBargain(g,dt);
 
   // 퇴근 시계(지속형 감속)
-  const CK = g.weapons.ontime ? WEAPONS.ontime.lv(1)
-           : g.weapons.clock ? WEAPONS.clock.lv(g.weapons.clock) : null;
+  const CK = g.weapons.declare ? WEAPONS.declare.lv(1)
+           : g.weapons.ontime  ? WEAPONS.ontime.lv(1)
+           : g.weapons.clock   ? WEAPONS.clock.lv(g.weapons.clock) : null;
   const ckR=CK?CK.r*P.range:0;
   const ckDps=CK?(CK.dps||0):0;
 
@@ -7541,6 +7605,12 @@ const IC=(function(){
   replyall:c=>{ IC.mail(c); D(c,52,14,10,GOLD); },
   caffeine:c=>{ IC.coffee(c); D(c,52,14,10,GOLD); },
   ontime:c=>{ IC.clock(c); D(c,52,14,10,GOLD); },
+  declare:c=>{ IC.clock(c); D(c,52,14,10,"#ff6b6b"); },
+  rejectdoc:c=>{ IC.stamp(c); D(c,52,14,10,"#ff6b6b"); },
+  remotenote:c=>{ IC.copy(c);  D(c,52,14,10,"#9ec8ff"); },
+  askreply:c=>{ IC.mail(c);   D(c,52,14,10,"#57d98a"); },
+  venti:c=>{ IC.coffee(c);    D(c,52,14,10,"#c9a227"); },
+  noreply:c=>{ IC.quit(c);    D(c,52,14,10,"#7d8699"); },
   resign:c=>{ IC.quit(c); D(c,52,14,10,GOLD); },
   /* ── 설치기 ── */
   part:c=>{ F(c,8,44,48,6,2,"rgba(0,0,0,.3)"); R(c,0,8,24,48,20,2,"#6d6a62");
@@ -7629,11 +7699,12 @@ function icon(id,size,kind){
 function evoReady(g){
   const out=[];
   for(const base in EVO){
-    const e=EVO[base];
     if(!g.weapons[base] || g.weapons[base]<WEAPONS[base].max) continue;
-    if((g.perks[e.perk]|0) < PERKS[e.perk].max) continue;
-    if(g.weapons[e.to]) continue;
-    out.push({kind:"e", id:e.to, base:base, lv:0});
+    for(const e of evoPairs(base)){
+      if((g.perks[e.perk]|0) < PERKS[e.perk].max) continue;
+      if(g.weapons[e.to]) continue;
+      out.push({kind:"e", id:e.to, base:base, lv:0});
+    }
   }
   return out;
 }
@@ -9002,7 +9073,7 @@ window.__api={WEAPONS,PERKS,E,ZONES,DAY,hourOf,clockStr,spawnRing,start,todoOf,z
              RANK_MAX, RANK_LOAD, RANK_PWR, RANK_PAY, rankPick, quotaOf,
              EVO, EVOLVED, evoHint, evoReady, LOOP_FROM, LOOP_MAX, loopN, loopMul, loopPay,
              RND, dailyPlan, dayKey, rollEvent, damage, spawnAt, tagFoe, killFoe,
-             reactHint, TAGNAME};
+             reactHint, TAGNAME, evoPairs, EVO_BY_PERK};
 window.__shareCard=g=>shareCard(g);    // 결과 카드 검증용
 window.__askLoop=g=>askLoop(g);        // 엔드리스 검증용
 $("#tutskip").onclick=()=>{ S("select"); tutStop(G); };
