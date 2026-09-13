@@ -46,7 +46,7 @@ h1{font-family:BHS,sans-serif;font-weight:400;font-size:82px;line-height:.98;col
 <div class="wrap">
   <div class="clock">09:00 &nbsp;—&nbsp; 18:00</div>
   <h1>정시 퇴근</h1>
-  <div class="line">18시까지 회사를 뚫고 정문으로.<br>아홉 개 구역, 서른 가지 무기, 다섯 직군.</div>
+  <div class="line">18시까지 회사를 뚫고 정문으로.<br>아홉 개 구역, 스물일곱 가지 무기, 다섯 직군.</div>
   <div class="tags">
     <span class="tag on">완전 오프라인</span>
     <span class="tag">광고 없음</span>
