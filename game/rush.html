@@ -3522,6 +3522,16 @@ const L10N = { ko:null, en:{
   "높은 자리에서":"From Up High","과장 이상으로 정시 퇴근":"Leave on time as Manager or above",
   "이사 퇴근":"Director Leaves","이사 직급으로 정시 퇴근":"Leave on time as Director",
   "진화 {0} {1}/{2} + {3} {4}/{5} → {6}":"Evolves {0} {1}/{2} + {3} {4}/{5} → {6}",
+  "17일차":"Day 17","19일차":"Day 19","21일차":"Day 21","23일차":"Day 23",
+  "25일차":"Day 25","27일차":"Day 27","29일차":"Day 29","30일차":"Day 30",
+  "합의문 초안이 돌았다. 문장 하나가 내 말 그대로다.":"A draft of the agreement went around. One sentence is word for word mine.",
+  "옆 팀 과장이 복도에서 불러 세웠다. “그거, 우리도 됩니까?”":"The manager from the next team stopped me in the hall. \u201cThat thing — can we do it too?\u201d",
+  "게시판에 붙었다. 취업규칙 제12조. 아무도 안 떼어 간다.":"It went up on the board. Employment rules, article 12. Nobody takes it down.",
+  "신입이 들어왔다. 6시에 가방을 드는 걸 이상해하지 않는다.":"A new hire started. Picking up your bag at six doesn't strike them as odd.",
+  "인사팀장이 먼저 인사했다. 면담 얘기는 안 꺼냈다.":"The HR lead greeted me first. Didn't bring up the meeting.",
+  "불이 꺼진 층을 지나왔다. 예전엔 여기가 제일 환했다.":"Walked past a floor with the lights off. This used to be the brightest one.",
+  "후배가 후배를 데리고 왔다. 나한테 묻지 않고 자기가 답했다.":"My junior brought their own junior. Answered for me without asking.",
+  "이제 이 이야기는 내 것이 아니다. 그래서 끝이 아니다.":"This story isn't mine anymore. That's why it isn't over.",
   "오늘 한 장 남기기":"Save today's card","만드는 중…":"Making…",
   "{0}에 나왔습니다 — 정시 퇴근":"Out at {0} — On-Time Departure","구역":"Zone",
   "오늘의 공지":"Today's notice","오늘의 기록":"Today's best","오늘 첫 출근":"First clock-in today",
@@ -7927,6 +7937,19 @@ const DAYS=[
   {d:12, head:"13일차",         line:"대표이사실 앞까지 갔다는 얘기가 돈다."},
   {d:14, head:"15일차",         line:"오늘은 문을 두드리는 게 아니라, 앉아서 얘기한다.",
          unlock:"__bargain", unlockName:"단체교섭"},
+  /* 여기서 이야기가 끝나 있었다. 열다섯 판이면 한 시간이다.
+     그 뒤로 로비에 새로 뜨는 줄이 없으니, 계속하는 사람에게는
+     화면이 어제와 똑같았다 — 카운터 셋만 조금씩 올라갈 뿐.
+     코드를 늘리지 않고 늘릴 수 있는 건 이야기뿐이다. 서른 날까지 간다.
+     열여섯 날부터는 「내가 나가는 이야기」가 아니라 「규정이 되는 이야기」다. */
+  {d:16, head:"17일차",         line:"합의문 초안이 돌았다. 문장 하나가 내 말 그대로다."},
+  {d:18, head:"19일차",         line:"옆 팀 과장이 복도에서 불러 세웠다. “그거, 우리도 됩니까?”"},
+  {d:20, head:"21일차",         line:"게시판에 붙었다. 취업규칙 제12조. 아무도 안 떼어 간다."},
+  {d:22, head:"23일차",         line:"신입이 들어왔다. 6시에 가방을 드는 걸 이상해하지 않는다."},
+  {d:24, head:"25일차",         line:"인사팀장이 먼저 인사했다. 면담 얘기는 안 꺼냈다."},
+  {d:26, head:"27일차",         line:"불이 꺼진 층을 지나왔다. 예전엔 여기가 제일 환했다."},
+  {d:28, head:"29일차",         line:"후배가 후배를 데리고 왔다. 나한테 묻지 않고 자기가 답했다."},
+  {d:29, head:"30일차",         line:"이제 이 이야기는 내 것이 아니다. 그래서 끝이 아니다."},
 ];
 /* ══════════════ 동기 (경쟁상대) ══════════════════════════════
    혼자 기록을 깨는 건 금방 지친다. 「어제의 나」만으로는 약하다.
