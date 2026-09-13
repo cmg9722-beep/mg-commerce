@@ -75,6 +75,33 @@ export default async function(){
     await p.close();
   }
 
+  /* 실제로 여러 바퀴가 돌고, 그 끝에 빌드가 터지는가 —
+     이 장르가 약속하는 「후반에 화면이 터지는 순간」이 4분 판에는 없었다.
+     엔드리스가 그 자리를 메우는지를 숫자로 본다.
+     봇에게 5일차 강화를 준다. 강화 0 으로 재면 그건 첫 인상이지 엔드리스가 아니다. */
+  {
+    const DAY5 = { career:2000, lv:{hp:3,spd:2,haste:2,xp:2,magnet:1,revive:1},
+                   best:0, days:12, cleared:true, rank:0, last:'win' };
+    const p2 = await open({ mute:true, save:DAY5 });
+    await p2.waitForSelector('#go');
+    const r = await driveRun(p2, { seed:1, ticks:60000, stay:true });
+    const st = await p2.evaluate(() => {
+      const g = window.__g();
+      return { loop:g?g.loop|0:0, ot:Math.round(g?g.otT||0:0) };
+    });
+    s.ge('정문에 닿아 바퀴를 돈다', r.laps, 2, JSON.stringify({laps:r.laps, ...st}));
+    s.ge('바퀴가 실제로 쌓인다', st.loop, 2, String(st.loop));
+    /* 기본 판은 처리 1,500~2,000 · Lv15~16 이다. 바퀴를 돌면 그보다 훨씬 커야
+       「포화」라고 부를 수 있다 */
+    s.ge('빌드가 적보다 빨리 큰다 — 처리', r.kills, 3500, String(r.kills));
+    s.ge('빌드가 적보다 빨리 큰다 — 레벨', r.lv, 18, String(r.lv));
+    /* 그래도 반드시 끝난다 — 야근 피로가 시계처럼 깎는다 */
+    s.ok('영원히 돌지는 않는다', !!r.over || st.loop >= 9,
+         JSON.stringify({over:r.over, loop:st.loop}));
+    s.eq('엔드리스 실측 중 JS 에러 없음', p2.errors.length, 0, p2.errors.join(' / '));
+    await p2.close();
+  }
+
   /* 바퀴가 점수와 경력에 걸린다 */
   {
     const p = await atGate(null, CLEARED);

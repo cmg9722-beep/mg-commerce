@@ -122,8 +122,8 @@ export async function pickCard(p, which='first'){
    그 겹은 play 검사가 계속 본다.
 
    덤으로 빠르다 — 렌더가 없으니 한 판이 20~40초다. */
-export async function driveRun(p, { seed=1, ticks=26000 }={}){
-  return p.evaluate(async ([seed, ticks]) => {
+export async function driveRun(p, { seed=1, ticks=26000, stay=false }={}){
+  return p.evaluate(async ([seed, ticks, stay]) => {
     const mul = a => () => { a|=0; a=a+0x6D2B79F5|0;
       let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t;
       return ((t^t>>>14)>>>0)/4294967296; };
@@ -143,7 +143,7 @@ export async function driveRun(p, { seed=1, ticks=26000 }={}){
       r.minHp=Math.min(r.minHp, g.P.hp/g.P.maxhp*100); r.ticks++;
       return r;
     };
-    let hpWas = g0 ? g0.P.hp : 0, picks=0;
+    let hpWas = g0 ? g0.P.hp : 0, picks=0, laps=0;
     const dtBase = 1/60;
 
     for(let i=0;i<ticks;i++){
@@ -151,7 +151,14 @@ export async function driveRun(p, { seed=1, ticks=26000 }={}){
       const ov = document.getElementById('ov');
       if(ov && ov.classList.contains('on')){
         const bs = document.querySelectorAll('#card .pick');
-        if(bs.length){ bs[Math.floor(pr()*bs.length)].click(); picks++; continue; }
+        if(bs.length){
+          /* 정문 카드는 레벨업 카드와 같은 .pick 이라 봇이 무작위로 고른다.
+             엔드리스를 재려면 「안 나간다」쪽으로 고정해야 한다. */
+          const gate = bs.length===2 && /퇴근한다|Clock Out/.test(bs[0].textContent);
+          const k = gate ? (stay ? 1 : 0) : Math.floor(pr()*bs.length);
+          bs[k].click(); picks++; if(gate) laps++;
+          continue;
+        }
         break;                              // 고를 게 없는 창이면 더 갈 수 없다
       }
       /* 어디로 갈까 — autoplay 와 같은 판단을 페이지 안에서 한다 */
@@ -185,10 +192,10 @@ export async function driveRun(p, { seed=1, ticks=26000 }={}){
       hpWas=g.P.hp;
     }
     const g=window.__g();
-    return { rec, picks,
+    return { rec, picks, laps,
       over:g?g.over:null, zone:g?g.zone:-1, lv:g?g.lv:0,
       kills:g?g.kills:0, t:g?Math.round(g.t):0, dmgDealt:g?Math.round(g.dmgDealt):0 };
-  }, [seed, ticks]);
+  }, [seed, ticks, stay]);
 }
 
 /* ── 아주 작은 단언 도구 ─────────────────────────────────────── */
