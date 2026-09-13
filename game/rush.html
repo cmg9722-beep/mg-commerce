@@ -349,6 +349,41 @@ label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
 #lv.pop{animation:lvpop .42s cubic-bezier(.22,1.4,.36,1) both}
 #lv.pop.big{animation:lvpopbig .72s cubic-bezier(.22,1.4,.36,1) both;color:var(--accent)}
 @media (prefers-reduced-motion:reduce){#lv.pop,#lv.pop.big{animation:none}}
+/* 결과 화면 — 동기를 넘었을 때 · 못 넘었을 때 */
+.rvrow,.rvwin{display:flex;align-items:baseline;gap:10px;margin-top:12px;
+  padding:11px 13px;border-radius:11px;border:1px solid var(--line)}
+.rvrow .k,.rvwin .k{font-size:13px;font-weight:800;color:var(--ink)}
+.rvrow .v,.rvwin .v{margin-left:auto;font-size:13px;color:var(--dim)}
+.rvwin{border-color:#2c4a37;background:rgba(87,217,138,.09)}
+.rvwin .k{color:var(--good)} .rvwin .v{color:var(--good)}
+/* 멀리 보는 목표에 닿은 날 — 한 번만 뜬다 */
+.goalhit{margin-top:14px;padding:16px 16px 14px;border-radius:13px;
+  border:1px solid #4a3c17;background:linear-gradient(180deg,rgba(201,162,39,.14),rgba(201,162,39,.05))}
+.goalhit .gt{font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400;
+  font-size:24px;color:var(--accent);line-height:1.15}
+.goalhit .gs{margin-top:9px;font-size:13.5px;line-height:1.65;color:var(--ink)}
+.goalhit .gk{margin-top:11px;font-size:11.5px;font-weight:800;letter-spacing:.06em;
+  color:var(--accent);opacity:.85}
+/* 동기 — 한 줄. 이름·차이·점수 */
+.rv{display:flex;align-items:baseline;gap:10px;margin-top:10px;padding:10px 12px;
+  border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.02)}
+.rv .rvn{font-size:13.5px;font-weight:800;color:var(--ink);flex-shrink:0}
+.rv .rvd{font-size:11.5px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rv .rvs{margin-left:auto;font-size:15px;font-weight:800;color:var(--dim);flex-shrink:0}
+.rv.up{border-color:#2c4a37;background:rgba(87,217,138,.07)}
+.rv.up .rvd{color:var(--good)} .rv.up .rvs{color:var(--good)}
+/* 멀리 보는 목표 — 셋을 막대로 */
+.goals{margin-top:12px;border:1px solid var(--line);border-radius:13px;padding:11px 12px 12px;
+  background:rgba(255,255,255,.02)}
+.gl{margin-top:9px} .gl:first-of-type{margin-top:2px}
+.glh{display:flex;align-items:baseline;gap:8px;margin-bottom:5px}
+.glh .gn{font-size:12.5px;font-weight:800;color:var(--ink)}
+.glh .gv{margin-left:auto;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
+.gbar{height:5px;border-radius:3px;background:#1b212c;overflow:hidden}
+.gbar i{display:block;height:100%;background:var(--accent);border-radius:3px;
+  transition:width .5s cubic-bezier(.2,.8,.3,1)}
+.gl.on .glh .gn{color:var(--accent)} .gl.on .glh .gv{color:var(--accent)}
+.gl.on .gbar i{background:var(--good)}
 /* 직군 줄 — 가로로 늘어놓고, 잠긴 건 흐리게 + 남은 날짜 */
 .chrow{margin-top:14px;border:1px solid var(--line);border-radius:13px;padding:11px 12px 12px;
   background:rgba(255,255,255,.02)}
@@ -3457,6 +3492,18 @@ const L10N = { ko:null, en:{
   "모든 것이 평균. 처음이면 이걸로.":"Average at everything. Start here.","{0}일 더":"{0} more days",
   "두고 쓴다":"set and forget","먼저 안다":"knows first","발이 넓다":"well connected","버틴다":"endures","사무직":"Office",
   "개발":"Dev","균형":"balanced","영업":"Sales","인사":"HR","직군":"Role","현장":"Field",
+
+  "통장을 열고 계산기를 두드렸다. 숫자가 넘었다.\\n그만두는 게 아니다 — 이제 안 해도 되는 것이다.":"You opened the account and ran the numbers. It cleared.\\nYou're not quitting — you just don't have to anymore.",
+  "취업규칙 제12조 — 근로시간은 09:00부터 18:00까지로 한다.\\n나 하나가 아니라, 전부.":"Employment rules, article 12 — working hours are 09:00 to 18:00.\\nNot just me. All of us.",
+  "끝까지 다녔다. 그 긴 시간 내내 6시에 나왔다.\\n오늘은 들어갈 때부터 가방이 가벼웠다.":"You stayed to the end. And left at six the whole way through.\\nToday the bag was light on the way in.",
+  "{0} 을(를) 넘었습니다":"You passed {0}","누적 경력 20,000":"20,000 career earned","{0}점 남았습니다":"{0} points to go",
+  "내가 앞서 있습니다":"You're ahead","안 나가도 되는 날":"The day you don't have to go","{0} / {1}":"{0} / {1}",
+  "멀리 보는 목표":"The long game","{0}점 차이":"{0} points behind","60번 출근":"60 days clocked in",
+  "교섭 10회":"10 bargains won","규정이 됐다":"It's policy now","마지막 출근":"The last commute",
+  "단체협약":"Collective Agreement","파이어족":"FIRE","도달":"reached","정년":"Full Tenure",
+  "전부 도달":"All reached","세 가지 끝을 다 봤습니다. 남은 건 기록입니다.":"You've seen all three endings. What's left is the records.","{0} 남았습니다":"{0} to go",
+  "바퀴 의자":"Wheeled Chair","바퀴 의자 — 밀고 지나갑니다":"Wheeled chair — plow right through","의자에서 내렸습니다":"You got off the chair",
+  "김주임":"Kim","박대리":"Park","이사원":"Lee","최대리":"Choi","정주임":"Jung","한사원":"Han","오대리":"Oh","윤주임":"Yoon",
 } };
 /* 원문 그대로 돌려주는 게 기본. 한국어면 표를 아예 안 본다.
 
@@ -3543,6 +3590,7 @@ function localizeData(){
   localizeTable(ACH,     ["name","d"]);
   localizeTable(BOSSES,  ["msg"]);
   localizeTable(CHARS,   ["name","tag","desc","line"]);
+  localizeTable(GOALS,   ["name","d","title","line"]);
   for(const k in RANKS) RANKS[k]=T(RANKS[k]);
   for(const k in SAY) SAY[k]=SAY[k].map(T);
   for(const k in AFTER) if(typeof AFTER[k]==="string") AFTER[k]=T(AFTER[k]);
@@ -4431,7 +4479,7 @@ function newGame(grudge){
     P:{ x:0, y:0, vx:0, vy:0, r:14, face:-1, walk:0,
         px0:0, py0:0, hx:-1, hy:0,          // 지연 추적 진행 방향
         hp:160, maxhp:160, spd:168, haste:1, range:1, xpMul:1, magnet:1,
-        inv:0, hurt:0, atk:0, moving:false },
+        inv:0, hurt:0, atk:0, moving:false, ride:0, rideHit:null },
     lv:1+M.startLv, xp:0, next:6, kills:0, dmgDealt:0, pendingLv:M.startLv,
     /* 시작 무기 — 직군이 정한다. 「요령」으로 올린 시작 Lv은 그 무기에 얹힌다.
        사무직이 아니어도 반려 도장은 늘 한 칸 쥐고 시작한다 — 그게 이 게임의 손이다 */
@@ -4455,7 +4503,7 @@ function newGame(grudge){
     rndName:"", rndKind:"", rndShow:0, barOn:0, barP:0,
     ot:false, otT:0, warned:false,
     combo:0, comboT:0, comboBest:0, comboPop:0, flash:0,
-    toast:"", toastT:0, paused:false, best:0, tut:null, lvWait:0,
+    toast:"", toastT:0, paused:false, best:0, tut:null, lvWait:0, uid:0,
   };
 }
 
@@ -5263,7 +5311,16 @@ const DROPS={
      우리 것으로는 「인수인계 상자」다. 누군가 나간 자리에서 넘어온 일감이
      한꺼번에 쏟아지는데, 그게 곧 내 무기가 된다. */
   chest :{id:"chest", name:"인수인계 상자", color:"#c9a227"},
+  /* ── 바퀴 의자 ─────────────────────────────────────────────────
+     「탑승도 하고」— 사무실에서 탈 수 있는 건 하나뿐이다. 바퀴 달린 의자.
+     타면 빨라지고, 부딪치는 사람을 밀어 버린다. 공격은 그대로 나간다.
+     8초짜리라 「지금 뚫는다」는 순간을 만든다 — 문이 멀 때 특히. */
+  chair :{id:"chair", name:"바퀴 의자", color:"#9ec8ff"},
 };
+const RIDE_T = 8.0;                       // 타고 있는 시간(초)
+const RIDE_SPD = 1.85;                    // 이동 배수
+const RIDE_DMG = 34;                      // 부딪칠 때 피해 — 초당이 아니라 한 번씩
+const RIDE_KB = 340;                      // 밀어내는 힘
 /* 상자를 연다 — 가진 무기 중 둘에서 넷이 한꺼번에 오른다.
    빈 칸이 있으면 새 무기가 들어오고, 다 찼으면 있는 걸 올린다.
    한 번에 여러 개가 오르는 그 순간이 이 장르의 가장 큰 한 방이다. */
@@ -5296,6 +5353,8 @@ function dropAt(g,x,y){
   if(r<0.16)      g.drops.push({kind:"heal",   x, y, t:0});
   else if(r<0.26) g.drops.push({kind:"magnet", x, y, t:0});
   else if(r<0.31) g.drops.push({kind:"bomb",   x, y, t:0});
+  /* 의자는 집기를 부술 때 나온다 — 사무실에서 탈 것이 나올 곳은 거기뿐이다 */
+  else if(r<0.37) g.drops.push({kind:"chair",  x, y, t:0});
   else {
     const n=3+((Math.random()*4)|0);
     for(let i=0;i<n;i++){
@@ -5312,6 +5371,7 @@ function dropFrom(g,f){
     if(r<0.012) kind="heal";
     else if(r<0.020) kind="magnet";
     else if(r<0.025) kind="bomb";
+    else if(r<0.031) kind="chair";
   }
   if(kind) g.drops.push({kind, x:f.x, y:f.y, t:0});
 }
@@ -5323,6 +5383,10 @@ function takeDrop(g,d){
   } else if(d.kind==="magnet"){
     g.orbs.forEach(o=>{ o.x=P.x+(o.x-P.x)*0.06; o.y=P.y+(o.y-P.y)*0.06; });
     flash(g,"텀블러 — 경험치 전부 수집"); S("coin");
+  } else if(d.kind==="chair"){
+    P.ride=RIDE_T; P.rideHit={};
+    g.fx.push({type:"ring",x:P.x,y:P.y,t:0,r0:14,r1:190,c:"#9ec8ff"});
+    kick(g,0,-1,7); S("place"); flash(g,"바퀴 의자 — 밀고 지나갑니다");
   } else if(d.kind==="chest"){
     openChest(g);
   } else {
@@ -5486,7 +5550,15 @@ function step(g,dt){
   let iy=(keys.s||keys.ArrowDown?1:0)-(keys.w||keys.ArrowUp?1:0);
   const m=Math.hypot(ix,iy)||1; ix/=m; iy/=m;
   if(TOUCH.on){ ix=TOUCH.dx; iy=TOUCH.dy; }      // 터치가 있으면 터치 우선
-  P.x+=ix*P.spd*(g.rndSlow||1)*dt; P.y+=iy*P.spd*(g.rndSlow||1)*dt;
+  /* 바퀴 의자 — 타고 있으면 빨라진다. 부딪치는 건 아래 적 루프에서 민다. */
+  const rideM = P.ride>0 ? RIDE_SPD : 1;
+  P.x+=ix*P.spd*rideM*(g.rndSlow||1)*dt; P.y+=iy*P.spd*rideM*(g.rndSlow||1)*dt;
+  if(P.ride>0){
+    P.ride-=dt;
+    if(P.ride<=0){ P.ride=0; P.rideHit=null; flash(g,"의자에서 내렸습니다"); }
+    else if(P.moving && ((g.t*26)|0)%3===0)      // 바퀴 자국
+      g.stains.push({x:P.x,y:P.y+16,r:7+Math.random()*4,t:0,c:"rgba(158,200,255,.13)"});
+  }
   if(ix) P.face=ix<0?-1:1;
   P.vx=ix; P.vy=iy;                       // 발밑 방향 쐐기가 읽는다
   P.moving = !!(ix||iy);
@@ -5612,8 +5684,21 @@ function step(g,dt){
       f.face = gx<0?-1:1;
     }
     // 접촉
-    if(d < f.r+P.r && P.inv<=0){
-      if(hurtPlayer(g,f.dmg,P.x-f.x,P.y-f.y,7)) return;
+    if(P.ride>0 && d > f.r+P.r+26 && f.uid && P.rideHit) delete P.rideHit[f.uid];
+    if(d < f.r+P.r){
+      if(P.ride>0){
+        /* 의자를 타고 있으면 맞는 게 아니라 민다.
+           한 사람에게 한 번씩만 — 붙어 있는 동안 계속 갈리면 그건 무기지 탈것이 아니다.
+           집기는 밀 게 아니라 부수는 거라 그대로 피해만 준다. */
+        const key=f.uid || (f.uid = ++g.uid);
+        if(!P.rideHit[key]){
+          P.rideHit[key]=1;
+          damage(g,f,RIDE_DMG,P.x,P.y,RIDE_KB);
+          if(!E[f.kind].prop){ f.kb=Math.max(f.kb||0,0.26); f.slow=Math.min(f.slow,0.5); }
+          S("hit");
+        }
+      }
+      else if(P.inv<=0 && hurtPlayer(g,f.dmg,P.x-f.x,P.y-f.y,7)) return;
     }
   }
   // 적끼리 겹침 완화 — 뭉쳐서 한 덩어리로 보이는 걸 막는다
@@ -6415,6 +6500,49 @@ function drawAllies(g,X,Y){
    발밑 링도 달아 봤다가 뺐다. 외곽선이 이미 하고 있는 일을 한 번 더 해서
    화면만 시끄러웠다. 표식은 한 겹이면 된다. */
 const HERO_SIZE = 66;
+/* 의자 — 주인공 뒤로 가는 것(그림자·다리·바퀴·기둥) */
+function drawChairUnder(g,sx,sy){
+  const P=g.P, w=Math.sin(g.t*17)*1.3;
+  ctx.save();
+  ctx.fillStyle="rgba(0,0,0,.32)";
+  ctx.beginPath(); ctx.ellipse(sx,sy+34,21,6.5,0,0,7); ctx.fill();
+  ctx.strokeStyle="#2b3140"; ctx.lineWidth=3.4; ctx.lineCap="round";
+  for(const dx of [-16,0,16]){
+    ctx.beginPath(); ctx.moveTo(sx,sy+22); ctx.lineTo(sx+dx,sy+31); ctx.stroke();
+  }
+  ctx.strokeStyle="#3a4254"; ctx.lineWidth=5.5;
+  ctx.beginPath(); ctx.moveTo(sx,sy+13); ctx.lineTo(sx,sy+23); ctx.stroke();
+  for(const dx of [-16,0,16]){
+    ctx.fillStyle="#c9cfdb";
+    ctx.beginPath(); ctx.arc(sx+dx+w,sy+32,3.6,0,7); ctx.fill();
+    ctx.fillStyle="#5b6478";
+    ctx.beginPath(); ctx.arc(sx+dx+w,sy+32,1.5,0,7); ctx.fill();
+  }
+  ctx.restore();
+  /* 속도선 — 가는 반대쪽으로 흐른다 */
+  if(P.moving && (P.vx||P.vy)){
+    const ux=-(P.vx||0), uy=-(P.vy||0);
+    ctx.save(); ctx.strokeStyle="#9ec8ff"; ctx.lineWidth=2.2; ctx.lineCap="round";
+    for(let i=0;i<4;i++){
+      const o=22+((g.t*260+i*34)%92);
+      ctx.globalAlpha=(1-(o-22)/92)*.5;
+      const ax=sx+ux*o, ay=sy+2+uy*o;
+      ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(ax+ux*15, ay+uy*15); ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+/* 의자 — 주인공 앞으로 오는 것(좌판). 몸보다 넓어야 「앉아 있다」로 읽힌다 */
+function drawChairFront(g,sx,sy){
+  ctx.save();
+  ctx.fillStyle="#9ec8ff";
+  ctx.beginPath();
+  (ctx.roundRect ? ctx.roundRect(sx-21,sy+6,42,8,4) : ctx.rect(sx-21,sy+6,42,8));
+  ctx.fill();
+  ctx.strokeStyle="rgba(10,13,19,.75)"; ctx.lineWidth=2; ctx.stroke();
+  ctx.fillStyle="rgba(11,14,20,.26)"; ctx.fillRect(sx-19,sy+11,38,2.4);
+  ctx.restore();
+}
 /* 머리 위 화살표 — 항상 띄우면 화면이 어지럽고, 없으면 인파에서 나를 잃는다.
    그래서 반경 90px 안에 적이 6명 넘게 몰렸을 때만 뜬다. 붐빌수록 진해진다. */
 function drawHeroMark(g,sx,sy){
@@ -6444,6 +6572,10 @@ function drawPlayer(g,sx,sy){
   ctx.restore();
   /* 발밑 표식은 뺐다 — 외곽선이 이미 「저게 나」를 하고 있는데
      링에 번지는 빛까지 얹으니 과했다. 그림자 하나면 바닥에 붙는다. */
+  /* 의자 — 앉으면 좌판 앞부분이 정강이 앞으로 온다. 그래서 두 번에 나눠 그린다.
+     전부 주인공 뒤에 그렸더니 좌판이 몸통에 가려 바퀴만 보였다(찍어 보고 알았다).
+     앉은 자세 스프라이트를 따로 그리면 열두 프레임이 또 드니 이렇게 푼다. */
+  if(P.ride>0) drawChairUnder(g,sx,sy);
   const R=window.SPRITES_RANK;
   if(R && R.hero){
     // 동작 선택: 공격 > 피격 > 걷기 > 대기
@@ -6451,10 +6583,11 @@ function drawPlayer(g,sx,sy){
     if(P.atk>0){ a="attack"; pr=clamp(1-P.atk/.25,0,1); }
     else if(P.hurt>0){ a="hit"; pr=clamp(1-P.hurt/.3,0,1); }
     else if(P.moving){ a="walk"; pr=(P.walk/6.283)%1; }
-    ctx.save(); ctx.translate(sx,sy);
+    ctx.save(); ctx.translate(sx, sy + (P.ride>0 ? -16 : 0));   // 의자 위에 앉힌다
     if(P.face>0) ctx.scale(-1,1);
     if(!blit(ctx,"hero",HERO_SIZE,a,pr,0,0)) R.hero(ctx,0,0,HERO_SIZE,{a:a,p:pr,t:g.t});
     ctx.restore();
+    if(P.ride>0) drawChairFront(g,sx,sy);
     drawHeroMark(g,sx,sy);
     if(P.hurt>0){                       // 피격 플래시
       ctx.save(); ctx.globalCompositeOperation="lighter";
@@ -6610,6 +6743,14 @@ function drawWorld(g){
       ctx.fillStyle="#c9a227"; ctx.fillRect(-2,-6,4,12);
       ctx.fillStyle="#f5c451"; ctx.fillRect(-1,-1,2,3);
     }
+    else if(d.kind==="chair"){            // 바퀴 의자 — 등받이·좌판·바퀴
+      ctx.fillStyle="#5b6478"; ctx.fillRect(-6,-8,12,3.4);          // 등받이
+      ctx.fillStyle="#9ec8ff"; ctx.fillRect(-7,-3.4,14,3.6);        // 좌판
+      ctx.fillStyle="#3a4254"; ctx.fillRect(-1.2,0,2.4,4);          // 기둥
+      ctx.fillStyle="#c9cfdb";
+      ctx.beginPath(); ctx.arc(-5,5.4,1.8,0,7); ctx.fill();
+      ctx.beginPath(); ctx.arc( 5,5.4,1.8,0,7); ctx.fill();
+      ctx.beginPath(); ctx.arc( 0,6.2,1.8,0,7); ctx.fill(); }
     else if(d.kind==="heal"){ ctx.fillRect(-5,-1.6,10,3.2); ctx.fillRect(-1.6,-5,3.2,10); }
     else if(d.kind==="magnet"){ ctx.beginPath(); ctx.arc(0,0,4.5,0,7); ctx.fill(); }
     else { ctx.fillRect(-4,-5,8,10); ctx.fillStyle="#0b0e14";
@@ -7201,7 +7342,7 @@ const CAREER={
 };
 const BLANK_SAVE = () => ({career:0, lv:{}, best:0, days:0, cleared:false, rank:0, last:null,
   score:0, clear:0, wins:0, unions:0, runs:0, zone:0, combo:0, opt:{}, ach:{},
-  char:"office", grudge:""});
+  char:"office", earned:0, goals:{}, rival:null, grudge:""});
 function loadSave(){
   try{ const j=JSON.parse(localStorage.getItem(SAVE_KEY)||"{}");
        return {career:+j.career||0, lv:j.lv&&typeof j.lv==="object"?j.lv:{},
@@ -7217,6 +7358,11 @@ function loadSave(){
                   여기 안 적으면 저장은 되는데 다시 읽을 때 조용히 사라진다.
                   실제로 그렇게 났다: 영업을 골라도 다음 판은 사무직이었다. */
                char:typeof j.char==="string"?j.char:"office",
+               /* 누적 경력 — 상점에서 쓰는 잔액(career)과 따로 센다.
+                  목표를 좇느라 강화를 못 하는 일이 없게 하려면 둘이 달라야 한다 */
+               earned:+j.earned||0,
+               goals:j.goals&&typeof j.goals==="object"?j.goals:{},
+               rival:j.rival&&typeof j.rival==="object"?j.rival:null,
                grudge:typeof j.grudge==="string"?j.grudge.slice(0,40):""}; }
   catch(e){ return BLANK_SAVE(); }
 }
@@ -7314,6 +7460,85 @@ const DAYS=[
   {d:14, head:"15일차",         line:"오늘은 문을 두드리는 게 아니라, 앉아서 얘기한다.",
          unlock:"__bargain", unlockName:"단체교섭"},
 ];
+/* ══════════════ 동기 (경쟁상대) ══════════════════════════════
+   혼자 기록을 깨는 건 금방 지친다. 「어제의 나」만으로는 약하다.
+   그래서 동기가 하나 붙는다 — 나처럼 6시에 나가려는 사람.
+
+   솔직히 적어 둔다: 이건 진짜 사람이 아니다. 서버가 없고 통신도 안 하니
+   있을 수가 없다. 내 기록을 보고 조금 앞서 걷는 페이스메이커다.
+   그래서 규칙을 단순하고 정직하게 둔다 —
+     · 처음 만날 때 내 최고보다 15% 위(최소 4,200)에 선다
+     · 내가 넘으면 그 판에 한 번 축하하고, 동기는 내 새 기록의 110%로 올라선다
+     · 내가 못 넘는 동안에는 그대로 서 있다 — 따라잡을 수 없는 상대는 상대가 아니다
+   이름은 처음 한 번만 뽑고 계속 같은 사람이다. */
+/* 조사 — 동기 이름을 뽑아 쓰니 「박대리 을(를)」 같은 말이 나온다.
+   받침이 있으면 앞쪽, 없으면 뒤쪽. 한국어면만 쓰고 영어는 자리표시자로 푼다. */
+function josa(word, pair){
+  const w=String(word||""), [a,b]=pair.split("/");
+  const c=w.charCodeAt(w.length-1);
+  if(!(c>=0xAC00 && c<=0xD7A3)) return b;         // 한글이 아니면 받침 판정을 못 한다
+  return ((c-0xAC00)%28) ? a : b;                  // 28로 나눈 나머지가 종성
+}
+const RIVAL_NAMES=["김주임","박대리","이사원","최대리","정주임","한사원","오대리","윤주임"];
+function rival(){
+  if(!SAVE.rival || typeof SAVE.rival!=="object"){
+    SAVE.rival={ name:RIVAL_NAMES[(Math.random()*RIVAL_NAMES.length)|0],
+                 score:Math.max(4200, Math.round((SAVE.score|0)*1.15)), beat:0 };
+    writeSave(SAVE);
+  }
+  return SAVE.rival;
+}
+/* 오늘 동기를 넘었나 — 넘었으면 동기가 한 걸음 올라선다 */
+function rivalCheck(score){
+  const r=rival();
+  if(score<=r.score) return null;
+  const was=r.score;
+  r.beat=(r.beat|0)+1;
+  r.score=Math.max(score+400, Math.round(score*1.10));
+  writeSave(SAVE);
+  return { name:r.name, was, now:r.score, beat:r.beat };
+}
+/* ══════════════ 멀리 보는 목표 ══════════════════════════════
+   이야기는 15일차에 끝난다. 그 뒤로 로비가 「더 볼 것이 없습니다」라고
+   말하고 있었다 — 계속 할 사람에게 이보다 나쁜 말이 없다.
+
+   직장 생활에서 「끝」은 셋뿐이다. 그 셋을 그대로 목표로 둔다.
+     · 파이어족  — 돈이 쌓여서 안 나가도 되는 것
+     · 정년      — 끝까지 다니는 것
+     · 단체협약  — 나 하나가 아니라 규정을 바꾸는 것
+   셋은 서로 다른 길이다. 경력을 모으는 사람, 오래 다니는 사람,
+   교섭으로 끝내는 사람이 각각 다른 판을 하게 된다.
+
+   숫자는 실측에서 왔다 — 이겨서 끝낸 한 판이 경력 600~800을 남긴다.
+   누적 20,000은 서른 판쯤, 60번 출근은 예순 판, 교섭 10회는 15일차
+   이후로 열 판이다. 상점에서 쓰는 경력과 따로 세므로(earned) 목표를
+   좇느라 강화를 못 하는 일은 없다. */
+const GOALS=[
+  { id:"fire",   name:"파이어족",  icon:"cup",
+    d:"누적 경력 20,000",  want:20000, have:()=>SAVE.earned|0,
+    title:"안 나가도 되는 날",
+    line:"통장을 열고 계산기를 두드렸다. 숫자가 넘었다.\n그만두는 게 아니다 — 이제 안 해도 되는 것이다." },
+  { id:"tenure", name:"정년",      icon:"attend",
+    d:"60번 출근",         want:60,    have:()=>SAVE.days|0,
+    title:"마지막 출근",
+    line:"끝까지 다녔다. 그 긴 시간 내내 6시에 나왔다.\n오늘은 들어갈 때부터 가방이 가벼웠다." },
+  { id:"accord", name:"단체협약",  icon:"union",
+    d:"교섭 10회",         want:10,    have:()=>SAVE.unions|0,
+    title:"규정이 됐다",
+    line:"취업규칙 제12조 — 근로시간은 09:00부터 18:00까지로 한다.\n나 하나가 아니라, 전부." },
+];
+const goalDone = id => !!(SAVE.goals && SAVE.goals[id]);
+const goalPct  = g => Math.min(1, g.have()/g.want);
+/* 판이 끝날 때 새로 닿은 목표를 돌려준다. 한 번만 축하하고 그 뒤론 기록에 남는다 */
+function reachGoals(){
+  const got=[];
+  for(const g of GOALS){
+    if(goalDone(g.id)) continue;
+    if(g.have()>=g.want){ SAVE.goals=SAVE.goals||{}; SAVE.goals[g.id]=1; got.push(g); }
+  }
+  if(got.length) writeSave(SAVE);
+  return got;
+}
 function dayStage(days){
   let cur=DAYS[0];
   for(const s of DAYS) if(days>=s.d) cur=s;
@@ -7437,6 +7662,31 @@ function lobbyBackdrop(){
 
 /* 직군 고르기 — 로비 한 줄. 잠긴 것도 보여 준다.
    「3일 더 나오면 개발이 열린다」가 보여야 내일 또 켠다. */
+/* 로비 — 멀리 보는 목표와 동기.
+   이야기를 다 본 뒤에도 로비에 「다음」이 남아 있어야 한다. */
+function goalsHTML(){
+  const rows=GOALS.map(g=>{
+    const on=goalDone(g.id), pct=Math.round(goalPct(g)*100);
+    const have=g.have(), want=g.want;
+    return `<div class="gl${on?" on":""}">
+      <div class="glh"><span class="gn">${esc(g.name)}</span>
+        <span class="gv">${on?T("도달"):have.toLocaleString()+" / "+want.toLocaleString()}</span></div>
+      <div class="gbar"><i style="width:${pct}%"></i></div></div>`;
+  }).join("");
+  const done=GOALS.filter(g=>goalDone(g.id)).length;
+  return `<div class="goals">
+    <div class="chhead"><span class="k">${T("멀리 보는 목표")}</span>
+      <span class="chd">${TF("{0} / {1}", done, GOALS.length)}</span></div>
+    ${rows}</div>`;
+}
+function rivalHTML(){
+  if((SAVE.runs|0)<1) return "";          // 첫 판 전에는 비교할 게 없다
+  const r=rival(), me=SAVE.score|0, ahead=me>=r.score;
+  return `<div class="rv${ahead?" up":""}">
+    <span class="rvn">${esc(T(r.name))}</span>
+    <span class="rvd">${ahead?T("내가 앞서 있습니다"):TF("{0}점 차이", (r.score-me).toLocaleString())}</span>
+    <span class="rvs num">${r.score.toLocaleString()}</span></div>`;
+}
 function charHTML(){
   const cur=myChar();
   const cards=CHARS.map(c=>{
@@ -7498,7 +7748,9 @@ function renderStart(){
       ${unlockHTML()}
     </div>
     ${charHTML()}
+    ${rivalHTML()}
     ${zmapHTML()}
+    ${(SAVE.runs|0)>0 ? goalsHTML() : ""}
     ${first?`<div class="how">
       <div class="hw"><b>1</b><div><span>움직이기만 하세요</span>
         공격은 자동입니다. 사장님이 하는 건 이동뿐입니다.</div></div>
@@ -7522,12 +7774,7 @@ function renderStart(){
      막는 문턱이었다. 대사는 게임이 주고(103줄), 내 한 줄은 설정에
      한 번만 적어두면 계속 쓰인다. */
   for(const b of $("#card").querySelectorAll(".chcard")){
-    b.onclick=()=>{ SAVE.char=b.dataset.ch; writeSave(SAVE); S("select"); /* 오프라인 — 한 번 열어 두면 그 다음부터는 네트워크가 없어도 열린다.
-   file:// 로 열면 등록이 안 되는데, 그건 개발 중에만 있는 일이라 조용히 넘어간다. */
-if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-  addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
-}
-renderStart(); };
+    b.onclick=()=>{ SAVE.char=b.dataset.ch; writeSave(SAVE); S("select"); renderStart(); };
   }
   $("#go").onclick=()=>{ S("resume"); start(myGrudge()); };
   $("#shop").onclick=()=>{ S("resume"); S("select"); renderShop(); };
@@ -7691,7 +7938,7 @@ function renderEnd(g){
   /* 직급은 남는다 — 받은 승진은 내일 출근할 때 이미 그 자리다 */
   const rk0=Math.min(RANK_MAX,SAVE.rank|0), rk=rankOf(g);
   SAVE.rank=rk;
-  SAVE.career+=earn; SAVE.days++;
+  SAVE.career+=earn; SAVE.earned=(SAVE.earned|0)+earn; SAVE.days++;
   SAVE.last=g.over;                       // 어제가 오늘 첫 줄을 바꾼다
   /* 오늘의 점수 — 최고를 넘었으면 그 자리에서 말해 줘야 한다.
      갱신만 하고 화면에 안 알리면 기록이 있으나 마나다 */
@@ -7708,6 +7955,9 @@ function renderEnd(g){
   writeSave(SAVE);
   /* 업적 — 오늘 뭘 해냈나. 이게 「한 판 더」의 두 번째 이유다 */
   const GOT=gradeAch(g); writeSave(SAVE);
+  /* 오늘 동기를 넘었나 · 멀리 보는 목표에 닿았나 —
+     둘 다 「한 판 더」의 이유라 결과 화면에서 바로 말해 준다 */
+  const RV=rivalCheck(sc), GOALED=reachGoals();
   const NXT=nextStage(SAVE.days|0);      // 다음 이야기 — 「한 판 더」가 여기서 나온다
   setHTML($("#card"), `
     <div class="rhead">
@@ -7748,10 +7998,28 @@ function renderEnd(g){
     ${NXT ? `<div class="nextday">
       <div class="nd">${NXT.d-(SAVE.days)<=0?T("내일"):TF("{0}일 뒤", NXT.d-SAVE.days)}</div>
       <div class="nt">${esc(NXT.head)}${NXT.unlockName?` — <b>${esc(NXT.unlockName)}</b>`:""}</div>
-     </div>` : `<div class="nextday" style="border-left-color:var(--good)">
-      <div class="nd" style="color:var(--good)">이야기 끝</div>
-      <div class="nt">더 볼 것이 없습니다. 이제 기록을 깨는 일만 남았습니다.</div>
-     </div>`}
+     </div>` : (()=>{
+       /* 이야기가 끝난 뒤 「더 볼 것이 없습니다」라고 말하고 있었다.
+          계속 할 사람에게 이보다 나쁜 말이 없다. 이제 가장 가까운 목표를 가리킨다. */
+       const left=GOALS.filter(G=>!goalDone(G.id))
+                       .sort((a,b)=>(b.have()/b.want)-(a.have()/a.want));
+       if(!left.length) return `<div class="nextday" style="border-left-color:var(--good)">
+         <div class="nd" style="color:var(--good)">${T("전부 도달")}</div>
+         <div class="nt">${T("세 가지 끝을 다 봤습니다. 남은 건 기록입니다.")}</div></div>`;
+       const G=left[0], rest=G.want-G.have();
+       return `<div class="nextday">
+         <div class="nd">${esc(G.name)}</div>
+         <div class="nt">${esc(G.d)} — ${TF("{0} 남았습니다", rest.toLocaleString())}</div></div>`;
+     })()}
+    ${RV?`<div class="rvwin"><span class="k">${LANG==="ko" ? esc(RV.name)+josa(RV.name,"을/를")+" 넘었습니다"
+                             : TF("{0} 을(를) 넘었습니다", esc(T(RV.name)))}</span>
+       <span class="v num">${RV.was.toLocaleString()} → ${sc.toLocaleString()}</span></div>`
+      :((SAVE.runs|0)>1?`<div class="rvrow"><span class="k">${esc(T(rival().name))}</span>
+       <span class="v num">${TF("{0}점 남았습니다", (rival().score-sc).toLocaleString())}</span></div>`:"")}
+    ${GOALED.map(G=>`<div class="goalhit">
+       <div class="gt">${esc(G.title)}</div>
+       <div class="gs">${esc(G.line).replace(/\n/g,"<br>")}</div>
+       <div class="gk">${esc(G.name)} ${T("도달")}</div></div>`).join("")}
     <div class="earnrow">
       <span class="k">오늘의 경력</span>
       <div><b class="num">+${earn.toLocaleString()}</b><span class="num">${TF("보유 {0}", SAVE.career.toLocaleString())}</span></div>
@@ -7944,12 +8212,25 @@ window.spawnWall=spawnWall; window.spawnClose=spawnClose; window.spawnSpiral=spa
 window.__RND=RND;                       // 무작위 사건 검증용
 window.__api={WEAPONS,PERKS,E,ZONES,DAY,hourOf,clockStr,spawnRing,start,todoOf,zoneOf,gateReady,
              RANKS,rankOf,rankName,quotaOf,promoDue,stats,SAVE:()=>SAVE,
-             LANG:()=>LANG, setLang, T, L10N, CHARS, myChar, charOpen};
+             LANG:()=>LANG, setLang, T, L10N, CHARS, myChar, charOpen,
+             GOALS, goalDone, rival, rivalCheck, reachGoals};
 $("#tutskip").onclick=()=>{ S("select"); tutStop(G); };
 window.__tut=()=>G&&G.tut;              // 안내 검증용
 window.__TUT=TUT;
 localizeData();                         // 자료표 먼저 — 화면은 그 뒤에 짠다
 i18nDOM(document.body);                 // 정적 HTML(버튼·라벨)도 한 번 훑는다
+
+/* 오프라인 — 한 번 열어 두면 그 다음부터는 네트워크가 없어도 열린다.
+   file:// 로 열면 등록이 안 되는데, 그건 개발 중에만 있는 일이라 조용히 넘어간다.
+   실패 이유를 남겨 둔다 — 예전에 이 등록이 엉뚱한 함수 안에 파묻혔는데
+   조용한 catch 때문에 「등록이 안 된다」는 사실조차 안 보였다. */
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+  const reg=()=>navigator.serviceWorker.register("sw.js")
+    .then(r=>{ window.__sw=r; })
+    .catch(e=>{ window.__swErr=String(e&&e.message||e); });
+  if(document.readyState==="complete") reg();
+  else addEventListener("load", reg);
+}
 renderStart();
 
 </script>

@@ -1,7 +1,7 @@
 /* 오프라인 — 앱스토어 게임이 지하철에서 열리면 안 되는 게 아니다.
    바깥으로 나가는 요청이 하나라도 있으면 그 자원은 없는 셈 치고 굴러야 하는데,
    글꼴은 없으면 화면이 통째로 달라 보인다. 그래서 아예 안 나가게 한다. */
-import { open, startRun, suite } from '../lib.mjs';
+import { open, startRun, suite, serve, openServed } from '../lib.mjs';
 
 export default async function run(){
   const s = suite('오프라인');
@@ -70,5 +70,46 @@ export default async function run(){
 
   s.eq('오프라인 검사 중 JS 에러 없음', p.errors.length, 0, p.errors.join(' / '));
   await p.close();
+
+  /* ── 진짜 서버로 띄워 서비스워커까지 본다 ──
+     file:// 로는 서비스워커가 등록되지 않으니, 여기서만 http 로 띄운다. */
+  const srv = await serve();
+  try{
+    const q = await openServed(srv.url);
+    await q.waitForTimeout(2500);
+    const sw = await q.evaluate(async () => {
+      const rs = await navigator.serviceWorker.getRegistrations();
+      return { n:rs.length, active:!!(rs[0] && rs[0].active),
+               err: window.__swErr || null };
+    });
+    s.ok('서비스워커가 등록된다', sw.n > 0, JSON.stringify(sw));
+    s.ok('서비스워커가 살아 있다', sw.active, JSON.stringify(sw));
+    s.eq('등록 실패 이유가 없다', sw.err, null);
+
+    const cache = await q.evaluate(async () => {
+      const ks = await caches.keys();
+      if(!ks.length) return { keys:[], n:0, has:false };
+      const c = await caches.open(ks[0]);
+      const urls = (await c.keys()).map(r => r.url);
+      return { keys:ks, n:urls.length,
+               has: urls.some(u => /rush\.html$/.test(u)),
+               font: urls.some(u => /\.woff2$/.test(u)),
+               sfx:  urls.some(u => /\.ogg$/.test(u)) };
+    });
+    s.ge('설치할 때 파일을 받아 둔다', cache.n, 10, JSON.stringify(cache));
+    s.ok('게임 화면이 캐시에 있다', cache.has, JSON.stringify(cache));
+    s.ok('글꼴이 캐시에 있다', cache.font, JSON.stringify(cache));
+    s.ok('소리가 캐시에 있다', cache.sfx, JSON.stringify(cache));
+
+    /* 네트워크를 끊고 다시 열어도 게임이 떠야 한다 — 이게 오프라인의 전부다 */
+    await q.ctx.setOffline(true);
+    await q.reload({ waitUntil:'domcontentloaded' }).catch(() => {});
+    const off = await q.evaluate(() => ({
+      title: document.title, go: !!document.getElementById('go') })).catch(() => ({}));
+    s.ok('네트워크를 끊어도 게임이 열린다', !!off.go, JSON.stringify(off));
+    await q.ctx.setOffline(false);
+    s.eq('서버로 띄웠을 때 JS 에러 없음', q.errors.length, 0, q.errors.join(' / '));
+    await q.close();
+  } finally { await srv.close(); }
   return s;
 }

@@ -2,7 +2,9 @@
    게임은 파일 한 개라 file:// 로 바로 연다. 서버가 필요 없다. */
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, extname, normalize } from 'node:path';
+import { createServer } from 'node:http';
+import { readFile } from 'node:fs/promises';
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const GAME = 'file://' + resolve(ROOT, 'rush.html');
@@ -160,4 +162,57 @@ export async function autoplay(p, { ticks=1400, pick='first', fast=3, budgetMs=1
     return g ? { over:g.over, zone:g.zone, lv:g.lv, kills:g.kills } : { gone:true };
   });
   return { ...final, picks, stalls, secs: Math.round((Date.now()-t0)/1000) };
+}
+
+/* ── 진짜 서버로 띄우기 ────────────────────────────────────────
+   서비스워커는 file:// 에서 등록되지 않는다. 오프라인 동작을 보려면
+   http 로 띄워야 한다 — 안 그러면 「등록이 아예 안 되는」 버그를 못 잡는다.
+   실제로 그렇게 놓친 적이 있다: 등록 코드가 엉뚱한 함수 안에 파묻혔는데
+   구문이 멀쩡해서 모든 검사가 통과했다. */
+const MIME = {
+  '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
+  '.mjs':'text/javascript; charset=utf-8', '.json':'application/json',
+  '.webmanifest':'application/manifest+json', '.css':'text/css; charset=utf-8',
+  '.png':'image/png', '.jpg':'image/jpeg', '.svg':'image/svg+xml',
+  '.woff2':'font/woff2', '.ogg':'audio/ogg', '.md':'text/plain; charset=utf-8',
+};
+export async function serve(root = ROOT){
+  const srv = createServer(async (req, res) => {
+    try{
+      let p = decodeURIComponent(req.url.split('?')[0]);
+      if(p.endsWith('/')) p += 'rush.html';
+      const file = resolve(root, '.' + normalize(p));
+      if(!file.startsWith(root)){ res.writeHead(403).end(); return; }   // 상위 탈출 금지
+      const body = await readFile(file);
+      res.writeHead(200, { 'Content-Type': MIME[extname(file)] || 'application/octet-stream',
+                           'Cache-Control': 'no-store' });
+      res.end(body);
+    }catch(e){ res.writeHead(404).end('not found'); }
+  });
+  await new Promise(r => srv.listen(0, '127.0.0.1', r));
+  const port = srv.address().port;
+  return { url: `http://127.0.0.1:${port}/`,
+           close: () => new Promise(r => srv.close(r)) };
+}
+
+/* http 로 띄운 게임을 연다 — open() 과 같은 저장소 시딩을 쓴다 */
+export async function openServed(url, { save=BLANK, lang='ko', viewport={width:1180,height:760} }={}){
+  const b = await browser();
+  const ctx = await b.newContext({ viewport, deviceScaleFactor:1 });
+  const p = await ctx.newPage();
+  const errors = [];
+  p.on('pageerror', e => errors.push(String(e.message||e)));
+  await p.addInitScript(([sk,sv,lk,lv]) => {
+    try{
+      if(sessionStorage.getItem('__seeded')) return;
+      sessionStorage.setItem('__seeded','1');
+      localStorage.setItem(sk, JSON.stringify(sv));
+      localStorage.setItem(lk, lv);
+      localStorage.setItem('jeongsi.tut.v1','1');
+    }catch(e){}
+  }, [SAVE_KEY, save, LANG_KEY, lang]);
+  await p.goto(url);
+  await p.waitForSelector('#go', { timeout: 15000 });
+  p.errors = errors; p.ctx = ctx;
+  return p;
 }
