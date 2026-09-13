@@ -47,7 +47,7 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-acti
 
 /* ── 상단 HUD ── */
 #hud{position:absolute;top:0;left:0;right:0;padding:10px 58px 10px 14px;z-index:5;pointer-events:none;
-  display:flex;align-items:center;gap:14px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
   background:linear-gradient(180deg,rgba(11,14,20,.92),rgba(11,14,20,0))}
 #clock{font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-size:30px;line-height:1;
   font-variant-numeric:tabular-nums;letter-spacing:.5px}
@@ -200,7 +200,8 @@ body.lobby #hud, body.lobby #slots, body.lobby #bars, body.lobby #toast{display:
   #toast{top:134px}
   #hud{padding:8px 50px 8px 10px;gap:8px}
   #kills,#lv,#todo,#zone,#repl{font-size:10px}
-  #rnd{font-size:10px;padding:3px 8px}
+  #rnd{font-size:10px;padding:3px 8px;
+    flex-basis:100%;max-width:max-content;margin-top:2px}   /* 둘째 줄로 내린다 */
   #repl b{font-size:12px}
   #zone b{font-size:12px}
   #kills b,#lv b,#todo b{font-size:15px}
@@ -215,6 +216,7 @@ body.lobby #hud, body.lobby #slots, body.lobby #bars, body.lobby #toast{display:
   #zrule span{display:none}               /* 폰에선 규칙 이름만 — 설명은 토스트가 한다 */
   #zone b{font-size:12px;margin-left:0;max-width:96px;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:middle}
   #todo{white-space:nowrap}
+  #hud{gap:6px}
   #daybar{min-width:88px}
   .slot{width:36px;height:36px}
   .slot canvas{width:28px;height:28px}
@@ -238,6 +240,13 @@ body.lobby #hud, body.lobby #slots, body.lobby #bars, body.lobby #toast{display:
   padding:13px;width:100%;margin-top:16px;font-size:15px;font-family:inherit;cursor:pointer}
 .ghost{background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:8px;
   padding:11px;width:100%;margin-top:8px;font-family:inherit;cursor:pointer}
+/* 결과 화면 단추 — 카드가 길면 「다시 출근」이 스크롤 아래에 숨는다.
+   375×667 에서는 다섯 결말 전부 화면 밖이었다(top 658~798 vs 뷰포트 667).
+   카드 바닥에 붙여서, 어디까지 읽었든 늘 손에 닿게 한다. */
+.endbtns{position:sticky;bottom:0;z-index:2;margin-top:16px;padding:16px 0 12px;
+  background:linear-gradient(180deg,rgba(20,25,34,0) 0,var(--panel) 26%,var(--panel) 100%);
+  box-shadow:0 26px 0 var(--panel)}   /* 카드 아래 여백으로 뒷 내용이 비치지 않게 */
+.endbtns .primary{margin-top:0}
 input{width:100%;padding:11px;border-radius:8px;border:1px solid var(--line);
   background:#0b0d12;color:var(--ink);font-size:14px;font-family:inherit}
 label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
@@ -3305,7 +3314,10 @@ const L10N = { ko:null, en:{
   "오늘 12시에 뭔가 들어온다고 했다.":"Something's coming in at twelve, they said.",
   "이제 아무도 이 말을 하지 않습니다.":"Nobody says that anymore.",
   " — 물러났습니다. 곧 다시 옵니다":" — pushed back. They'll return soon",
-  "18:00. 가방 들고 나왔습니다.":"18:00. Bag in hand, out the door.",
+  "{0}. 가방 들고 나왔습니다.":"{0}. Bag in hand, out the door.",
+  "{0}. 정문을 나섰습니다.":"{0}. Out through the main entrance.",
+  "정시보다 {0} 일찍입니다.":"{0} ahead of the clock.",
+  "{0}시간 {1}분":"{0}h {1}m","{0}시간":"{0}h","{0}분":"{0}m",
   "능력 그대로 · 직급 그대로<br>":"Same power · same rank<br>",
   "문이 열릴 때마다 한 명씩 나온다.":"Every time a door opens, one more walks out.",
   "어제 6시에 나가는 걸 누가 봤다.":"Someone saw me leave at six yesterday.",
@@ -3689,6 +3701,17 @@ const hourOf = t => H0 + (t/DAY)*(H1-H0);
 function clockStr(t){
   const h=hourOf(t), hh=Math.floor(h), mm=Math.floor((h-hh)*60);
   return String(hh).padStart(2,"0")+":"+String(Math.floor(mm/5)*5).padStart(2,"0");
+}
+/* 시계가 가리키는 분 — 결과 화면이 clockStr 과 같은 5분 단위를 써야
+   "13:25에 나왔는데 정시보다 4시간 35분 일찍"이 딱 맞는다 */
+function clockMin(t){
+  const h=hourOf(t), hh=Math.floor(h);
+  return hh*60 + Math.floor((h-hh)*60/5)*5;
+}
+/* 275 → "4시간 35분". 결과 화면에서 얼마나 일찍 나왔는지 말할 때 쓴다 */
+function durStr(min){
+  const h=Math.floor(min/60), m=min%60;
+  return h ? (m ? TF("{0}시간 {1}분",h,m) : TF("{0}시간",h)) : TF("{0}분",m);
 }
 
 /* ── 구역과 결재함 ──────────────────────────────────────────────
@@ -8164,6 +8187,9 @@ function renderEnd(g){
      둘 다 「한 판 더」의 이유라 결과 화면에서 바로 말해 준다 */
   const RV=rivalCheck(sc), GOALED=reachGoals();
   const NXT=nextStage(SAVE.days|0);      // 다음 이야기 — 「한 판 더」가 여기서 나온다
+  /* 나온 시각은 진짜 시계를 쓴다. 13:25에 이겨 놓고 "18:00"이라고 말하고
+     있었다 — 게임이 상으로 주는 게 「일찍 나가는 것」인데 그걸 지웠던 셈이다. */
+  const outAt=clockStr(g.t), earlyMin=Math.max(0, H1*60-clockMin(g.t));
   setHTML($("#card"), `
     <div class="rhead">
       <span class="rbar" style="background:${acc}"></span>
@@ -8172,8 +8198,10 @@ function renderEnd(g){
           uni?"단체협약":win?"정시 퇴근":late?"야근 퇴근":repl?"대체":"자리에서 쓰러짐"}</h1>
         <div class="sub" style="margin:6px 0 0">${
           uni ?"합의했습니다.<br><b style=\"color:#5fe0c0\">내일부터 여섯 시에 나갑니다 — 나만이 아니라, 전부.</b>"
-        : repl?"18:00. 정시에 퇴근했습니다.<br><b style=\"color:#c9a227\">내일부터는 안 나오셔도 됩니다.</b>"
-        : win ?"18:00. 가방 들고 나왔습니다."
+        : repl?TF("{0}. 정문을 나섰습니다.",outAt)+"<br><b style=\"color:#c9a227\">내일부터는 안 나오셔도 됩니다.</b>"
+        : win ?TF("{0}. 가방 들고 나왔습니다.",outAt)
+               +(earlyMin>=5?"<br><b style=\"color:var(--good)\">"
+                 +TF("정시보다 {0} 일찍입니다.",durStr(earlyMin))+"</b>":"")
         : late?"야근 "+Math.max(1,Math.round((g.otT/DAY)*(H1-H0)*60))+"분. 끝내고 나왔습니다."
         :      (g.ot?"야근 중":clockStr(g.t))+" — "+zoneOf(g).name+"에서 쓰러졌습니다."}</div>
       </div>
@@ -8229,11 +8257,12 @@ function renderEnd(g){
       <span class="k">오늘의 경력</span>
       <div><b class="num">+${earn.toLocaleString()}</b><span class="num">${TF("보유 {0}", SAVE.career.toLocaleString())}</span></div>
     </div>
+    <div class="endbtns">
     <button class="primary" id="again" style="background:${acc};color:#17191f">다시 출근</button>
     <button class="ghost" id="toShop" style="color:var(--ink);font-size:14px;padding:13px;
       display:flex;align-items:center;justify-content:center;gap:8px">
       <span>자기계발</span><span style="color:var(--accent);font-weight:800">${TF("경력 {0}", SAVE.career.toLocaleString())}</span>
-    </button>`);
+    </button></div>`);
   $("#again").onclick=()=>{ S("select"); start(myGrudge()); };
   $("#toShop").onclick=()=>{ S("select"); renderShop(); };
   openOverlay();
@@ -8252,7 +8281,7 @@ function resize(){
   if(!G) lobbyBackdrop();          // 로비에서 창 크기가 바뀌면 다시 깔아야 한다
 }
 function start(grudge){
-  closeOverlay(); lobbyOn(false);
+  closeOverlay(); lobbyOn(false); pushGuard();
   G=newGame(grudge); applyPerks(G); syncSlots(G); markBossTicks(); tutStart(G);
   seedZone(G,14);                    // 09:00 주차장엔 이미 사람이 있다
   if(opt("bgm")) S("bgmStart");      // 배경음 — 하루가 흐르는 걸 귀로도
@@ -8389,6 +8418,32 @@ addEventListener("keydown",e=>{
 });
 addEventListener("keyup",e=>{ keys[keyOf(e)]=false; });
 addEventListener("blur",()=>{ for(const k in keys) keys[k]=false; });
+
+/* ── 하루를 잃지 않게 ──────────────────────────────────────────
+   안드로이드에서 뒤로가기는 곧 앱 종료다. 판 중에 한 번 잘못 눌렀다고
+   오늘 하루가 통째로 사라지면 안 된다. 히스토리에 가드 한 칸을 밀어 두고,
+   뒤로 = 멈춤 · 멈춘 상태에서 다시 뒤로 = 그때는 진짜로 나간다(관례대로 두 번).
+   전화가 오거나 앱을 내렸을 때도 마찬가지다 — 안 보이는 화면에서 죽지 않는다. */
+let _guard=false;
+function pushGuard(){
+  if(_guard) return;
+  try{ history.pushState({jeongsi:1},""); _guard=true; }catch(e){}
+}
+addEventListener("popstate",()=>{
+  _guard=false;
+  const g=G;
+  if(g && !g.over && !g.userPaused){ pushGuard(); togglePause(); }
+});
+document.addEventListener("visibilitychange",()=>{
+  if(!document.hidden) return;
+  const g=G;
+  if(g && !g.over && !g.paused) togglePause();
+});
+addEventListener("beforeunload",e=>{
+  const g=G;
+  if(!g || g.over) return;            // 로비·결과 화면은 그냥 보낸다
+  e.preventDefault(); e.returnValue="";   // 진행 중인 하루는 저장되지 않는다
+});
 
 function toggleMute(){
   if(!window.SFX) return;
