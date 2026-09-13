@@ -239,6 +239,10 @@ body.lobby #hud, body.lobby #slots, body.lobby #bars, body.lobby #toast{display:
 /* 진화 짝 — 카드에서 유일하게 「다음 목표」를 말하는 줄이라 색을 준다 */
 .pick .evh{display:block;margin-top:6px;font-size:11px;font-weight:800;
   color:var(--accent);opacity:.92;line-height:1.4}
+/* 태그 — 이 무기가 어떤 상태를 남기는지. 이름 옆에 작게 */
+.tagchip{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;
+  font-size:10px;font-weight:800;color:var(--blue);background:#151d27;border:1px solid #2a3a4e;
+  vertical-align:middle}
 .primary{background:var(--accent);color:#17191f;border:0;border-radius:8px;font-weight:800;
   padding:13px;width:100%;margin-top:16px;font-size:15px;font-family:inherit;cursor:pointer}
 .ghost{background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:8px;
@@ -3532,6 +3536,11 @@ const L10N = { ko:null, en:{
   "불이 꺼진 층을 지나왔다. 예전엔 여기가 제일 환했다.":"Walked past a floor with the lights off. This used to be the brightest one.",
   "후배가 후배를 데리고 왔다. 나한테 묻지 않고 자기가 답했다.":"My junior brought their own junior. Answered for me without asking.",
   "이제 이 이야기는 내 것이 아니다. 그래서 끝이 아니다.":"This story isn't mine anymore. That's why it isn't over.",
+  "젖음":"Wet","묶임":"Held","참조":"CC'd","서류":"Paper",
+  "번짐 — 젖은 적을 서류로 때리면 둘레에 번집니다":"Bleed — hit a wet target with paper and it spreads",
+  "번짐 — 젖은 적을 때리면 둘레에 번집니다":"Bleed — hitting a wet target spreads it",
+  "지적 — 회의에 묶인 적은 더 아픕니다":"Called out — targets held in a meeting take more",
+  "전달 — 참조된 적이 처리되면 옆으로 갑니다":"Forwarded — clearing a CC'd target passes it on",
   "오늘 한 장 남기기":"Save today's card","만드는 중…":"Making…",
   "{0}에 나왔습니다 — 정시 퇴근":"Out at {0} — On-Time Departure","구역":"Zone",
   "오늘의 공지":"Today's notice","오늘의 기록":"Today's best","오늘 첫 출근":"First clock-in today",
@@ -4203,7 +4212,7 @@ function stepEvent(g,dt){
       g.prnDone=1;
       for(const f of g.foes){
         const d=Math.hypot(f.x-g.prnX,f.y-g.prnY);
-        if(d<420) damage(g,f,260,g.prnX,g.prnY,22);
+        if(d<420) damage(g,f,260,g.prnX,g.prnY,22,"printer");
       }
       g.fx.push({type:"ring",x:g.prnX,y:g.prnY,t:0,r0:20,r1:420,c:"#9ec8ff"});
       g.flash=Math.max(g.flash,1); kick(g,0,-1,14); g.hitstop=Math.max(g.hitstop,.18);
@@ -4280,19 +4289,19 @@ function stepRobots(g,dt){
 
 /* ── 무기 ─────────────────────────────────────────────────────── */
 const WEAPONS = {
-  stamp:{ id:"stamp", name:"반려 도장", max:8, base:"start",
+  stamp:{ id:"stamp", paper:true, name:"반려 도장", max:8, base:"start",
     desc:"가장 가까운 적을 찍는다",
     lv:l=>({cd:.60-l*.05, dmg:26+l*10, count:2+Math.floor(l/2), range:170+l*14}),
     up:l=>l%2===0?("동시에 "+(2+Math.floor(l/2))+"명"):"피해 +10, 간격 −0.05초" },
-  copy:{ id:"copy", name:"복사기", max:8,
+  copy:{ id:"copy", paper:true, name:"복사기", max:8,
     desc:"사방으로 서류를 뿌린다",
     lv:l=>({cd:2.1-l*.13, dmg:13+l*5, n:6+l*2, spd:260}),
     up:l=>"장수 +2, 피해 +5" },
-  mail:{ id:"mail", name:"참조 메일", max:8,
+  mail:{ id:"mail", tag:"cc", name:"참조 메일", max:8,
     desc:"적을 쫓아가는 유도 메일",
     lv:l=>({cd:1.45-l*.10, dmg:22+l*10, n:1+Math.floor(l/1.6), turn:3.6}),
     up:l=>Math.floor(l/1.6)>Math.floor((l-1)/1.6)?"동시 발송 +1":"피해 +10" },
-  coffee:{ id:"coffee", name:"쏟은 커피", max:8,
+  coffee:{ id:"coffee", tag:"wet", name:"쏟은 커피", max:8,
     desc:"발밑에 장판. 밟는 적이 계속 닳는다",
     lv:l=>({cd:3.2-l*.18, dps:16+l*8, r:62+l*9, life:3.6}),
     up:l=>"범위 +9, 초당 피해 +8" },
@@ -4304,11 +4313,11 @@ const WEAPONS = {
     up:l=>"범위 +14, 감속 강화, 초당 피해 +8" },
   /* 사직서 — 「던지면 폭탄 터지듯이」. 화면 전체를 조용히 쓸던 패시브를
      실제로 던지는 것으로 바꿨다. 날아가서 터지는 게 보여야 시원하다. */
-  quit:{ id:"quit", name:"사직서", max:5,
+  quit:{ id:"quit", paper:true, name:"사직서", max:5,
     desc:"책상에 던진다. 닿는 곳에서 터진다",
     lv:l=>({cd:12-l*1.3, dmg:150+l*95, r:150+l*26, n:1+Math.floor(l/3)}),
     up:l=>l%3===0?"한 번에 +1장":"피해 +95, 폭발 반경 +26" },
-  meeting:{ id:"meeting", name:"회의 소집", max:6,
+  meeting:{ id:"meeting", tag:"hold", name:"회의 소집", max:6,
     desc:"한 점으로 끌어모은다. 모인 것은 함께 닳는다",
     lv:l=>({cd:6.2-l*.35, r:120+l*16, pull:130+l*18, dps:10+l*5, life:2.6}),
     up:l=>"범위 +16, 초당 피해 +5" },
@@ -4316,19 +4325,19 @@ const WEAPONS = {
     desc:"내 주변에 있는 것은 계속 닳는다",
     lv:l=>({r:66+l*9, dps:11+l*6}),
     up:l=>"범위 +9, 초당 피해 +6" },
-  msg:{ id:"msg", name:"사내 메신저", max:7,
+  msg:{ id:"msg", tag:"cc", name:"사내 메신저", max:7,
     desc:"적에서 적으로 옮겨 붙는다",
     lv:l=>({cd:2.4-l*.16, dmg:26+l*11, jumps:2+Math.floor(l/2), range:150+l*12}),
     up:l=>l%2===0?("연쇄 +1 (총 "+(2+Math.floor(l/2))+")"):"피해 +11" },
-  card:{ id:"card", name:"법인카드", max:7,
+  card:{ id:"card", paper:true, name:"법인카드", max:7,
     desc:"날아갔다 돌아온다. 오가며 두 번 스친다",
     lv:l=>({cd:2.8-l*.18, dmg:30+l*13, n:1+Math.floor(l/3), reach:230+l*16}),
     up:l=>l%3===0?"동시에 +1장":"피해 +13" },
-  attend:{ id:"attend", name:"근태기록", max:7,
+  attend:{ id:"attend", tag:"cc", paper:true, name:"근태기록", max:7,
     desc:"막히지 않는다. 전부 꿰뚫는다",
     lv:l=>({cd:2.0-l*.13, dmg:22+l*9, n:1+Math.floor(l/2), spd:420}),
     up:l=>l%2===0?"동시에 +1발":"피해 +9" },
-  elev:{ id:"elev", name:"엘리베이터", max:6,
+  elev:{ id:"elev", tag:"hold", name:"엘리베이터", max:6,
     desc:"밀어낸다. 벽에 몰린 것은 더 아프다",
     lv:l=>({cd:5.0-l*.32, r:150+l*20, push:260+l*40, dmg:34+l*16}),
     up:l=>"범위 +20, 밀어내기 +40" },
@@ -4336,27 +4345,27 @@ const WEAPONS = {
   /* ── 설치기 ──────────────────────────────────────────────────
      자동 공격만 있으면 서 있을 자리를 고르는 재미가 없다.
      사무실 집기를 깔아서 길을 막고 화력을 미리 놓는다. build:true */
-  part:{ id:"part", name:"파티션", max:6, build:true,
+  part:{ id:"part", tag:"hold", name:"파티션", max:6, build:true,
     desc:"벽을 세운다. 적이 부술 때까지 길을 막는다",
     lv:l=>({cd:6.4-l*.42, hp:120+l*70, w:96+l*12, life:16, cap:1+Math.floor(l/2)}),
     up:l=>l%2===0?("동시에 "+(1+Math.floor(l/2))+"개"):"내구도 +70, 길이 +12" },
-  printer:{ id:"printer", name:"복합기", max:7, build:true,
+  printer:{ id:"printer", paper:true, name:"복합기", max:7, build:true,
     desc:"놓아두면 알아서 서류를 뿜는다",
     lv:l=>({cd:7.0-l*.45, dmg:16+l*8, n:5+Math.floor(l/2), every:1.1, life:14, cap:1+Math.floor(l/3)}),
     up:l=>l%3===0?"동시에 +1대":(l%2===0?"피해 +8, 장수 +1":"피해 +8") },
-  water:{ id:"water", name:"정수기", max:6, build:true,
+  water:{ id:"water", tag:"wet", name:"정수기", max:6, build:true,
     desc:"곁에 서 있으면 체력이 찬다",
     lv:l=>({cd:14-l*.9, hps:5+l*2.5, r:78+l*10, life:11, cap:1}),
     up:l=>"초당 회복 +2.5, 범위 +10" },
-  barista:{ id:"barista", name:"커피머신", max:6, build:true,
+  barista:{ id:"barista", tag:"wet", name:"커피머신", max:6, build:true,
     desc:"곁에 서 있으면 손이 빨라진다",
     lv:l=>({cd:13-l*.8, haste:.22+l*.05, r:86+l*10, life:11, cap:1}),
     up:l=>"공격 속도 +5%, 범위 +10" },
-  wet:{ id:"wet", name:"미끄럼 주의", max:7, build:true,
+  wet:{ id:"wet", tag:"wet", name:"미끄럼 주의", max:7, build:true,
     desc:"밟은 것은 미끄러져 넘어진다",
     lv:l=>({cd:5.6-l*.34, r:70+l*10, slow:.42-l*.04, dmg:8+l*5, life:13, cap:1+Math.floor(l/3)}),
     up:l=>l%3===0?"동시에 +1개":"범위 +10, 감속 강화" },
-  book:{ id:"book", name:"회의실 예약", max:6, build:true,
+  book:{ id:"book", tag:"hold", name:"회의실 예약", max:6, build:true,
     desc:"범위 안을 회의에 묶는다. 회의 중에는 아무도 못 움직인다",
     lv:l=>({cd:11-l*.7, r:120+l*16, hold:2.6+l*.35, dmg:14+l*9, life:.3, cap:1}),
     up:l=>"범위 +16, 회의 +0.35초" },
@@ -4400,6 +4409,24 @@ const EVO_BY_PERK={};
 for(const b in EVO) EVO_BY_PERK[EVO[b].perk]=b;
 /* 「반려 도장 3/8 + 노트북 2/5 → 전결」. 아직 하나도 안 가진 짝은
    이름만 말해 준다 — 다 알려 주면 고를 게 없어진다. */
+/* 반응 힌트 — 내가 이미 든 무기와 이 카드가 반응하는지.
+   진화 힌트와 같은 자리에 붙는다. 「조합을 만든다」가 화면에 없으면
+   태그를 넣어도 아무도 모른다. */
+const TAGNAME={wet:"젖음", hold:"묶임", cc:"참조"};
+function reactHint(g, kind, id){
+  if(kind!=="w") return "";
+  const W=WEAPONS[id]; if(!W) return "";
+  const mine=Object.keys(g.weapons).filter(k=>k!==id);
+  const has=t=>mine.some(k=>WEAPONS[k]&&WEAPONS[k].tag===t);
+  const hasPaper=mine.some(k=>WEAPONS[k]&&WEAPONS[k].paper);
+  /* 이 카드가 상태를 남기는 쪽이면 — 소비할 무기가 내게 있나 */
+  if(W.tag==="wet"  && hasPaper) return T("번짐 — 젖은 적을 서류로 때리면 둘레에 번집니다");
+  if(W.tag==="hold" && mine.length) return T("지적 — 회의에 묶인 적은 더 아픕니다");
+  if(W.tag==="cc"   && mine.length) return T("전달 — 참조된 적이 처리되면 옆으로 갑니다");
+  /* 이 카드가 소비하는 쪽이면 — 상태를 남기는 무기가 내게 있나 */
+  if(W.paper && has("wet")) return T("번짐 — 젖은 적을 때리면 둘레에 번집니다");
+  return "";
+}
 function evoHint(g, kind, id){
   const base = kind==="w" ? (EVO[id]?id:null)
              : kind==="p" ? (EVO_BY_PERK[id]||null) : null;
@@ -5308,7 +5335,7 @@ function stepBuilds(g,dt){
         for(let k=0;k<L.n;k++){
           const a=(k/L.n)*6.283+b.t*.8;
           g.shots.push({x:b.x,y:b.y,vx:Math.cos(a)*230,vy:Math.sin(a)*230,
-                        dmg:L.dmg,life:1.3,kind:"paper",r:7});
+                        dmg:L.dmg,life:1.3,kind:"paper",r:7,src:b.id});
         }
         S("shoot","copy");
       }
@@ -5323,7 +5350,7 @@ function stepBuilds(g,dt){
         if(Math.hypot(f.x-b.x,f.y-b.y)<L.r+f.r){
           f.slow=Math.min(f.slow,L.slow);
           f.wetT=(f.wetT||0)+dt;
-          if(f.wetT>0.9){ f.wetT=0; damage(g,f,L.dmg,b.x,b.y,4); }
+          if(f.wetT>0.9){ f.wetT=0; damage(g,f,L.dmg,b.x,b.y,4,b.id); }
         }
       }
     } else if(b.id==="book"){
@@ -5333,7 +5360,7 @@ function stepBuilds(g,dt){
         let n=0;
         for(const f of g.foes){
           if(f.boss) continue;
-          if(Math.hypot(f.x-b.x,f.y-b.y)<L.r){ f.hold=L.hold; damage(g,f,L.dmg,b.x,b.y,0); n++; }
+          if(Math.hypot(f.x-b.x,f.y-b.y)<L.r){ f.hold=L.hold; damage(g,f,L.dmg,b.x,b.y,0,b.id); n++; }
         }
         if(n){ S("deny"); flash(g,"회의실 예약 — "+n+"명 묶임"); }
         g.fx.push({type:"ring",x:b.x,y:b.y,t:0,r0:12,r1:L.r,c:"#f5c451"});
@@ -5492,7 +5519,7 @@ function fireWeapons(g,dt){
           const dx=f.x-P.x,dy=f.y-P.y,d=dx*dx+dy*dy; if(d<bd){bd=d;tgt=f;} }
         if(!tgt) break;
         used.add(tgt); fired++;
-        damage(g,tgt,L.dmg,P.x,P.y,10);
+        damage(g,tgt,L.dmg,P.x,P.y,10,id);
         g.fx.push({type:"stamp",x:tgt.x,y:tgt.y,t:0});
       }
       if(fired){ S("hit"); P.atk=.25; g.cds[id]=L.cd*haste; } else g.cds[id]=.12;
@@ -5502,7 +5529,7 @@ function fireWeapons(g,dt){
       for(let i=0;i<L.n;i++){
         const a=(i/L.n)*Math.PI*2 + g.t*.7;
         g.shots.push({x:P.x,y:P.y,vx:Math.cos(a)*L.spd,vy:Math.sin(a)*L.spd,
-                      dmg:L.dmg,life:1.6*P.range,kind:"paper",r:7});
+                      dmg:L.dmg,life:1.6*P.range,kind:"paper",r:7,src:id});
       }
       S("shoot","copy"); g.cds[id]=L.cd*haste; continue;
     }
@@ -5511,12 +5538,12 @@ function fireWeapons(g,dt){
         const tgt=nearest(g,P.x,P.y,900);
         const a=tgt?Math.atan2(tgt.y-P.y,tgt.x-P.x):(Math.random()*7);
         g.shots.push({x:P.x,y:P.y,vx:Math.cos(a)*300,vy:Math.sin(a)*300,
-                      dmg:L.dmg,life:3.2,kind:"mail",r:8,turn:L.turn});
+                      dmg:L.dmg,life:3.2,kind:"mail",r:8,turn:L.turn,src:id});
       }
       S("shoot","stap"); g.cds[id]=L.cd*haste; continue;
     }
     if(id==="coffee"){
-      g.pools.push({x:P.x,y:P.y,r:L.r*P.range,dps:L.dps,life:L.life,t:0});
+      g.pools.push({x:P.x,y:P.y,r:L.r*P.range,dps:L.dps,life:L.life,t:0,src:id});
       S("place","water"); g.cds[id]=L.cd*haste; continue;
     }
     if(id==="meeting"){
@@ -5532,7 +5559,7 @@ function fireWeapons(g,dt){
       const seen=new Set(); let from={x:P.x,y:P.y};
       for(let j=0;j<=L.jumps && cur;j++){
         seen.add(cur);
-        damage(g,cur,L.dmg,from.x,from.y,6);
+        damage(g,cur,L.dmg,from.x,from.y,6,id);
         g.fx.push({type:"bolt",x1:from.x,y1:from.y,x2:cur.x,y2:cur.y,t:0});
         from={x:cur.x,y:cur.y};
         let nx=null,bd=(L.range*0.8)**2;
@@ -5546,7 +5573,7 @@ function fireWeapons(g,dt){
       for(let i=0;i<L.n;i++){
         const tgt=nearest(g,P.x,P.y,900);
         const a=(tgt?Math.atan2(tgt.y-P.y,tgt.x-P.x):Math.random()*7)+(i-(L.n-1)/2)*0.4;
-        g.cards.push({x:P.x,y:P.y,a:a,t:0,reach:L.reach*P.range,dmg:L.dmg,hitSet:new Set()});
+        g.cards.push({x:P.x,y:P.y,a:a,t:0,reach:L.reach*P.range,dmg:L.dmg,hitSet:new Set(),src:id});
       }
       S("shoot","stap"); g.cds[id]=L.cd*haste; continue;
     }
@@ -5555,7 +5582,7 @@ function fireWeapons(g,dt){
         const tgt=nearest(g,P.x,P.y,900);
         const a=(tgt?Math.atan2(tgt.y-P.y,tgt.x-P.x):Math.random()*7)+(i-(L.n-1)/2)*0.22;
         g.shots.push({x:P.x,y:P.y,vx:Math.cos(a)*L.spd,vy:Math.sin(a)*L.spd,
-                      dmg:L.dmg,life:1.9*P.range,kind:"pierce",r:9,pierce:true,hitSet:new Set()});
+                      dmg:L.dmg,life:1.9*P.range,kind:"pierce",r:9,pierce:true,hitSet:new Set(),src:id});
       }
       S("shoot","copy"); g.cds[id]=L.cd*haste; continue;
     }
@@ -5564,7 +5591,7 @@ function fireWeapons(g,dt){
       for(const f of g.foes){
         const dx=f.x-P.x, dy=f.y-P.y, d=Math.hypot(dx,dy)||1;
         if(d>R) continue;
-        damage(g,f,L.dmg,P.x,P.y,L.push/9); n++;
+        damage(g,f,L.dmg,P.x,P.y,L.push/9,id); n++;
       }
       g.fx.push({type:"ring",x:P.x,y:P.y,t:0,r0:20,r1:R,c:"#9ec8ff"});
       if(n){ S("nuke"); kick(g,0,1,5); }
@@ -5575,7 +5602,7 @@ function fireWeapons(g,dt){
       const R=L.range*P.range; let n=0;
       for(const f of g.foes){
         if(Math.hypot(f.x-P.x,f.y-P.y)>R) continue;
-        damage(g,f,L.dmg,P.x,P.y,9); n++;
+        damage(g,f,L.dmg,P.x,P.y,9,id); n++;
         g.fx.push({type:"stamp",x:f.x,y:f.y,t:0});
       }
       if(n){ S("hit"); P.atk=.25; }
@@ -5585,7 +5612,7 @@ function fireWeapons(g,dt){
       for(let i=0;i<L.n;i++){
         const a=(i/L.n)*Math.PI*2 + g.t*.5;
         g.shots.push({x:P.x,y:P.y,vx:Math.cos(a)*L.spd,vy:Math.sin(a)*L.spd,
-                      dmg:L.dmg,life:2.2*P.range,kind:"pierce",r:8,pierce:true,hitSet:new Set()});
+                      dmg:L.dmg,life:2.2*P.range,kind:"pierce",r:8,pierce:true,hitSet:new Set(),src:id});
       }
       S("shoot","copy"); g.cds[id]=L.cd*haste; continue;
     }
@@ -5598,12 +5625,12 @@ function fireWeapons(g,dt){
       S("shoot","stap"); g.cds[id]=L.cd*haste; continue;
     }
     if(id==="caffeine"){
-      g.pools.push({x:P.x,y:P.y,r:L.r*P.range,dps:L.dps,life:L.life,t:0});
+      g.pools.push({x:P.x,y:P.y,r:L.r*P.range,dps:L.dps,life:L.life,t:0,src:id});
       g.cds[id]=L.cd; continue;                 // 지나간 자리마다 남는다
     }
     if(id==="resign"){
       let n=0;
-      for(const f of g.foes){ damage(g,f,L.dmg,P.x,P.y,L.push/9); n++; }
+      for(const f of g.foes){ damage(g,f,L.dmg,P.x,P.y,L.push/9,id); n++; }
       g.fx.push({type:"quit",t:0});
       g.fx.push({type:"ring",x:P.x,y:P.y,t:0,r0:30,r1:520,c:"#f5c451"});
       g.shake=Math.max(g.shake,20); g.hitstop=Math.max(g.hitstop,.14);
@@ -5625,7 +5652,7 @@ function fireWeapons(g,dt){
                     tx=P.x+P.hx/hm*320; ty=P.y+P.hy/hm*320; }
         tx+=(Math.random()-.5)*90; ty+=(Math.random()-.5)*90;
         g.paper.push({x:P.x, y:P.y, sx:P.x, sy:P.y, tx, ty, t:0,
-                      dur:0.44+Math.random()*0.10, dmg:L.dmg, r:L.r});
+                      dur:0.44+Math.random()*0.10, dmg:L.dmg, r:L.r, src:id});
       }
       S("place"); g.cds[id]=L.cd; continue;
     }
@@ -5640,7 +5667,36 @@ function kick(g,dx,dy,power){
   g.shakeX+=dx/d*power; g.shakeY+=dy/d*power;
   g.shake=Math.max(g.shake,power*0.55);
 }
-function damage(g,f,dmg,sx,sy,kb){
+/* ── 반응 ──────────────────────────────────────────────────────
+   무기 스물한 종이 서로를 모르고 있었다. 쏟은 커피가 적을 적셔도
+   반려 도장은 젖은 적과 마른 적을 똑같이 찍었고, 회의에 묶인 적에게
+   사직서가 더 아프지도 않았다. 그래서 빌드가 「좋은 무기 여섯을 고른다」
+   였지 「조합을 만든다」가 아니었다.
+
+   무기를 백 개 만드는 대신 태그 셋을 둔다. 무기가 상태를 남기고,
+   다른 무기가 그 상태를 소비하면 반응이 난다.
+
+     젖음  쏟은 커피·정수기·커피머신·미끄럼 주의
+     묶임  회의 소집·회의실 예약·엘리베이터·파티션
+     참조  참조 메일·사내 메신저·근태기록
+
+     번짐  젖은 적을 서류로 때리면 잉크가 번진다 — 피해 60%가 둘레에 튄다
+     지적  회의에 묶인 적은 더 아프다 — 피해 1.6배
+     전달  참조된 적이 처리되면 같이 참조된 사람에게 간다 — 한 번 연쇄
+
+   전부 damage() 한 곳에서 난다. 무기마다 따로 짜면 다음에 무기를 더할 때
+   또 스물한 군데를 고쳐야 한다. */
+const REACT_R  = 70;     // 번짐 반경
+const REACT_CC = 120;    // 전달 반경
+function tagFoe(f, tag, sec){
+  if(tag==="wet")  f.wet =Math.max(f.wet ||0, sec);
+  else if(tag==="cc") f.cc=Math.max(f.cc||0, sec);
+}
+/* 반응이 났다는 걸 화면이 말해야 한다. 안 보이면 없는 것과 같다 */
+function reactFx(g,x,y,c,r){
+  if(g.fx.length<26) g.fx.push({type:"ring",x:x,y:y,t:0,r0:8,r1:r,c:c});
+}
+function damage(g,f,dmg,sx,sy,kb,src){
   /* 교섭 중엔 대표이사를 때리지 않는다 — 앉아서 얘기하기로 했으니까.
      때려서 이기는 싸움이 버텨서 관철시키는 싸움으로 규칙째 바뀐다 */
   if(g.barOn && f.boss && E[f.kind].robot!==true){
@@ -5652,6 +5708,25 @@ function damage(g,f,dmg,sx,sy,kb){
   /* 직군이 손맛을 바꾼다 — 인사는 덜 아프게 때리고(dmgMul),
      현장은 더 멀리 민다(push). 무기 코드는 그대로 두고 여기서 한 번에 건다. */
   dmg *= (g.P.dmgMul||1);
+  /* ── 반응 ── 소스 무기를 아는 자리는 여기 하나뿐이다 */
+  const W = src ? WEAPONS[src] : null;
+  if(W && !f.boss){
+    if(W.tag) tagFoe(f, W.tag, W.tag==="wet"?3.2:4.0);
+    /* 지적 — 회의에 묶여 있으면 더 아프다 */
+    if(f.hold>0){ dmg*=1.6; f.hold=Math.max(0,f.hold-0.5); f.react=.22; }
+    /* 번짐 — 젖은 종이에 잉크가 번진다. 젖음은 한 번에 마른다 */
+    if(W.paper && (f.wet||0)>0){
+      f.wet=0; f.react=.30;
+      reactFx(g,f.x,f.y,"#6f9fd8",REACT_R);
+      const spl=dmg*0.6;
+      for(const o of g.foes){
+        if(o===f || o.boss || E[o.kind].prop) continue;
+        if(Math.hypot(o.x-f.x,o.y-f.y)>REACT_R) continue;
+        o.hp-=spl; g.dmgDealt+=spl; o.hit=.10;
+        if(o.hp<=0) killFoe(g,o,g.foes.indexOf(o));
+      }
+    }
+  }
   f.hp-=dmg; g.dmgDealt+=dmg; f.hit=.12;
   if(kb){ const dx=f.x-sx, dy=f.y-sy, d=Math.hypot(dx,dy)||1, k=kb*(g.P.push||1);
           f.kbx=dx/d*k; f.kby=dy/d*k; f.kb=.14; }
@@ -5807,6 +5882,17 @@ function burstBits(bn,away,big,kind){
   return bits;
 }
 function killFoe(g,f,i){
+  /* 전달 — 참조된 사람이 처리되면 같이 참조된 사람에게 간다. 한 번만 */
+  if((f.cc||0)>0 && !f.boss && !f.ccDone){
+    f.ccDone=1;
+    const d=f.maxhp*0.45;
+    reactFx(g,f.x,f.y,"#57d98a",REACT_CC);
+    for(const o of g.foes){
+      if(o===f || o.boss || E[o.kind].prop || !((o.cc||0)>0)) continue;
+      if(Math.hypot(o.x-f.x,o.y-f.y)>REACT_CC) continue;
+      o.hp-=d; g.dmgDealt+=d; o.hit=.10; o.react=.22;
+    }
+  }
   /* 집기는 일이 아니라 화풀이다 — 미결에도 콤보에도 안 잡힌다 */
   if(E[f.kind].prop){
     g.foes.splice(i,1);
@@ -6020,6 +6106,9 @@ function step(g,dt){
     }
     if(E[f.kind].robot){                              // 로봇 — 나를 무시하고 제 일을 한다
       if(f.hold>0){ f.hold-=dt; }
+      if(f.wet>0)  f.wet -=dt;
+      if(f.cc>0)   f.cc  -=dt;
+      if(f.react>0) f.react-=dt;
       else{
         if(f.wx===undefined){ f.wx=f.x+(Math.random()-.5)*300; f.wy=f.y+(Math.random()-.5)*300; }
         const wdx=f.wx-f.x, wdy=f.wy-f.y, wd=Math.hypot(wdx,wdy)||1;
@@ -6102,11 +6191,11 @@ function step(g,dt){
         if(s.pierce){                        // 근태기록·전사 공지 — 막히지 않는다
           if(s.hitSet.has(f)) continue;
           s.hitSet.add(f);
-          damage(g,f,s.dmg,s.x,s.y,4); S("hit");
+          damage(g,f,s.dmg,s.x,s.y,4,s.src); S("hit");
           g.fx.push({type:"spark",x:s.x,y:s.y,t:0});
           continue;
         }
-        damage(g,f,s.dmg,s.x,s.y,8); S("hit");
+        damage(g,f,s.dmg,s.x,s.y,8,s.src); S("hit");
         g.fx.push({type:"spark",x:s.x,y:s.y,t:0});
         g.shots.splice(i,1); break;
       }
@@ -6118,7 +6207,7 @@ function step(g,dt){
     if(p.life<=0){ g.pools.splice(i,1); continue; }
     for(const f of g.foes){
       const dx=f.x-p.x, dy=f.y-p.y;
-      if(dx*dx+dy*dy < p.r*p.r) damage(g,f,p.dps*dt,0,0,0);
+      if(dx*dx+dy*dy < p.r*p.r) damage(g,f,p.dps*dt,0,0,0,p.src);
     }
   }
   // 경험치 구슬 — 자석 범위는 무기 사거리보다 넓어야 한다.
@@ -6143,7 +6232,7 @@ function step(g,dt){
   if(g.weapons.overtime){
     const L=WEAPONS.overtime.lv(g.weapons.overtime), R=L.r*P.range;
     for(const f of g.foes){
-      if(Math.hypot(f.x-P.x,f.y-P.y)<R) damage(g,f,L.dps*dt,0,0,0);
+      if(Math.hypot(f.x-P.x,f.y-P.y)<R) damage(g,f,L.dps*dt,0,0,0,"overtime");
     }
   }
   // 회의 소집 — 한 점으로 끌어당기고 그 안을 깎는다
@@ -6180,7 +6269,7 @@ function step(g,dt){
       let n=0;
       for(const f of g.foes){
         if(Math.hypot(f.x-q.x,f.y-q.y)>q.r) continue;
-        damage(g,f,q.dmg,q.x,q.y,30); n++;
+        damage(g,f,q.dmg,q.x,q.y,30,q.src); n++;
       }
       g.fx.push({type:"ring",x:q.x,y:q.y,t:0,r0:18,r1:q.r*1.6,c:"#f5c451"});
       g.fx.push({type:"burst",x:q.x,y:q.y,t:0,r:q.r*0.4,
@@ -6206,7 +6295,7 @@ function step(g,dt){
     for(const f of g.foes){
       if(c.hitSet.has(f)) continue;
       if(Math.hypot(f.x-c.px,f.y-c.py) < f.r+11){
-        c.hitSet.add(f); damage(g,f,c.dmg,c.px,c.py,7); S("hit");
+        c.hitSet.add(f); damage(g,f,c.dmg,c.px,c.py,7,c.src); S("hit");
         /* 돌아올 때 한 번 더 — 게임 시간으로 센다.
            setTimeout 이었는데 그건 벽시계라 3배속(__fast)에서 틀리게 돌고,
            탭이 뒤로 가면 아예 안 돈다. 게임 상태를 벽시계로 바꾸면
@@ -6606,6 +6695,17 @@ function poseOf(f,g){
   return {a:"walk", p:(f.walk||0)%1, t:g.t};
 }
 function drawFoe(g,f,sx,sy){
+  /* 상태가 몸에 보여야 반응이 우연으로 안 읽힌다.
+     젖음은 발밑 웅덩이, 참조는 머리 위 점, 반응이 난 순간은 한 번 번쩍. */
+  if(f.wet>0){ ctx.save(); ctx.globalAlpha=Math.min(.45,f.wet*.16);
+    ctx.fillStyle="#6f9fd8"; ctx.beginPath();
+    ctx.ellipse(sx,sy+f.r*0.55,f.r*1.15,f.r*0.42,0,0,7); ctx.fill(); ctx.restore(); }
+  if(f.cc>0){ ctx.save(); ctx.globalAlpha=Math.min(.85,f.cc*.28);
+    ctx.fillStyle="#57d98a"; ctx.beginPath();
+    ctx.arc(sx+f.r*0.72,sy-f.r-6,3.2,0,7); ctx.fill(); ctx.restore(); }
+  if(f.react>0){ ctx.save(); ctx.globalAlpha=Math.min(.6,f.react*2);
+    ctx.strokeStyle="#ffd66e"; ctx.lineWidth=2.4;
+    ctx.beginPath(); ctx.arc(sx,sy,f.r+6,0,7); ctx.stroke(); ctx.restore(); }
   const SP=window.SPRITES, R=window.SPRITES_RANK;
   const fn=(R&&R[f.kind])||(SP&&SP.foes&&SP.foes[f.kind]);
   const size=f.boss?76:52;
@@ -7671,8 +7771,11 @@ function levelUp(g){
     const lvl = o.kind==="e" ? ("진화 — "+WEAPONS[o.base].name+"을 대체합니다")
               : o.lv===0 ? "신규" : ("Lv "+o.lv+" → "+(o.lv+1));
     const desc = o.kind==="p" ? D.desc : (o.lv===0?D.desc:D.up(o.lv+1));
-    const hint = o.kind==="e" ? "" : evoHint(g, o.kind, o.id);
-    setHTML(txt, '<span class="n">'+esc(D.name)+'</span>'
+    const hint = o.kind==="e" ? "" : (evoHint(g, o.kind, o.id) || reactHint(g, o.kind, o.id));
+    const tg = (o.kind==="w" && D.tag && TAGNAME[D.tag])
+      ? '<span class="tagchip">'+esc(T(TAGNAME[D.tag]))+'</span>'
+      : (o.kind==="w" && D.paper) ? '<span class="tagchip">'+esc(T("서류"))+'</span>' : '';
+    setHTML(txt, '<span class="n">'+esc(D.name)+tg+'</span>'
       +'<span class="lvl">'+lvl+'</span><span class="d">'+esc(desc)+'</span>'
       +(hint?'<span class="evh">'+esc(hint)+'</span>':''));
     b.appendChild(txt);
@@ -8898,7 +9001,8 @@ window.__api={WEAPONS,PERKS,E,ZONES,DAY,hourOf,clockStr,spawnRing,start,todoOf,z
              GOALS, goalDone, rival, rivalCheck, reachGoals,
              RANK_MAX, RANK_LOAD, RANK_PWR, RANK_PAY, rankPick, quotaOf,
              EVO, EVOLVED, evoHint, evoReady, LOOP_FROM, LOOP_MAX, loopN, loopMul, loopPay,
-             RND, dailyPlan, dayKey, rollEvent};
+             RND, dailyPlan, dayKey, rollEvent, damage, spawnAt, tagFoe, killFoe,
+             reactHint, TAGNAME};
 window.__shareCard=g=>shareCard(g);    // 결과 카드 검증용
 window.__askLoop=g=>askLoop(g);        // 엔드리스 검증용
 $("#tutskip").onclick=()=>{ S("select"); tutStop(G); };

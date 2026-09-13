@@ -12,7 +12,7 @@
    게임만 고치고 여기를 잊으면, 고친 것이 이미 설치한 사람에게
    영영 가지 않는다 — 실제로 여섯 커밋 동안 그 상태였다.
    손으로 올리는 걸 잊지 않도록 offline 검사가 해시를 대조한다. */
-const CACHE = 'jeongsi-v2-3df2dce0e53a';
+const CACHE = 'jeongsi-v2-99b35b3cb65a';
 
 const SHELL = [
   './',
