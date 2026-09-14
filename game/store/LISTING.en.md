@@ -7,7 +7,7 @@ On-Time Departure
 
 ## Short description (80 chars)
 ```
-Cut through the office and reach the exit by 18:00. Nine zones. Twenty-seven weapons.
+Cut through the office and reach the exit by 18:00. Nine zones. Thirty-three weapons.
 ```
 (79 chars)
 
@@ -30,7 +30,7 @@ Every level, pick one of three cards and build the way you fight.
 · Executive floor — an audit is announced. They want more documents
 · CEO's office — the last door. Past it is the lobby exit
 
-■ Twenty-seven weapons, six slots
+■ Thirty-three weapons, six slots
 Rejection stamp, all-staff notice, CC mail, spilled coffee, resignation letter,
 called meeting, overtime, company messenger, corporate card, attendance log,
 elevator, partition, printer, water cooler, coffee machine, wet floor sign,

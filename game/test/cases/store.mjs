@@ -69,6 +69,24 @@ export default async function run(){
   for(const [re, what] of banned)
     s.ok(`${what} 를 쓰지 않는다`, !re.test(src));
 
+  /* 링크 미리보기 — 마케팅 예산이 0 이면 퍼지는 길은 사람이 붙여 주는
+     링크뿐이다. 그 링크가 제목 한 줄로만 뜨면 아무도 안 누른다.
+     그리고 og:image 가 실제로 있는 파일을 가리켜야 한다 — 깨진 미리보기는
+     없는 것보다 나쁘다. */
+  for(const [re, what] of [
+    [/property="og:title"/, 'og:title'],
+    [/property="og:description"/, 'og:description'],
+    [/property="og:image"/, 'og:image'],
+    [/name="twitter:card"\s+content="summary_large_image"/, '트위터 큰 카드'],
+  ]) s.ok(`${what} 가 있다`, re.test(src), '');
+  {
+    const m = src.match(/property="og:image"\s+content="([^"]+)"/);
+    s.ok('og:image 가 실제 파일을 가리킨다',
+         !!m && existsSync(resolve(ROOT, m[1])), m ? m[1] : '없음');
+    s.ok('og:image 가 상대 경로다 — 어느 도메인에 올려도 맞는다',
+         !!m && !/^https?:/.test(m[1]), m ? m[1] : '없음');
+  }
+
   /* 방침이 적어 둔 저장 키 = 코드가 실제로 쓰는 키 */
   const used = [...new Set([...src.matchAll(/localStorage\.\w+\(\s*"([^"]+)"/g)].map(m => m[1]))];
   const constKeys = [...src.matchAll(/(?:SAVE_KEY|LANG_KEY|TUT_KEY|LS_KEY)\s*=\s*"([^"]+)"/g)].map(m => m[1]);

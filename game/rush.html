@@ -4,7 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>정시 퇴근 — 오늘도 6시에 나간다</title>
-<meta name="description" content="18:00까지 회사 건물을 뚫고 정문으로 나가는 게임. 아홉 개 구역, 스물일곱 가지 무기, 다섯 직군.">
+<meta name="description" content="18:00까지 회사 건물을 뚫고 정문으로 나가는 게임. 아홉 개 구역, 서른세 가지 무기, 다섯 직군.">
+<!-- 링크 미리보기 — 이게 없으면 커뮤니티에 URL 을 붙여도 제목 한 줄만 뜬다.
+     마케팅 예산이 0 이면 퍼지는 길은 사람이 붙여 주는 링크뿐인데,
+     그 링크가 밋밋하면 아무도 안 누른다. 절대 경로가 아니라 상대 경로라
+     어느 도메인에 올려도 그대로 맞는다(og:url 은 페이지 스스로 채운다). -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="정시 퇴근 — 오늘도 6시에 나간다">
+<meta property="og:description" content="18:00까지 회사 건물을 뚫고 정문으로 나가는 게임. 아홉 개 구역, 서른세 가지 무기, 다섯 직군.">
+<meta property="og:image" content="store/feature-1024x500.png">
+<meta property="og:image:width" content="1024">
+<meta property="og:image:height" content="500">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="정시 퇴근 — 오늘도 6시에 나간다">
+<meta name="twitter:description" content="18:00까지 회사 건물을 뚫고 정문으로 나가는 게임. 아홉 개 구역, 서른세 가지 무기, 다섯 직군.">
+<meta name="twitter:image" content="store/feature-1024x500.png">
 <meta name="theme-color" content="#0b0e14">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -240,6 +255,13 @@ body.lobby #hud, body.lobby #slots, body.lobby #bars, body.lobby #toast{display:
 .pick .evh{display:block;margin-top:6px;font-size:11px;font-weight:800;
   color:var(--accent);opacity:.92;line-height:1.4}
 /* 태그 — 이 무기가 어떤 상태를 남기는지. 이름 옆에 작게 */
+/* 도감 — 반응 줄과 태그 목록 */
+.cxr{border-left:3px solid var(--line);padding:8px 0 8px 11px;margin-bottom:8px}
+.cxr .cxn{font-size:14px;font-weight:800}
+.cxr .cxn .cxt{margin-left:8px;font-size:11px;font-weight:700;color:var(--dim)}
+.cxr .cxd{font-size:12px;color:var(--dim);margin-top:3px;line-height:1.5}
+.cxtags{margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:8px}
+.cxt2{font-size:11.5px;color:var(--dim);line-height:2}
 .tagchip{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;
   font-size:10px;font-weight:800;color:var(--blue);background:#151d27;border:1px solid #2a3a4e;
   vertical-align:middle}
@@ -3536,6 +3558,13 @@ const L10N = { ko:null, en:{
   "불이 꺼진 층을 지나왔다. 예전엔 여기가 제일 환했다.":"Walked past a floor with the lights off. This used to be the brightest one.",
   "후배가 후배를 데리고 왔다. 나한테 묻지 않고 자기가 답했다.":"My junior brought their own junior. Answered for me without asking.",
   "이제 이 이야기는 내 것이 아니다. 그래서 끝이 아니다.":"This story isn't mine anymore. That's why it isn't over.",
+  "무기 도감":"Codex","{0}종":"{0} kinds","반응":"Reactions","진화":"Evolutions","무기":"Weapons",
+  "무엇이 무엇과 맞물리는지. 쥐는 건 그날 카드가 정합니다.":"What locks into what. Which you get is still up to the cards.",
+  "번짐":"Bleed","지적":"Called out","전달":"Forwarded","{0} + {1}":"{0} + {1}",
+  "{0} {1} + {2} {3}":"{0} {1} + {2} {3}",
+  "젖은 적을 서류로 때리면 피해의 60%가 둘레로 번집니다":"Hit a wet target with paper and 60% of the damage spreads around",
+  "회의에 묶인 적은 모든 공격을 1.6배로 받습니다":"Targets held in a meeting take 1.6× from everything",
+  "참조된 적이 처리되면 옆의 참조된 적에게 이어집니다":"Clear a CC'd target and it carries to CC'd targets nearby",
   "젖음":"Wet","묶임":"Held","참조":"CC'd","서류":"Paper",
   "반려 사유서":"Rejection Memo","재택 공지":"Remote Notice","회신 요청":"Reply Requested",
   "아메리카노 벤티":"Venti Americano","칼퇴 선언":"Hard Stop","읽씹":"Left on Read",
@@ -8585,7 +8614,8 @@ function renderRecords(){
     <div class="sub" style="margin:18px 0 0">업적 <b style="color:var(--accent)">${
       ACH.filter(a=>achDone(a.id)).length}</b> / ${ACH.length} — ${T("잘해야 열립니다")}</div>
     <div class="achgrid" id="achg"></div>
-    <div class="dock"><button class="primary" id="back">돌아가기</button></div>`);
+    <div class="dock"><button class="ghost" id="toCodex" style="margin-top:0">${T("무기 도감")}</button>
+      <button class="primary" id="back">돌아가기</button></div>`);
   const box=$("#achg");
   for(const a of ACH){
     const on=achDone(a.id), rw=achReward(a);
@@ -8597,7 +8627,86 @@ function renderRecords(){
       +(rw?'<span class="r">'+(on?"해금됨 — ":"보상 ")+esc(rw)+'</span>':""));
     d.appendChild(t); box.appendChild(d);
   }
+  $("#toCodex").onclick=()=>{ S("select"); renderCodex(); };
   $("#back").onclick=()=>{ S("select"); renderStart(); };
+  openOverlay();
+}
+
+/* ── 무기 도감 ──────────────────────────────────────────────────
+   태그 넷과 반응 셋, 진화 열둘이 생기면서 「알아야 할 것」이 늘었다.
+   그걸 한 판 안에서 카드 힌트로만 배우기엔 느리다 — 반려 도장을 여덟까지
+   올려 본 사람도 그게 노트북과 짝이라는 걸 그 순간에야 안다.
+
+   도감은 답지가 아니라 지도다. 무엇이 있는지와 무엇과 무엇이 맞물리는지를
+   보여 주되, 그걸 이 판에서 쥘지는 여전히 카드가 정한다. */
+function renderCodex(){
+  lobbyOn(true);
+  const tagChip=w=>{
+    const t=w.tag&&TAGNAME[w.tag] ? T(TAGNAME[w.tag]) : (w.paper?T("서류"):"");
+    return t?'<span class="tagchip">'+esc(t)+'</span>':'';
+  };
+  /* 반응 — 태그가 무엇과 만나 무엇이 되는지 */
+  const byTag=t=>Object.keys(WEAPONS).filter(k=>WEAPONS[k].tag===t&&!WEAPONS[k].evo)
+                   .map(k=>T(WEAPONS[k].name)).join(" · ");
+  const papers=Object.keys(WEAPONS).filter(k=>WEAPONS[k].paper&&!WEAPONS[k].evo)
+                 .map(k=>T(WEAPONS[k].name)).join(" · ");
+  const REACTS=[
+    ["#6f9fd8", T("번짐"), TF("{0} + {1}", T("젖음"), T("서류")),
+     T("젖은 적을 서류로 때리면 피해의 60%가 둘레로 번집니다")],
+    ["#f5c451", T("지적"), T("묶임"),
+     T("회의에 묶인 적은 모든 공격을 1.6배로 받습니다")],
+    ["#57d98a", T("전달"), T("참조"),
+     T("참조된 적이 처리되면 옆의 참조된 적에게 이어집니다")],
+  ];
+  const rHTML=REACTS.map(r=>`<div class="cxr" style="border-left-color:${r[0]}">
+      <div class="cxn" style="color:${r[0]}">${esc(r[1])}<span class="cxt">${esc(r[2])}</span></div>
+      <div class="cxd">${esc(r[3])}</div></div>`).join("");
+  const tHTML=[["wet","젖음"],["hold","묶임"],["cc","참조"]].map(([k,n])=>
+      `<div class="cxt2"><span class="tagchip">${esc(T(n))}</span> ${esc(byTag(k))}</div>`).join("")
+    + `<div class="cxt2"><span class="tagchip">${esc(T("서류"))}</span> ${esc(papers)}</div>`;
+
+  setHTML($("#card"), `
+    <div class="title"><h1 class="ttl" style="font-size:30px">${T("무기 도감")}</h1>
+      <span class="when">${TF("{0}종", Object.keys(WEAPONS).length)}</span></div>
+    <div class="sub" style="margin:6px 0 0">${T("무엇이 무엇과 맞물리는지. 쥐는 건 그날 카드가 정합니다.")}</div>
+    <div class="sub" style="margin:18px 0 8px;color:var(--ink);font-weight:800">${T("반응")}</div>
+    ${rHTML}
+    <div class="cxtags">${tHTML}</div>
+    <div class="sub" style="margin:18px 0 8px;color:var(--ink);font-weight:800">${T("진화")}</div>
+    <div class="achgrid" id="cxevo"></div>
+    <div class="sub" style="margin:18px 0 8px;color:var(--ink);font-weight:800">${T("무기")}</div>
+    <div class="achgrid" id="cxw"></div>
+    <div class="dock"><button class="primary" id="back">${T("돌아가기")}</button></div>`);
+
+  /* 진화 — 원본 + 강화 → 결과. 짝이 둘이라 갈림길이 보인다 */
+  const ev=$("#cxevo");
+  for(const base in EVO){
+    for(const e of evoPairs(base)){
+      const d=document.createElement("div");
+      d.className="achcard on";
+      d.appendChild(icon(base,30));
+      const t=document.createElement("div");
+      setHTML(t, '<span class="n">'+esc(T(e.name))+tagChip(WEAPONS[e.to]||{})+'</span>'
+        +'<span class="d">'+esc(TF("{0} {1} + {2} {3}",
+            T(WEAPONS[base].name), WEAPONS[base].max,
+            T(PERKS[e.perk].name), PERKS[e.perk].max))+'</span>'
+        +'<span class="r">'+esc(T((WEAPONS[e.to]||{}).desc||""))+'</span>');
+      d.appendChild(t); ev.appendChild(d);
+    }
+  }
+  /* 무기 — 진화형은 위에 있으니 뺀다 */
+  const wb=$("#cxw");
+  for(const id in WEAPONS){
+    const W=WEAPONS[id]; if(W.evo) continue;
+    const d=document.createElement("div");
+    d.className="achcard on";
+    d.appendChild(icon(id,30));
+    const t=document.createElement("div");
+    setHTML(t, '<span class="n">'+esc(T(W.name))+tagChip(W)+'</span>'
+      +'<span class="d">'+esc(T(W.desc))+'</span>');
+    d.appendChild(t); wb.appendChild(d);
+  }
+  $("#back").onclick=()=>{ S("select"); renderRecords(); };
   openOverlay();
 }
 
@@ -8893,7 +9002,12 @@ function renderEnd(g){
       const cv2=shareCard(g);
       const blob=await new Promise(r=>cv2.toBlob(r,"image/png"));
       const file=blob && window.File ? new File([blob],"jeongsi.png",{type:"image/png"}) : null;
-      const txt=TF("{0}에 나왔습니다 — 정시 퇴근", g.ot?T("야근"):clockStr(g.t));
+      /* 받은 사람이 어디로 가야 할지 알아야 퍼진다. 주소는 지금 열려 있는
+         페이지에서 가져온다 — 어느 도메인에 올려도 그대로 맞는다. */
+      const here = location.protocol.startsWith("http")
+        ? location.href.split(/[?#]/)[0] : "";
+      const txt=TF("{0}에 나왔습니다 — 정시 퇴근", g.ot?T("야근"):clockStr(g.t))
+              + (here ? "\n" + here : "");
       if(file && navigator.canShare && navigator.canShare({files:[file]})){
         await navigator.share({files:[file], text:txt});
       }else if(blob){
