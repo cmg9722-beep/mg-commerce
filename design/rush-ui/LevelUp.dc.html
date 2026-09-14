@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;600;800&display=swap">
+  <style>
+    body{margin:0;font-family:'Gothic A1',"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+      background:#0b0e14;color:#e8ecf4;-webkit-font-smoothing:antialiased}
+    a{color:#f5c451} a:hover{color:#d9a94e}
+    .ttl{font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
+    .num{font-variant-numeric:tabular-nums}
+  </style>
+</helmet>
+<div style="width:1000px;height:760px;position:relative;overflow:hidden;background:#0b0e14">
+  <div style="position:absolute;inset:0;background:rgba(8,10,15,.82);
+    display:flex;align-items:center;justify-content:center;padding:20px">
+    <div style="width:100%;max-width:760px;background:#141922;border:1px solid #232a36;
+      border-radius:14px;padding:24px">
+
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <h1 class="ttl" style="font-size:30px;margin:0;line-height:1">레벨 12</h1>
+        <span style="font-size:13px;color:#7d8699">하나를 고르세요</span>
+      </div>
+
+      <!-- 보유 무기를 함께 보여준다. 무엇을 키울지 판단하려면 필요하다. -->
+      <div style="display:flex;gap:6px;margin-top:14px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px;background:#1a2029;border:1px solid #232a36;
+          border-radius:999px;padding:4px 10px 4px 6px">
+          <span style="width:18px;height:18px;border-radius:5px;background:#6f9fd8;display:block"></span>
+          <span style="font-size:12px">반려 도장</span>
+          <span class="num" style="font-size:11px;color:#f5c451;font-weight:800">8</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;background:#1a2029;border:1px solid #232a36;
+          border-radius:999px;padding:4px 10px 4px 6px">
+          <span style="width:18px;height:18px;border-radius:5px;background:#c3ccdb;display:block"></span>
+          <span style="font-size:12px">복사기</span>
+          <span class="num" style="font-size:11px;color:#f5c451;font-weight:800">4</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;background:#1a2029;border:1px solid #232a36;
+          border-radius:999px;padding:4px 10px 4px 6px">
+          <span style="width:18px;height:18px;border-radius:5px;background:#f5c451;display:block"></span>
+          <span style="font-size:12px">쏟은 커피</span>
+          <span class="num" style="font-size:11px;color:#f5c451;font-weight:800">3</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;background:#12161d;border:1px dashed #232a36;
+          border-radius:999px;padding:4px 10px">
+          <span style="font-size:12px;color:#59627a">빈 칸 2</span>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:16px">
+
+        <div style="background:#232936;border:1px solid #232a36;border-radius:10px;padding:14px;
+          display:flex;gap:12px;align-items:flex-start;cursor:pointer">
+          <span style="width:40px;height:40px;border-radius:9px;background:#1a2029;border:1px solid #2a3342;
+            flex:none;display:block"></span>
+          <div>
+            <span style="font-weight:800;font-size:14px;display:block">사내 메신저</span>
+            <span style="font-size:11px;color:#f5c451;display:block;margin:1px 0 4px">신규</span>
+            <span style="font-size:12px;color:#7d8699;line-height:1.45">적에서 적으로 옮겨 붙는다</span>
+          </div>
+        </div>
+
+        <div style="background:#2c3342;border:1px solid #f5c451;border-radius:10px;padding:14px;
+          display:flex;gap:12px;align-items:flex-start;cursor:pointer">
+          <span style="width:40px;height:40px;border-radius:9px;background:#1a2029;border:1px solid #3a4152;
+            flex:none;display:block"></span>
+          <div>
+            <span style="font-weight:800;font-size:14px;display:block">복사기</span>
+            <span style="font-size:11px;color:#f5c451;display:block;margin:1px 0 4px">Lv 4 → 5</span>
+            <span style="font-size:12px;color:#9aa4bb;line-height:1.45">장수 +2, 피해 +5</span>
+          </div>
+        </div>
+
+        <div style="background:#232936;border:1px solid #232a36;border-radius:10px;padding:14px;
+          display:flex;gap:12px;align-items:flex-start;cursor:pointer">
+          <span style="width:40px;height:40px;border-radius:9px;background:#1a2029;border:1px solid #2a3342;
+            flex:none;display:block"></span>
+          <div>
+            <span style="font-weight:800;font-size:14px;display:block">노트북</span>
+            <span style="font-size:11px;color:#f5c451;display:block;margin:1px 0 4px">Lv 2 → 3</span>
+            <span style="font-size:12px;color:#7d8699;line-height:1.45">공격 속도 +10%</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="height:1px;background:#232a36;margin:22px 0"></div>
+
+      <!-- 진화: 같은 자리에 뜨지만 완전히 다른 사건으로 보여야 한다 -->
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <h1 class="ttl" style="font-size:30px;margin:0;line-height:1;color:#f5c451">진화</h1>
+        <span style="font-size:13px;color:#57d98a">조건이 맞았습니다</span>
+      </div>
+      <div style="margin-top:14px;background:linear-gradient(180deg,#2f2a1c,#232936);
+        border:1px solid #f5c451;border-radius:12px;padding:18px;display:flex;gap:16px;align-items:center;
+        box-shadow:0 0 0 1px rgba(245,196,81,.30),0 10px 34px rgba(245,196,81,.13)">
+        <span style="width:56px;height:56px;border-radius:12px;background:#1a2029;border:1px solid #46391f;
+          flex:none;display:block"></span>
+        <div style="flex:1">
+          <span class="ttl" style="font-size:22px;color:#f5c451;display:block;line-height:1.1">전결</span>
+          <span style="font-size:12px;color:#57d98a;display:block;margin:5px 0 6px;font-weight:800">
+            반려 도장 Lv8 + 노트북 Lv5 — 반려 도장을 대체합니다</span>
+          <span style="font-size:13px;color:#c3ccdb;line-height:1.5">
+            결재를 안 올린다. 사거리 안의 전부를 동시에 찍는다</span>
+        </div>
+      </div>
+      <div style="color:#7d8699;font-size:12px;margin-top:12px;line-height:1.6">
+        무기를 끝까지 올리고 짝이 되는 강화도 끝까지 올리면 진화합니다.
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

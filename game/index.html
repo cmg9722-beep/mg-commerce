@@ -1,0 +1,2955 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>출근 저지 — 사무실 레인 디펜스</title>
+<style>
+/* 글꼴 — 「정시 퇴근」과 같은 파일을 나눠 쓴다. 서브셋도 두 게임의 글자를
+   합쳐서 뽑았다. 네트워크가 없어도 같은 화면이 나와야 한다.
+   Black Han Sans · Gothic A1 — SIL OFL 1.1 (assets/fonts/OFL-*.txt) */
+@font-face{font-family:'Black Han Sans';font-style:normal;font-weight:400;font-display:swap;
+  src:url(assets/fonts/BlackHanSans-subset.woff2) format('woff2')}
+@font-face{font-family:'Gothic A1';font-style:normal;font-weight:400;font-display:swap;
+  src:url(assets/fonts/GothicA1-400-subset.woff2) format('woff2')}
+@font-face{font-family:'Gothic A1';font-style:normal;font-weight:700;font-display:swap;
+  src:url(assets/fonts/GothicA1-700-subset.woff2) format('woff2')}
+@font-face{font-family:'Gothic A1';font-style:normal;font-weight:800;font-display:swap;
+  src:url(assets/fonts/GothicA1-800-subset.woff2) format('woff2')}
+:root{--bg:#0b0e14;--panel:#141922;--line:#232a36;--ink:#e8ecf4;--dim:#7d8699;
+      --accent:#f5c451;--good:#57d98a;--bad:#ff6b6b;--blue:#9ec8ff;--deep:#6f9fd8}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:'Gothic A1',"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  display:flex;justify-content:center;padding:14px}
+.ttl{font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
+.num{font-variant-numeric:tabular-nums}
+#app{width:100%;max-width:840px}
+h1{font-size:22px;margin:0 0 4px;font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
+.sub{color:var(--dim);font-size:13px;margin-bottom:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:10px}
+label{display:block;font-size:13px;color:var(--dim);margin:12px 0 6px}
+input{width:100%;padding:10px;border-radius:6px;border:1px solid var(--line);
+  background:#0b0d12;color:var(--ink);font-size:14px;font-family:inherit}
+button{font-family:inherit;cursor:pointer;border-radius:6px;border:1px solid var(--line);
+  background:#252b37;color:var(--ink);padding:10px 14px;font-size:14px;text-align:left}
+button:hover:not(:disabled){border-color:var(--accent)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.primary{background:var(--accent);color:#17191f;border-color:var(--accent);font-weight:bold;
+  width:100%;margin-top:14px;padding:12px;text-align:center}
+.ghost{background:transparent;color:var(--dim);text-align:center;width:100%;margin-top:8px}
+#mute{position:fixed;top:12px;right:12px;z-index:60;width:34px;height:34px;padding:0;
+  display:flex;align-items:center;justify-content:center;background:rgba(20,25,34,.86);
+  border:1px solid var(--line);color:var(--dim)}
+#mute:hover{border-color:var(--accent);color:var(--ink)}
+#mute svg{display:block}
+.deptlegend{margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:8px;background:#0f131b}
+.dl-row{display:flex;align-items:center;gap:10px;padding:4px 0}
+.dl-tag{flex:none;min-width:46px;text-align:center;color:#0b0e14;font-weight:800;
+  font-size:12px;padding:3px 7px;border-radius:4px}
+.dl-d{font-size:13px;color:var(--ink)}
+.dl-note{margin-top:9px;padding-top:9px;border-top:1px solid var(--line);
+  font-size:12px;color:var(--dim)}
+/* 마감 D-crunch 구간 — 화면이 붉어진다 */
+#cvwrap.crunch{border-color:#5a2b2f;box-shadow:inset 0 0 0 9999px rgba(255,107,107,.05)}
+#cvwrap.crunch canvas{box-shadow:0 0 0 1px #5a2b2f}
+#mute .x{display:none}
+#mute[aria-pressed="true"]{color:var(--bad)}
+#mute[aria-pressed="true"] .wave{display:none}
+#mute[aria-pressed="true"] .x{display:block}
+
+.hero{position:relative;overflow:hidden;border-radius:12px;border:1px solid var(--line);
+  background:radial-gradient(120% 80% at 50% -10%, #1b2433 0%, #0b0e14 62%);
+  padding:34px 30px 30px;margin-bottom:12px}
+.hero .lamps{position:absolute;top:0;left:0;right:0;height:150px;
+  background:linear-gradient(180deg, rgba(158,200,255,.20), rgba(158,200,255,0))}
+.hero .bars{position:absolute;top:20px;left:50%;transform:translateX(-50%);display:flex;gap:22px}
+.hero .bars i{display:block;width:126px;height:8px;border-radius:2px;background:#cfe4ff;
+  box-shadow:0 0 30px 7px rgba(158,200,255,.42)}
+.hero .bars i:nth-child(2){background:#8fb4e6;box-shadow:0 0 20px 4px rgba(158,200,255,.24)}
+.hero .bars i:nth-child(3){background:#4d6280;box-shadow:none}
+.hero .in{position:relative}
+.kicker{font-size:11px;letter-spacing:.4em;color:var(--blue);font-weight:800}
+.big{font-size:60px;line-height:.95;margin-top:10px;text-shadow:0 0 40px rgba(158,200,255,.25)}
+.rule{width:78px;height:4px;background:var(--accent);margin:16px 0 14px}
+.lede{font-size:14px;color:#9aa4b8;line-height:1.75;max-width:340px}
+.silh{position:absolute;right:14px;top:34px;opacity:.9}
+.stages{display:grid;gap:10px}
+.stage{padding:15px;display:flex;gap:13px;align-items:flex-start;background:#232936}
+.stage .ico{font-size:26px;line-height:1}
+.stage .t{font-weight:bold;font-size:15px;margin-bottom:3px;display:block}
+.stage .d{font-size:12px;color:var(--dim);line-height:1.6;display:block}
+.tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:20px;
+  border:1px solid var(--line);color:var(--dim);margin-left:6px;vertical-align:middle}
+.tag.boss{color:var(--bad);border-color:var(--bad)}
+
+/* HUD */
+.hud{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.coffee{font-size:24px;font-weight:bold;font-variant-numeric:tabular-nums}
+.coffee small{font-size:12px;color:var(--dim);font-weight:normal}
+.wavebar{flex:1;min-width:140px;height:7px;background:#0b0d12;border-radius:4px;overflow:hidden}
+.wavebar>i{display:block;height:100%;background:var(--blue);width:0}
+.hp{font-size:12px;color:var(--dim);text-align:right;line-height:1.6}
+.hp b{color:var(--ink)}
+
+/* 팔레트 */
+.pal{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px;margin-bottom:10px}
+.u{padding:9px;background:#232936;display:flex;flex-direction:column;gap:2px;line-height:1.35}
+.u.sel{border-color:var(--accent);background:#2c3342}
+.u .uico{width:30px;height:30px;display:block;margin-bottom:1px}
+.u .n{font-size:12px;font-weight:bold}
+.u .c{font-size:11px;color:var(--accent)}
+.u .d{font-size:10px;color:var(--dim)}
+.u.poor{opacity:.42}
+
+canvas{width:100%;display:block;border-radius:8px;background:#111721;
+  border:1px solid var(--line);touch-action:none;cursor:crosshair}
+.toast{height:19px;font-size:12px;color:var(--accent);margin-top:8px}
+
+.result{text-align:center;padding:24px 14px}
+.result h2{font-size:40px;margin:8px 0 10px}
+.tally{display:flex;gap:28px;justify-content:center;margin:16px 0 4px}
+.tally div{display:flex;flex-direction:column;gap:2px}
+.tally b{font-size:24px}
+.tally span{font-size:11px;color:var(--dim)}
+.bubble.pop{opacity:.35;text-decoration:line-through}
+.result p{color:var(--dim);font-size:14px;margin:6px 0}
+.safe{color:var(--good)}.danger{color:var(--bad)}
+.bubble{margin-top:14px;padding:10px 13px;background:#0b0d12;border:1px solid var(--line);
+  border-radius:9px;font-size:14px;text-align:left}
+
+
+#boss{display:none;position:fixed;inset:0;z-index:99;background:#fff;color:#000;
+  font-family:"Malgun Gothic",sans-serif;font-size:12px;overflow:auto}
+#boss.on{display:block}
+#boss .ribbon{background:#217346;color:#fff;padding:6px 12px;font-size:13px}
+#boss .tabs{background:#f3f2f1;border-bottom:1px solid #d0cece;padding:5px 12px}
+#boss table{border-collapse:collapse;width:100%;font-size:12px}
+#boss td,#boss th{border:1px solid #d0cece;padding:4px 8px;text-align:left}
+#boss th{background:#f3f2f1;font-weight:normal;color:#555}
+.hint{font-size:11px;color:var(--dim);text-align:center;margin-top:12px}
+</style>
+</head>
+<body>
+<button id="mute" type="button" aria-pressed="false" title="소리 켜기/끄기 (M)" aria-label="소리 끄기">
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 9h3l5-4v14l-5-4H4z" fill="currentColor" stroke="none"/>
+    <g class="wave"><path d="M16 9.2a4 4 0 0 1 0 5.6"/><path d="M18.7 6.5a8 8 0 0 1 0 11"/></g>
+    <g class="x"><path d="M16.5 9.5l5 5"/><path d="M21.5 9.5l-5 5"/></g>
+  </svg>
+</button>
+<div id="app"></div>
+<div id="boss">
+  <div class="ribbon" id="bossTitle">Excel — 2026년_생산실적_집계.xlsx</div>
+  <div class="tabs">파일 &nbsp; 홈 &nbsp; 삽입 &nbsp; 페이지 레이아웃 &nbsp; 수식 &nbsp; 데이터 &nbsp; 검토 &nbsp; 보기</div>
+  <table id="bossSheet"></table>
+</div>
+
+<script>
+/* ═══ 스프라이트 (design/ 아트 디렉션 기반) ═══ */
+/* _sprites.js — 출근 저지 벡터 스프라이트
+   아트 디렉션: design/Units.dc.html, design/Foes.dc.html (「형광등 꺼진 사무실」)
+   전 함수 시그니처: (ctx, cx, cy, s) — cx,cy 중심, s = 정사각 박스 한 변(px).
+   순수 Canvas2D 패스만 사용. 이모지/텍스트/이미지 없음. */
+(function () {
+  "use strict";
+
+  /* ── 팔레트 ── */
+  var PAPER = "#f2f5fa", PAPER2 = "#dfe6f2", PAPER3 = "#c3ccdb";
+  var G1 = "#98a4b8", G2 = "#74829a", G3 = "#5d6a7f", G4 = "#4c5769", INK = "#2f3542";
+  var BLUE = "#9ec8ff", BLUE2 = "#6f9fd8";
+  var YEL = "#f5c451", YEL2 = "#d9a94e";
+  var RED = "#ff6b6b", DRED = "#b93b3b";
+  var SKIN = "#e8d3bd", HAIR = "#2f3542";
+
+  /* 둥근 사각형 패스 (roundRect 폴리필 불요) */
+  function rr(ctx, x, y, w, h, r) {
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function frr(ctx, x, y, w, h, r, fill) {
+    ctx.fillStyle = fill;
+    rr(ctx, x, y, w, h, r);
+    ctx.fill();
+  }
+
+  /* 72×72 디자인 좌표계로 진입 (Units.dc.html의 viewBox와 동일) */
+  function in72(ctx, cx, cy, s) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    var k = s / 72;
+    ctx.scale(k, k);
+    ctx.translate(-36, -36);
+  }
+
+  /* ══════════ 설치 사물 (오른쪽을 향함) ══════════ */
+
+  /* 정수기 — 흰 본체, 파란 물통, 파란 꼭지(오른쪽) */
+  function water(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 20, 30, 32, 34, 3, PAPER2);          // 본체
+    frr(ctx, 20, 30, 32, 8, 2, G1);               // 상단 밴드
+    ctx.fillStyle = BLUE;                          // 거꾸로 꽂힌 물통
+    ctx.beginPath();
+    ctx.moveTo(28, 8); ctx.lineTo(44, 8);
+    ctx.lineTo(41, 28); ctx.lineTo(31, 28);
+    ctx.closePath(); ctx.fill();
+    frr(ctx, 27, 4, 18, 6, 2, BLUE2);             // 물통 목
+    frr(ctx, 38, 44, 8, 9, 2, BLUE2);             // 꼭지 — 진행 방향(오른쪽)
+    ctx.restore();
+  }
+
+  /* 파티션 — 3단 접이식, 가운데가 가장 큼 */
+  function wall(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 6, 18, 20, 42, 2, G3);
+    frr(ctx, 46, 22, 18, 38, 2, G4);
+    frr(ctx, 26, 12, 20, 48, 2, G2);
+    ctx.restore();
+  }
+
+  /* 복사기 — 회색 몸통, 세워진 원고, 노란 배출 트레이(오른쪽) */
+  function copy(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 10, 26, 48, 30, 4, PAPER3);          // 몸통
+    frr(ctx, 10, 26, 48, 9, 3, G1);               // 상단 패널
+    frr(ctx, 20, 8, 28, 18, 2, PAPER);            // 원고
+    frr(ctx, 24, 13, 20, 2.5, 1, G1);
+    frr(ctx, 24, 18, 14, 2.5, 1, G1);
+    frr(ctx, 30, 44, 26, 14, 2, YEL);             // 배출 트레이 — 오른쪽
+    ctx.restore();
+  }
+
+  /* 스테이플러 — 비스듬한 2단 몸체 + 파란 윗팔 */
+  function stap(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    ctx.fillStyle = G4;                            // 받침
+    ctx.beginPath();
+    ctx.moveTo(8, 44); ctx.lineTo(56, 44);
+    ctx.arcTo(61, 44, 61, 49, 5);
+    ctx.lineTo(61, 55); ctx.lineTo(8, 55);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = G2;                            // 중간 몸체
+    ctx.beginPath();
+    ctx.moveTo(12, 26); ctx.lineTo(52, 26);
+    ctx.arcTo(58, 26, 58, 32, 6);
+    ctx.lineTo(58, 42); ctx.lineTo(12, 42);
+    ctx.closePath(); ctx.fill();
+    frr(ctx, 14, 18, 36, 8, 3, BLUE);             // 윗팔
+    frr(ctx, 20, 46, 22, 4, 1, PAPER2);           // 심 배출구
+    ctx.restore();
+  }
+
+  /* 사직서 — 흰 종이, 3줄 텍스트, 우하단 빨간 도장 */
+  function quit(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 14, 6, 38, 52, 3, PAPER);
+    frr(ctx, 21, 16, 24, 3, 1.5, G1);
+    frr(ctx, 21, 24, 24, 3, 1.5, G1);
+    frr(ctx, 21, 32, 16, 3, 1.5, G1);
+    ctx.fillStyle = RED;
+    ctx.beginPath(); ctx.arc(44, 46, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2.4;
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(40, 46); ctx.lineTo(43, 49); ctx.lineTo(49, 43);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ══════════ 적 (왼쪽을 향해 걸어옴) ══════════ */
+  /* 공통 몸: 발밑 그림자 + 몸통 라운드렉트 + 살색 머리 + 반원 머리카락.
+     시선(눈 두 점)을 왼쪽으로 몰아 진행 방향을 표시. 소품도 왼쪽 손에. */
+
+  function foeBase(ctx, torso, wide) {
+    var tx = wide ? 18 : 22, tw = wide ? 40 : 32;   // 보스는 어깨가 넓다
+    ctx.fillStyle = "rgba(0,0,0,.35)";               // 그림자
+    ctx.beginPath();
+    ctx.ellipse(38, 90, wide ? 24 : 21, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    frr(ctx, tx, 36, tw, 44, 9, torso);              // 몸통
+    ctx.fillStyle = SKIN;                            // 머리
+    ctx.beginPath(); ctx.arc(38, 22, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = HAIR;                            // 머리카락(윗 반원)
+    ctx.beginPath(); ctx.arc(38, 20, 14, Math.PI, 0, false); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = INK;                             // 눈 — 왼쪽을 본다
+    ctx.beginPath(); ctx.arc(29, 25, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(36, 25, 1.8, 0, Math.PI * 2); ctx.fill();
+  }
+
+  /* 76×96 디자인 좌표계로 진입 (Foes.dc.html의 viewBox와 동일) */
+  function makeFoe(torso, wide, prop) {
+    return function (ctx, cx, cy, s) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      var k = s / 96;
+      ctx.scale(k, k);
+      ctx.translate(-38, -48);
+      foeBase(ctx, torso, wide);
+      if (prop) prop(ctx);
+      ctx.restore();
+    };
+  }
+
+  var foes = {
+    /* 인턴 — 목걸이 사원증 */
+    intern: makeFoe("#8b97ab", false, function (ctx) {
+      frr(ctx, 30, 40, 16, 5, 2, G4);               // 스트랩 클립
+      frr(ctx, 34, 44, 8, 14, 2, BLUE);             // 카드
+    }),
+    /* 사원 — 빨간 넥타이 */
+    staff: makeFoe("#6d7d96", false, function (ctx) {
+      ctx.fillStyle = RED;
+      ctx.beginPath();
+      ctx.moveTo(38, 40); ctx.lineTo(43, 45); ctx.lineTo(38, 63); ctx.lineTo(33, 45);
+      ctx.closePath(); ctx.fill();
+    }),
+    /* 대리 — 옆구리의 노란 서류철 (진행 방향 손) */
+    senior: makeFoe("#5b7bab", false, function (ctx) {
+      frr(ctx, 12, 50, 20, 16, 2, YEL);
+      frr(ctx, 12, 50, 20, 4, 2, YEL2);
+    }),
+    /* 과장 — 앞에 든 운전대 */
+    manager: makeFoe("#a8703f", false, function (ctx) {
+      ctx.strokeStyle = INK; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(38, 56, 11, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = INK;
+      ctx.beginPath(); ctx.arc(38, 56, 3, 0, Math.PI * 2); ctx.fill();
+    }),
+    /* 부장 — 어두운 서류가방 (진행 방향 손) */
+    gm: makeFoe("#a04a4a", false, function (ctx) {
+      frr(ctx, 15, 48, 8, 5, 2, INK);               // 손잡이
+      frr(ctx, 8, 52, 22, 18, 3, INK);              // 가방
+      ctx.fillStyle = "#1f232c";                    // 가방 이음선
+      ctx.fillRect(8, 59, 22, 3);
+    }),
+    /* 회식조 — 치켜든 맥주잔 + 발그레한 볼 */
+    drunk: makeFoe("#c99a3f", false, function (ctx) {
+      frr(ctx, 16, 44, 14, 18, 2, YEL);             // 잔
+      frr(ctx, 16, 44, 14, 5, 2, PAPER);            // 거품
+      ctx.save();
+      ctx.globalAlpha = 0.7; ctx.fillStyle = RED;    // 볼터치
+      ctx.beginPath(); ctx.arc(30, 27, 3.4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(46, 27, 3.4, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }),
+    /* 점검단(보스) — 줄 그어진 흰 클립보드, 어깨 넓음 */
+    audit: makeFoe(DRED, true, function (ctx) {
+      frr(ctx, 6, 44, 24, 30, 2, PAPER);            // 보드
+      frr(ctx, 6, 44, 24, 6, 2, G1);                // 클립
+      ctx.fillStyle = G1;
+      ctx.fillRect(11, 55, 14, 2.5);
+      ctx.fillRect(11, 61, 14, 2.5);
+      ctx.fillRect(11, 67, 9, 2.5);
+    })
+  };
+
+  /* ══════════ 내 자리 — 옆에서 본 사무용 의자 (오른쪽을 향함) ══════════ */
+  function seat(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 16, 8, 11, 34, 5, BLUE2);              // 등받이 (왼쪽 = 뒤)
+    frr(ctx, 16, 36, 36, 11, 5, BLUE2);             // 좌판 — 오른쪽으로 열림
+    frr(ctx, 30, 47, 7, 12, 2, G4);                 // 기둥
+    frr(ctx, 16, 58, 36, 5, 2.5, G4);               // 다리
+    ctx.fillStyle = INK;                            // 바퀴
+    ctx.beginPath(); ctx.arc(20, 65, 3.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(48, 65, 3.4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  window.SPRITES = {
+    units: { water: water, wall: wall, copy: copy, stap: stap, quit: quit },
+    foes: foes,
+    seat: seat
+  };
+})();
+</script>
+
+<script>
+/* _school_sprites.js — 등교 저지(학생 팩) 벡터 스프라이트
+   아트 디렉션: design/Themes.dc.html (학생 팩), 규격은 game/index.html의 SPRITES 블록과 동일.
+   전 함수 시그니처: (ctx, cx, cy, s) — cx,cy 중심, s = 정사각 박스 한 변(px).
+   순수 Canvas2D 패스만 사용. 이모지/텍스트/이미지 없음.
+   적은 전부 '사물'이다 — 사람(선생님·학생)은 절대 그리지 않는다. */
+(function () {
+  "use strict";
+
+  /* ── 팔레트 (직장인 팩과 공유 + 학생 팩 추가색) ── */
+  var PAPER = "#f2f5fa", PAPER2 = "#dfe6f2", PAPER3 = "#c3ccdb";
+  var G1 = "#98a4b8", G2 = "#74829a", G3 = "#5d6a7f", G4 = "#4c5769", INK = "#2f3542";
+  var BLUE = "#9ec8ff", BLUE2 = "#6f9fd8";
+  var YEL = "#f5c451", YEL2 = "#d9a94e";
+  var RED = "#ff6b6b", DRED = "#b93b3b";
+  var STEEL = "#7f96b0", STEEL2 = "#54687f";      // 사물함 금속
+  var CREAM = "#f0e6d2", CREAM2 = "#d9caa8";      // 학용품 종이
+  var GRN2 = "#4b8f70";                           // 자습서 표지 (학생 팩 그린)
+  var LIT = "#cfe4ff";                            // 자판기 상품창 불빛
+
+  /* 둥근 사각형 패스 (roundRect 폴리필 불요) */
+  function rr(ctx, x, y, w, h, r) {
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function frr(ctx, x, y, w, h, r, fill) {
+    ctx.fillStyle = fill;
+    rr(ctx, x, y, w, h, r);
+    ctx.fill();
+  }
+
+  /* 72×72 디자인 좌표계로 진입 (직장인 팩과 동일) */
+  function in72(ctx, cx, cy, s) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    var k = s / 72;
+    ctx.scale(k, k);
+    ctx.translate(-36, -36);
+  }
+
+  /* ══════════ 설치 사물 (오른쪽을 향함) ══════════ */
+
+  /* 자판기 — 어두운 몸통, 왼쪽 상품창(캔 2줄), 우하단 노란 배출구 */
+  function vend(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 16, 4, 40, 62, 4, G4);               // 몸통
+    frr(ctx, 16, 60, 40, 6, 3, INK);              // 하단 받침
+    frr(ctx, 20, 10, 18, 36, 2, LIT);             // 상품창 (왼쪽, 불 켜짐)
+    frr(ctx, 23, 15, 5, 10, 1.5, RED);            // 캔 1줄
+    frr(ctx, 30, 15, 5, 10, 1.5, BLUE2);
+    frr(ctx, 23, 31, 5, 10, 1.5, YEL2);
+    frr(ctx, 30, 31, 5, 10, 1.5, GRN2);           // 캔 2줄
+    frr(ctx, 42, 12, 10, 4, 1.5, G2);             // 버튼 패널
+    frr(ctx, 42, 19, 10, 4, 1.5, G2);
+    frr(ctx, 42, 26, 10, 4, 1.5, G2);
+    frr(ctx, 40, 50, 13, 9, 2, YEL);              // 배출구 — 진행 방향(오른쪽)
+    ctx.restore();
+  }
+
+  /* 사물함 — 3단 적층, 문마다 통풍구 2줄 + 오른쪽 손잡이 */
+  function locker(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 14, 4, 44, 64, 3, STEEL2);           // 프레임
+    var y;
+    for (var i = 0; i < 3; i++) {
+      y = 6 + i * 21;
+      frr(ctx, 16, y, 40, 19, 2, STEEL);          // 문
+      ctx.fillStyle = STEEL2;                     // 통풍구
+      ctx.fillRect(22, y + 4, 20, 2.5);
+      ctx.fillRect(22, y + 9, 20, 2.5);
+      frr(ctx, 48, y + 6, 4, 7, 1.5, PAPER2);     // 손잡이 (오른쪽)
+    }
+    ctx.restore();
+  }
+
+  /* 자습서 — 펼쳐 세운 두꺼운 문제집, 초록 표지, 오른쪽으로 늘어진 빨간 갈피끈 */
+  function book(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    ctx.fillStyle = GRN2;                          // 표지 (펼친 V자)
+    ctx.beginPath();
+    ctx.moveTo(9, 15); ctx.lineTo(36, 22); ctx.lineTo(63, 15);
+    ctx.lineTo(63, 50); ctx.lineTo(36, 58); ctx.lineTo(9, 50);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = CREAM2;                        // 책배(페이지 두께)
+    ctx.beginPath();
+    ctx.moveTo(9, 50); ctx.lineTo(36, 58); ctx.lineTo(63, 50);
+    ctx.lineTo(63, 55); ctx.lineTo(36, 63); ctx.lineTo(9, 55);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = CREAM;                         // 왼쪽 페이지
+    ctx.beginPath();
+    ctx.moveTo(12, 18); ctx.lineTo(36, 24); ctx.lineTo(36, 54); ctx.lineTo(12, 47);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();                               // 오른쪽 페이지
+    ctx.moveTo(60, 18); ctx.lineTo(36, 24); ctx.lineTo(36, 54); ctx.lineTo(60, 47);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "#a9987a"; ctx.lineWidth = 2; ctx.lineCap = "round";
+    ctx.beginPath();                               // 페이지 글줄
+    ctx.moveTo(17, 27); ctx.lineTo(31, 31);
+    ctx.moveTo(17, 34); ctx.lineTo(31, 38);
+    ctx.moveTo(55, 27); ctx.lineTo(41, 31);
+    ctx.moveTo(55, 34); ctx.lineTo(41, 38);
+    ctx.stroke();
+    ctx.fillStyle = RED;                           // 갈피끈 — 오른쪽으로
+    ctx.beginPath();
+    ctx.moveTo(37, 50); ctx.lineTo(43, 50); ctx.lineTo(52, 65); ctx.lineTo(46, 65);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  /* 필통 — 열린 파란 필통, 오른쪽 위로 부챗살처럼 뻗은 연필·펜 3자루 */
+  function pencil(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    function pen(ang, body, tip) {                 // 필기구 1자루 (오른쪽으로)
+      ctx.save();
+      ctx.translate(26, 44); ctx.rotate(ang);
+      frr(ctx, 0, -3, 26, 6, 2.5, body);
+      ctx.fillStyle = CREAM;                       // 깎인 부분
+      ctx.beginPath();
+      ctx.moveTo(26, -3); ctx.lineTo(33, 0); ctx.lineTo(26, 3);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = tip;                         // 심
+      ctx.beginPath();
+      ctx.moveTo(30.5, -1.4); ctx.lineTo(33.5, 0); ctx.lineTo(30.5, 1.4);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    pen(-0.85, YEL, INK);
+    pen(-0.45, RED, DRED);
+    pen(-0.08, BLUE2, INK);
+    ctx.fillStyle = G3;                            // 젖혀진 뚜껑 (왼쪽 뒤)
+    ctx.beginPath();
+    ctx.moveTo(10, 40); ctx.lineTo(3, 20); ctx.lineTo(13, 17); ctx.lineTo(18, 40);
+    ctx.closePath(); ctx.fill();
+    frr(ctx, 8, 40, 42, 20, 5, BLUE2);            // 필통 몸체
+    frr(ctx, 12, 43, 34, 7, 3, INK);              // 열린 입구
+    ctx.restore();
+  }
+
+  /* 조퇴증 — 흰 쪽지, 줄 두 개, 우하단 빨간 관인(테두리 도장) */
+  function leave(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 12, 12, 48, 48, 3, PAPER);
+    frr(ctx, 19, 20, 22, 4, 2, G2);               // 제목 칸
+    frr(ctx, 19, 30, 34, 3, 1.5, G1);             // 줄 1
+    frr(ctx, 19, 37, 34, 3, 1.5, G1);             // 줄 2
+    ctx.strokeStyle = RED; ctx.lineWidth = 2.8;    // 관인 — 네모난 직인
+    ctx.strokeRect(41, 41, 13, 13);
+    ctx.fillStyle = RED;
+    ctx.fillRect(44.2, 44.5, 2.4, 6);
+    ctx.fillRect(48.4, 44.5, 2.4, 6);
+    ctx.restore();
+  }
+
+  /* ══════════ 적 (왼쪽을 향해 밀려오는 사물들) ══════════ */
+  /* 사람은 그리지 않는다. 진행 방향은 왼쪽으로 살짝 기운 자세와
+     오른쪽(뒤쪽)에 남는 디테일 — 펄럭이는 모서리·끌리는 페이지·불빛 — 로 표현. */
+
+  function makeFoe(prop) {
+    return function (ctx, cx, cy, s) {
+      in72(ctx, cx, cy, s);
+      ctx.fillStyle = "rgba(0,0,0,.35)";           // 그림자
+      ctx.beginPath();
+      ctx.ellipse(36, 66, 21, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.translate(36, 40); ctx.rotate(-0.09); ctx.translate(-36, -40); // 왼쪽 기울기
+      prop(ctx);
+      ctx.restore();
+    };
+  }
+
+  var foes = {
+    /* 숙제 — 낱장 프린트, 연필 낙서 줄, 오른쪽 위 모서리가 접혀 펄럭임 */
+    hw: makeFoe(function (ctx) {
+      frr(ctx, 20, 8, 30, 48, 2, "#8b97ab");      // 낱장
+      ctx.fillStyle = "#aeb8c9";                   // 접힌 모서리 (뒤쪽)
+      ctx.beginPath();
+      ctx.moveTo(50, 8); ctx.lineTo(58, 15); ctx.lineTo(50, 21);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#414c5e"; ctx.lineWidth = 2.4; ctx.lineCap = "round";
+      ctx.beginPath();                             // 연필 낙서
+      ctx.moveTo(25, 20); ctx.quadraticCurveTo(33, 16, 42, 20);
+      ctx.moveTo(25, 29); ctx.quadraticCurveTo(35, 25, 45, 29);
+      ctx.moveTo(25, 38); ctx.quadraticCurveTo(31, 34, 38, 38);
+      ctx.moveTo(25, 47); ctx.lineTo(34, 47);
+      ctx.stroke();
+    }),
+    /* 쪽지시험 — 가로로 긴 반쪽짜리 시험지 + 빨간 동그라미 채점 */
+    quiz: makeFoe(function (ctx) {
+      frr(ctx, 12, 20, 46, 27, 2, "#6d7d96");     // 반쪽 시험지 (가로)
+      ctx.fillStyle = "#8e9cb3";                   // 들린 오른쪽 끝 (뒤쪽)
+      ctx.beginPath();
+      ctx.moveTo(58, 22); ctx.lineTo(64, 30); ctx.lineTo(58, 38);
+      ctx.closePath(); ctx.fill();
+      frr(ctx, 17, 26, 17, 3, 1.5, "#3f4c61");    // 문항 줄
+      frr(ctx, 17, 33, 13, 3, 1.5, "#3f4c61");
+      frr(ctx, 17, 40, 15, 3, 1.5, "#3f4c61");
+      ctx.strokeStyle = RED; ctx.lineWidth = 3.2; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.arc(46, 30, 7.5, 0, Math.PI * 2); ctx.stroke(); // 채점 ○
+      ctx.beginPath(); ctx.moveTo(20, 45); ctx.lineTo(28, 37); ctx.stroke(); // 채점 빗금
+    }),
+    /* 수행평가 — 스테이플러로 묶인 여러 장 묶음, 뒷장이 오른쪽으로 끌림 */
+    task: makeFoe(function (ctx) {
+      frr(ctx, 28, 13, 28, 44, 2, "#82a0c9");     // 끌리는 뒷장 (뒤쪽)
+      frr(ctx, 23, 10, 28, 44, 2, "#6c88b3");
+      frr(ctx, 17, 7, 28, 44, 2, "#5b7bab");      // 앞장
+      ctx.save();                                  // 왼쪽 위 스테이플 심
+      ctx.translate(22, 12); ctx.rotate(-0.65);
+      ctx.fillStyle = INK; ctx.fillRect(-5, -1.6, 10, 3.2);
+      ctx.restore();
+      frr(ctx, 23, 19, 16, 3, 1.5, "#31517d");    // 글줄
+      frr(ctx, 23, 27, 16, 3, 1.5, "#31517d");
+      frr(ctx, 23, 35, 11, 3, 1.5, "#31517d");
+    }),
+    /* 조별과제 — 명단 클립보드: 빈 체크박스 + 이름 줄, 오른쪽으로 삐져나온 종이 */
+    group: makeFoe(function (ctx) {
+      frr(ctx, 17, 8, 38, 52, 3, "#a8703f");      // 보드
+      ctx.fillStyle = PAPER2;                      // 삐져나온 종이 (뒤쪽)
+      ctx.beginPath();
+      ctx.moveTo(55, 40); ctx.lineTo(62, 46); ctx.lineTo(55, 52);
+      ctx.closePath(); ctx.fill();
+      frr(ctx, 21, 15, 30, 40, 2, PAPER);          // 명단 종이
+      frr(ctx, 28, 5, 16, 8, 2, G1);               // 클립
+      frr(ctx, 33, 2, 6, 5, 2, G3);
+      ctx.strokeStyle = G3; ctx.lineWidth = 2;      // 빈 체크박스 3개
+      ctx.strokeRect(25, 21, 6, 6);
+      ctx.strokeRect(25, 31, 6, 6);
+      ctx.strokeRect(25, 41, 6, 6);
+      frr(ctx, 34, 22.5, 13, 3, 1.5, G1);          // 이름 줄
+      frr(ctx, 34, 32.5, 13, 3, 1.5, G1);
+      frr(ctx, 34, 42.5, 13, 3, 1.5, G1);
+    }),
+    /* 출석부 — 두꺼운 양장 장부: 붉은 표지 + 금박 줄, 왼쪽 책배 페이지 블록 */
+    roll: makeFoe(function (ctx) {
+      frr(ctx, 50, 12, 6, 48, 2, "#7e3535");      // 등(뒤쪽 두께)
+      frr(ctx, 18, 10, 36, 48, 3, "#a04a4a");     // 표지
+      frr(ctx, 13, 13, 6, 42, 1.5, CREAM);        // 책배 페이지 블록 (왼쪽)
+      ctx.fillStyle = CREAM2;                      // 페이지 결
+      ctx.fillRect(13, 22, 6, 1.6);
+      ctx.fillRect(13, 32, 6, 1.6);
+      ctx.fillRect(13, 42, 6, 1.6);
+      frr(ctx, 24, 20, 24, 3.5, 1.5, YEL);         // 금박 줄
+      frr(ctx, 24, 27, 16, 2.5, 1, YEL2);
+    }),
+    /* 야자 — 밤의 스탠드: 금색 갓이 왼쪽 아래를 비추고 바닥에 따뜻한 빛 웅덩이 */
+    night: makeFoe(function (ctx) {
+      ctx.save();                                  // 빛 (진행 방향 = 왼쪽 아래)
+      ctx.globalAlpha = 0.18; ctx.fillStyle = YEL;
+      ctx.beginPath();
+      ctx.moveTo(24, 28); ctx.lineTo(4, 60); ctx.lineTo(42, 60);
+      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 0.3;
+      ctx.beginPath(); ctx.ellipse(23, 60, 19, 5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      frr(ctx, 30, 56, 26, 6, 2.5, G4);            // 받침 (오른쪽)
+      frr(ctx, 42, 26, 5, 32, 2, G3);              // 기둥
+      ctx.strokeStyle = G3; ctx.lineWidth = 5; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(44, 28); ctx.lineTo(32, 20); ctx.stroke(); // 팔
+      ctx.fillStyle = "#c99a3f";                   // 갓 — 입이 왼쪽 아래
+      ctx.beginPath();
+      ctx.moveTo(17, 24); ctx.lineTo(36, 12); ctx.lineTo(43, 25); ctx.lineTo(23, 35);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#ffe9b0";                    // 전구
+      ctx.beginPath(); ctx.arc(27, 29, 4, 0, Math.PI * 2); ctx.fill();
+    }),
+    /* 기말고사(보스) — 화면을 가득 채우는 육중한 시험지 묶음 + 대각선 봉인 띠 */
+    final: makeFoe(function (ctx) {
+      frr(ctx, 6, 52, 62, 12, 2, CREAM2);          // 페이지 블록 (두께)
+      ctx.fillStyle = "#b3a184";
+      ctx.fillRect(6, 56, 62, 1.8);
+      ctx.fillRect(6, 60, 62, 1.8);
+      ctx.fillStyle = CREAM;                        // 끌리는 낱장 (뒤쪽)
+      ctx.beginPath();
+      ctx.moveTo(66, 46); ctx.lineTo(72, 54); ctx.lineTo(66, 60);
+      ctx.closePath(); ctx.fill();
+      frr(ctx, 6, 2, 62, 52, 3, "#8f2a2a");        // 표지 테두리
+      frr(ctx, 10, 6, 54, 44, 2, "#b93b3b");       // 표지
+      ctx.save();                                   // 봉인 띠 (대각선)
+      ctx.translate(37, 28); ctx.rotate(-0.32);
+      frr(ctx, -36, -8, 72, 16, 2, PAPER);
+      frr(ctx, -30, -3, 14, 6, 3, DRED);            // 띠 위 붉은 표기
+      frr(ctx, 16, -3, 14, 6, 3, DRED);
+      ctx.fillStyle = DRED;                         // 봉인 도장
+      ctx.beginPath(); ctx.arc(0, 0, 7.5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = PAPER; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    })
+  };
+
+  /* ══════════ 내 자리 — 옆에서 본 학교 책걸상 (오른쪽을 향함) ══════════ */
+  function seat(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 8, 14, 7, 30, 3, BLUE2);              // 의자 등받이 (왼쪽 = 뒤)
+    frr(ctx, 8, 38, 22, 7, 3, BLUE2);              // 좌판
+    frr(ctx, 10, 45, 4, 19, 1.5, G4);              // 의자 다리
+    frr(ctx, 24, 45, 4, 19, 1.5, G4);
+    frr(ctx, 28, 24, 38, 7, 2.5, BLUE2);           // 책상 상판 — 오른쪽으로 열림
+    frr(ctx, 32, 31, 4, 33, 1.5, G4);              // 책상 다리
+    frr(ctx, 58, 31, 4, 33, 1.5, G4);
+    frr(ctx, 32, 31, 30, 4, 1.5, G3);              // 서랍(책 넣는 칸)
+    ctx.restore();
+  }
+
+  window.SPRITES_SCHOOL = {
+    units: { vend: vend, locker: locker, book: book, pencil: pencil, leave: leave },
+    foes: foes,
+    seat: seat
+  };
+})();
+</script>
+
+<script>
+/* _audio.js — 「출근 저지」 사운드 엔진
+   Web Audio 런타임 합성 전용: 오실레이터 + 자체 생성 노이즈 버퍼만 사용.
+   오디오 파일·네트워크·base64 샘플 없음 (file:// 더블클릭 오프라인 동작).
+   전역은 window.SFX 하나만 노출한다.
+   사운드 방향: 「형광등 꺼진 사무실」 — 건조하고 작고 종이 같은 소리. */
+(function () {
+  "use strict";
+
+  var LS_KEY = "chulgeun.muted";
+  var MAX_VOICES = 16;      // 동시 보이스 상한 — 넘치면 새 소리를 그냥 버린다
+  var MASTER_LEVEL = 0.32;  // 마스터 헤드룸 (다중 동시 발음 시 클리핑 방지)
+
+  var ctx = null, master = null, noiseBuf = null;
+  var masterNow = 0;              // master.gain 목표값의 JS 그림자 (.value 게터는 입력이 끊기면 stale)
+  var live = 0, created = 0, dropped = 0;   // 보이스 수명 계측
+  var muted = readMuted();
+
+  function readMuted() {
+    try { return localStorage.getItem(LS_KEY) === "1"; } catch (e) { return false; }
+  }
+  function writeMuted(b) {
+    try { localStorage.setItem(LS_KEY, b ? "1" : "0"); } catch (e) {}
+  }
+
+  /* ── 고빈도 사운드 스로틀 (ms) ── */
+  var THROTTLE = { shoot: 30, hit: 25, chew: 200, select: 40 };
+  var lastAt = { shoot: -1e9, hit: -1e9, chew: -1e9, select: -1e9 };
+  function gate(name) {
+    var t = Date.now();
+    if (t - lastAt[name] < THROTTLE[name]) return false;
+    lastAt[name] = t;
+    return true;
+  }
+
+  /* ── 컨텍스트 지연 생성 (로드 시점엔 절대 만들지 않는다) ── */
+  function ensure() {
+    var A = window.AudioContext || window.webkitAudioContext;
+    if (!A) return null;
+    if (!ctx) {
+      try { ctx = new A(); } catch (e) { ctx = null; return null; }
+      master = ctx.createGain();
+      masterNow = muted ? 0 : MASTER_LEVEL;
+      master.gain.value = masterNow;
+      var tail = master;
+      try {                                  // 안전망 컴프레서
+        var comp = ctx.createDynamicsCompressor();
+        comp.threshold.value = -18; comp.knee.value = 20; comp.ratio.value = 12;
+        comp.attack.value = 0.002; comp.release.value = 0.15;
+        master.connect(comp); tail = comp;
+      } catch (e) {}
+      tail.connect(ctx.destination);
+      // 화이트 노이즈 버퍼 — 1초, 1회만 생성해서 전 사운드가 공유
+      var n = Math.max(1, Math.floor(ctx.sampleRate));
+      noiseBuf = ctx.createBuffer(1, n, ctx.sampleRate);
+      var d = noiseBuf.getChannelData(0);
+      for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    }
+    if (ctx.state === "suspended") {
+      try { var p = ctx.resume(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+    }
+    return ctx;
+  }
+
+  /* 사운드 공통 진입: 컨텍스트 확보 + 보이스 상한. 음수면 재생 불가 */
+  function ready() {
+    if (muted) return -1;                    // 음소거면 스케줄 자체를 생략
+    var c = ensure();
+    if (!c) return -1;
+    if (live >= MAX_VOICES) { dropped++; return -1; }
+    return c.currentTime;
+  }
+
+  /* ── 보이스: 소스 → (필터) → 게인 → 마스터. 끝나면 반드시 해제 ──
+     o: { a:어택초, flat:유지형 엔벌로프, filter:[type,f0,f1,Q], rate:재생속도 } */
+  function voice(src, t0, dur, peak, o) {
+    var nodes = [src], head = src;
+    if (o && o.filter) {
+      var f = ctx.createBiquadFilter();
+      f.type = o.filter[0];
+      f.frequency.setValueAtTime(o.filter[1], t0);
+      if (o.filter[2]) f.frequency.exponentialRampToValueAtTime(Math.max(20, o.filter[2]), t0 + dur);
+      if (o.filter[3]) f.Q.value = o.filter[3];
+      head.connect(f); head = f; nodes.push(f);
+    }
+    var g = ctx.createGain(), a = (o && o.a) || 0.004;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(peak, t0 + a);
+    if (o && o.flat) {                        // 버즈용: 어택-유지-릴리즈
+      g.gain.setValueAtTime(peak, t0 + Math.max(a, dur - 0.02));
+      g.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+    } else {                                  // 기본: 즉시 감쇠 (건조한 소리)
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    }
+    head.connect(g); g.connect(master); nodes.push(g);
+    live++; created++;
+    src.onended = function () {               // 누수 방지: 전 노드 disconnect
+      live--; src.onended = null;
+      for (var i = 0; i < nodes.length; i++) { try { nodes[i].disconnect(); } catch (e) {} }
+    };
+    src.start(t0);
+    src.stop(t0 + dur + 0.03);
+  }
+
+  function tone(t0, dur, peak, type, f0, f1, o) {
+    var osc = ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.setValueAtTime(f0, t0);
+    if (f1 && f1 !== f0) osc.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t0 + dur);
+    voice(osc, t0, dur, peak, o);
+  }
+
+  function noise(t0, dur, peak, o) {
+    var src = ctx.createBufferSource();
+    src.buffer = noiseBuf; src.loop = true;
+    if (o && o.rate) src.playbackRate.value = o.rate;
+    voice(src, t0, dur, peak, o);
+  }
+
+  /* ══════════ 사운드 정의 ══════════ */
+
+  /* 설치 — 책상에 사물을 내려놓는 "턱" 소리. 유닛별 재질 차이 */
+  var PLACE = {
+    water:  { f: 150, f1: 48,  dur: 0.20, tp: "sine",     tv: 0.20, bp: 240,  np: 0.09, q: 6 },   // 물통 — 공명하는 빈 통
+    wall:   { f: 100, f1: 40,  dur: 0.16, tp: "triangle", tv: 0.24, bp: 170,  np: 0.11, q: 1.5 }, // 파티션 — 묵직한 판
+    copy:   { f: 185, f1: 72,  dur: 0.12, tp: "triangle", tv: 0.20, bp: 850,  np: 0.09, q: 1 },   // 복사기 — 기계 몸통
+    stap:   { f: 330, f1: 140, dur: 0.06, tp: "square",   tv: 0.10, bp: 2600, np: 0.09, q: 2 },   // 스테이플러 — 금속 딸깍
+    quit:   { f: 520, f1: 300, dur: 0.05, tp: "triangle", tv: 0.05, bp: 3600, np: 0.13, q: 0.8, paper: true } // 사직서 — 종이 놓기
+  };
+  // 학생 팩은 같은 역할의 재질로 매핑
+  PLACE.vend = PLACE.water; PLACE.locker = PLACE.wall; PLACE.book = PLACE.copy;
+  PLACE.pencil = PLACE.stap; PLACE.leave = PLACE.quit;
+
+  function hashId(s) {
+    s = String(s); var h = 0;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
+  }
+
+  function place(unitId) {
+    var t0 = ready(); if (t0 < 0) return;
+    var p = PLACE[unitId];
+    if (!p) {                                 // 모르는 id — 해시로 재질을 변주
+      var h = hashId(unitId);
+      p = { f: 120 + h % 140, f1: 45 + h % 40, dur: 0.13, tp: "triangle",
+            tv: 0.18, bp: 300 + h % 900, np: 0.10, q: 1.2 };
+    }
+    tone(t0, p.dur, p.tv, p.tp, p.f, p.f1);
+    noise(t0, p.paper ? 0.09 : 0.05, p.np, { filter: ["bandpass", p.bp, p.bp * 0.6, p.q], a: 0.002 });
+  }
+
+  /* 발사 — 트레이에서 종이가 빠지는 "특". 초당 10회에도 거슬리지 않게 아주 짧고 작게 */
+  function shoot(unitId) {
+    if (!gate("shoot")) return;
+    var t0 = ready(); if (t0 < 0) return;
+    var hi = unitId === "stap" || unitId === "pencil";     // 스테이플러 계열은 더 딱딱하게
+    var f = (hi ? 5200 : 3000) * (0.92 + Math.random() * 0.16);
+    noise(t0, hi ? 0.028 : 0.042, hi ? 0.16 : 0.14,
+          { filter: ["bandpass", f, f * 0.45, hi ? 1.6 : 1.1], a: 0.002 });
+  }
+
+  /* 명중 — 아주 작은 틱 */
+  function hit() {
+    if (!gate("hit")) return;
+    var t0 = ready(); if (t0 < 0) return;
+    tone(t0, 0.03, 0.10, "sine", 1850, 1300, { a: 0.002 });
+  }
+
+  /* 처치 — 종이 구겨져 떨어지는 소리. 보스는 더 낮고 길게 */
+  function kill(boss) {
+    var t0 = ready(); if (t0 < 0) return;
+    if (boss) {
+      noise(t0, 0.30, 0.20, { filter: ["bandpass", 1500, 380, 0.9], a: 0.004, rate: 0.85 });
+      tone(t0 + 0.03, 0.34, 0.28, "sine", 120, 42, { a: 0.006 });
+    } else {
+      noise(t0, 0.15, 0.14, { filter: ["bandpass", 1700, 500, 0.9], a: 0.003 });
+      tone(t0 + 0.02, 0.10, 0.12, "sine", 210, 90, { a: 0.004 });
+    }
+  }
+
+  /* 갉아먹기 — 둔한 반복음. 아무리 많이 물어뜯어도 초당 5회 이하 */
+  function chew() {
+    if (!gate("chew")) return;
+    var t0 = ready(); if (t0 < 0) return;
+    noise(t0, 0.08, 0.12, { filter: ["lowpass", 420, 250, 1], a: 0.003, rate: 0.7 });
+    tone(t0, 0.07, 0.08, "triangle", 88, 60, { a: 0.003 });
+  }
+
+  /* 자원 획득 — 게임에서 유일하게 밝은 소리. 작은 보상 */
+  function coin() {
+    var t0 = ready(); if (t0 < 0) return;
+    tone(t0, 0.22, 0.14, "sine", 1245, 1245, { a: 0.002 });
+    tone(t0, 0.09, 0.05, "sine", 2530, 2530, { a: 0.002 });
+  }
+
+  /* 사직서/조퇴증 — 종이 찢기 → 낮은 둔중음. 게임에서 제일 큰 소리지만 여전히 건조하게 */
+  function nuke() {
+    var t0 = ready(); if (t0 < 0) return;
+    noise(t0, 0.32, 0.26, { filter: ["bandpass", 3400, 320, 0.8], a: 0.010 });          // 찢기
+    noise(t0 + 0.16, 0.50, 0.16, { filter: ["lowpass", 200, 90, 0.7], a: 0.010, rate: 0.6 }); // 저역 럼블
+    tone(t0 + 0.17, 0.55, 0.34, "sine", 92, 36, { a: 0.008 });                          // 둔중음
+  }
+
+  /* 보스 등장 — 낮은 드론이 부풀었다 멎는다 (~1.2초). 놀래키지 않는다 */
+  function bossIn() {
+    var t0 = ready(); if (t0 < 0) return;
+    tone(t0, 1.2, 0.15, "sawtooth", 52, 47, { a: 0.75, filter: ["lowpass", 270, 130, 4] });
+    tone(t0, 1.2, 0.15, "sawtooth", 55.5, 50, { a: 0.75, filter: ["lowpass", 270, 130, 4] });
+    tone(t0, 1.1, 0.03, "sine", 208, 197, { a: 0.7 });   // 형광등 험 같은 잔음
+  }
+
+  /* UI 클릭 — 아주 작은 클릭 */
+  function select() {
+    if (!gate("select")) return;
+    var t0 = ready(); if (t0 < 0) return;
+    noise(t0, 0.02, 0.10, { filter: ["highpass", 2500, 0, 0.7], a: 0.001 });
+  }
+
+  /* 설치 불가 / 자원 부족 — 짧고 밋밋한 버즈 */
+  function deny() {
+    var t0 = ready(); if (t0 < 0) return;
+    tone(t0, 0.14, 0.07, "square", 110, 106, { a: 0.005, flat: true, filter: ["lowpass", 900, 0, 0.8] });
+  }
+
+  /* 승리 — 짧게 올라가며 매듭. 팡파르 아님 */
+  function win() {
+    var t0 = ready(); if (t0 < 0) return;
+    var notes = [349.2, 440, 523.3, 698.5];
+    for (var i = 0; i < notes.length; i++) {
+      var last = i === notes.length - 1;
+      tone(t0 + i * 0.13, last ? 0.5 : 0.28, last ? 0.13 : 0.10, "triangle", notes[i], notes[i], { a: 0.006 });
+    }
+  }
+
+  /* 패배 — 미끄러지듯 내려가는 하강 */
+  function lose() {
+    var t0 = ready(); if (t0 < 0) return;
+    var notes = [392, 311.1, 261.6, 196];
+    for (var i = 0; i < notes.length; i++) {
+      tone(t0 + i * 0.18, 0.35, 0.10, "sine", notes[i], notes[i] * 0.93, { a: 0.008 });
+    }
+  }
+
+  /* ══════════ 제어 ══════════ */
+
+  function setMuted(b) {
+    b = !!b;
+    muted = b; api.muted = b;
+    writeMuted(b);
+    if (ctx && master) {                      // 즉시·완전 소거: 게인 자체를 램프
+      try {
+        var t = ctx.currentTime, g = master.gain;
+        var target = b ? 0 : MASTER_LEVEL;
+        g.cancelScheduledValues(t);
+        g.setValueAtTime(masterNow, t);       // .value 게터는 믿지 않는다 (stale 가능)
+        g.linearRampToValueAtTime(target, t + 0.03);
+        masterNow = target;
+      } catch (e) {}
+    }
+  }
+
+  function resume() { ensure(); }
+
+  /* 어떤 상황에서도 게임 루프에 예외를 던지지 않는다 */
+  function safe(fn) {
+    return function () { try { return fn.apply(null, arguments); } catch (e) {} };
+  }
+
+  var api = {
+    place: safe(place),
+    shoot: safe(shoot),
+    hit: safe(hit),
+    kill: safe(kill),
+    chew: safe(chew),
+    coin: safe(coin),
+    nuke: safe(nuke),
+    bossIn: safe(bossIn),
+    select: safe(select),
+    deny: safe(deny),
+    win: safe(win),
+    lose: safe(lose),
+    setMuted: safe(setMuted),
+    muted: muted,
+    resume: safe(resume),
+    /* 테스트/디버그 계측 — 게임 코드는 사용하지 않음 */
+    _debug: function () {
+      return { live: live, created: created, dropped: dropped,
+               masterGain: master ? master.gain.value : null, masterTarget: master ? masterNow : null,
+               state: ctx ? ctx.state : null };
+    }
+  };
+  window.SFX = api;
+})();
+</script>
+
+<script>
+/* _lunch_sprites.js — 점심시간 스테이지 벡터 스프라이트
+   직장인 팩 「점심시간 외주납품」 + 학생 팩 「점심시간 사수」 공용.
+   규격은 game/index.html의 SPRITES / SPRITES_SCHOOL 블록과 동일.
+   전 함수 시그니처: (ctx, cx, cy, s) — cx,cy 중심, s = 정사각 박스 한 변(px).
+   순수 Canvas2D 패스만 사용. 이모지/텍스트/이미지 없음.
+   적은 전부 '사물'이다 — 사람(직원·선생님·학생)은 절대 그리지 않는다.
+   두 팩은 같은 스테이지의 리스킨: pallet↔notice(갈색·물량), defect↔errand(주황·돌진),
+   truck↔clean(녹빛 적색·보스)이 서로 짝이다. */
+(function () {
+  "use strict";
+
+  /* ── 팔레트 (기존 팩과 공유 + 점심 팩 추가색) ── */
+  var PAPER = "#f2f5fa", PAPER2 = "#dfe6f2", PAPER3 = "#c3ccdb";
+  var G1 = "#98a4b8", G2 = "#74829a", G3 = "#5d6a7f", G4 = "#4c5769", INK = "#2f3542";
+  var YEL = "#f5c451";
+  var CREAM = "#f0e6d2", CREAM2 = "#d9caa8";
+  var LIT = "#cfe4ff";                              // 유리창 불빛 (자판기와 동일)
+  var WOOD = "#b08968", WOOD2 = "#8a6647";          // 파렛트 목재 · 고무줄 (팩 공유 갈색)
+  var CARD = "#cfa269", CARDL = "#ddb47f", CARDD = "#a97f4e"; // 골판지 상자
+  var TAPE = "#8a6134";                             // 박스 테이프
+  var ORG = "#ff9f43", ORG2 = "#d97f2a";            // 불량/심부름 태그 (돌진 주황)
+  var RUST = "#e0704f", RUST2 = "#b0553c";          // 납품차 · 대청소 (보스 적색)
+
+  /* 둥근 사각형 패스 (roundRect 폴리필 불요) */
+  function rr(ctx, x, y, w, h, r) {
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function frr(ctx, x, y, w, h, r, fill) {
+    ctx.fillStyle = fill;
+    rr(ctx, x, y, w, h, r);
+    ctx.fill();
+  }
+
+  /* 72×72 디자인 좌표계로 진입 (기존 팩과 동일) */
+  function in72(ctx, cx, cy, s) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    var k = s / 72;
+    ctx.scale(k, k);
+    ctx.translate(-36, -36);
+  }
+
+  /* ══════════ 적 공통 틀 (왼쪽을 향해 밀려오는 사물들) ══════════ */
+  /* tilt: 왼쪽 기울기(라디안). 빠른 적은 크게, 보스는 0 — 육중해서 흔들리지 않는다.
+     shw: 발밑 그림자 반너비. 날아오는 쪽지는 좁게(공중), 보스는 넓게. */
+  function makeFoe(tilt, shw, prop) {
+    return function (ctx, cx, cy, s) {
+      in72(ctx, cx, cy, s);
+      ctx.fillStyle = "rgba(0,0,0,.35)";            // 그림자
+      ctx.beginPath();
+      ctx.ellipse(36, 66, shw, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (tilt) {
+        ctx.translate(36, 40); ctx.rotate(tilt); ctx.translate(-36, -40);
+      }
+      prop(ctx);
+      ctx.restore();
+    };
+  }
+
+  /* 돌진조 공용 속도선 — 뒤쪽(오른쪽)에 흐릿하게 2줄 */
+  function dash(ctx, x1, y1, x2, y2) {
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    frr(ctx, x1, y1, 12, 3, 1.5, G2);
+    frr(ctx, x2, y2, 8, 3, 1.5, G2);
+    ctx.restore();
+  }
+
+  /* ══════════ 직장인 팩 — 점심시간 외주납품 ══════════ */
+
+  /* 파렛트 — 골판지 상자 2단을 얹은 목재 파렛트. 테이프 + 거래명세서 슬립.
+     따뜻한 갈색 목재가 '밖에서 들어온 물건'임을 말한다. */
+  var pallet = makeFoe(-0.09, 23, function (ctx) {
+    frr(ctx, 17, 11, 30, 19, 2, CARDL);             // 위 상자
+    ctx.fillStyle = CARDD;                          // 뚜껑 이음선
+    ctx.fillRect(17, 17, 30, 1.5);
+    frr(ctx, 29, 11, 7, 19, 0, TAPE);               // 박스 테이프 (세로)
+    frr(ctx, 12, 30, 46, 21, 2, CARD);              // 아래 상자
+    frr(ctx, 12, 30, 46, 4, 2, CARDD);              // 상자 윗단
+    frr(ctx, 17, 36, 12, 9, 1, PAPER);              // 거래명세서 슬립
+    ctx.fillStyle = G2;
+    ctx.fillRect(19, 38.5, 8, 1.4);
+    ctx.fillRect(19, 41.5, 6, 1.4);
+    frr(ctx, 8, 51, 56, 4.5, 1.5, WOOD);            // 파렛트 상판
+    frr(ctx, 10, 55.5, 9, 5.5, 1, WOOD2);           // 받침목 3개
+    frr(ctx, 31.5, 55.5, 9, 5.5, 1, WOOD2);
+    frr(ctx, 53, 55.5, 9, 5.5, 1, WOOD2);
+    frr(ctx, 8, 61, 56, 3, 1.5, WOOD2);             // 하판
+  });
+
+  /* 불량품 — 뚜껑이 뜯긴 채 내달리는 상자. 찌그러진 모서리 + 주황 반품 태그.
+     게임에서 제일 빠르다 — 앞으로 크게 기울고 뒤로 속도선이 남는다. */
+  var defect = makeFoe(-0.2, 19, function (ctx) {
+    dash(ctx, 54, 22, 57, 32);                      // 속도선 (뒤쪽)
+    ctx.fillStyle = CARD;                           // 몸통 — 좌하단이 찌그러짐
+    ctx.beginPath();
+    ctx.moveTo(18, 26); ctx.lineTo(48, 26); ctx.lineTo(48, 52);
+    ctx.lineTo(27, 52); ctx.lineTo(23, 46.5); ctx.lineTo(18, 49);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = CARDD; ctx.lineWidth = 2; ctx.lineCap = "round";
+    ctx.beginPath();                                // 찌그러진 자국
+    ctx.moveTo(23, 46.5); ctx.lineTo(28, 41);
+    ctx.stroke();
+    ctx.fillStyle = CARDL;                          // 젖혀진 왼쪽 뚜껑
+    ctx.beginPath();
+    ctx.moveTo(18, 26); ctx.lineTo(8, 15); ctx.lineTo(15, 11); ctx.lineTo(22, 25);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();                                // 뜯어진 오른쪽 뚜껑 (톱니)
+    ctx.moveTo(48, 26); ctx.lineTo(50, 17); ctx.lineTo(53, 21);
+    ctx.lineTo(56, 12); ctx.lineTo(60, 17); ctx.lineTo(53, 27);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = G1;                             // 잘못 든 내용물 (구겨진 뭉치)
+    ctx.beginPath();
+    ctx.moveTo(26, 26); ctx.lineTo(29, 17); ctx.lineTo(35, 20);
+    ctx.lineTo(38, 14); ctx.lineTo(43, 19); ctx.lineTo(44, 26);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = TAPE;                           // 끊어져 늘어진 테이프
+    ctx.beginPath();
+    ctx.moveTo(38, 26); ctx.lineTo(43, 26); ctx.lineTo(41, 34); ctx.lineTo(37, 33);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.5;     // 태그 끈
+    ctx.beginPath();
+    ctx.moveTo(48, 30); ctx.lineTo(54, 36);
+    ctx.stroke();
+    ctx.save();                                     // 삐뚤게 매달린 반품 태그
+    ctx.translate(54, 36); ctx.rotate(0.45);
+    frr(ctx, 0, 0, 10, 14, 2, ORG);
+    ctx.fillStyle = INK;                            // 끈 구멍
+    ctx.beginPath(); ctx.arc(3, 3, 1.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = ORG2;                           // 반품 표기 줄
+    ctx.fillRect(2.5, 7.5, 5, 2);
+    ctx.restore();
+  });
+
+  /* 납품차(보스) — 5톤 탑차의 앞머리, 왼쪽을 향한다. 캡오버 캡 + 빈 창 +
+     그릴 + 범퍼 + 큰 바퀴. 탑은 오른쪽 프레임에 잘린다. 기울지 않는다. */
+  var truck = makeFoe(0, 27, function (ctx) {
+    frr(ctx, 37, 10, 37, 42, 2, PAPER3);            // 탑 (오른쪽에서 잘림)
+    ctx.fillStyle = RUST2;                          // 탑 하단 띠
+    ctx.fillRect(37, 40, 37, 5);
+    frr(ctx, 58, 52, 12, 5, 1, G4);                 // 뒷바퀴 자리 (프레임 밖 암시)
+    frr(ctx, 6, 16, 30, 32, 3, RUST);               // 캡
+    frr(ctx, 9, 20, 9, 14, 2, LIT);                 // 앞유리 — 비어 있다
+    frr(ctx, 21, 20, 13, 12, 2, LIT);               // 옆창 — 운전자 없음
+    ctx.fillStyle = RUST2;                          // 문 이음선
+    ctx.fillRect(20, 34, 1.6, 13);
+    frr(ctx, 8, 37, 10, 7, 1, INK);                 // 그릴
+    ctx.fillStyle = G3;
+    ctx.fillRect(9.5, 39, 7, 1.2);
+    ctx.fillRect(9.5, 41.5, 7, 1.2);
+    frr(ctx, 7, 45, 6, 3.5, 1, YEL);                // 헤드라이트
+    frr(ctx, 4, 49, 36, 6, 2, G4);                  // 범퍼 (맨 앞)
+    ctx.fillStyle = INK;                            // 앞바퀴
+    ctx.beginPath(); ctx.arc(24, 56, 9, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = G2;
+    ctx.beginPath(); ctx.arc(24, 56, 3.5, 0, Math.PI * 2); ctx.fill();
+  });
+
+  /* ══════════ 학생 팩 — 점심시간 사수 ══════════ */
+
+  /* 가정통신문 — 스테이플러로 찍힌 A4 묶음. 부챗살로 벌어져 장수가 보이고
+     가운데를 갈색 고무줄이 감는다 (파렛트와 운을 맞추는 갈색). */
+  var notice = makeFoe(-0.09, 23, function (ctx) {
+    var a = [0.18, 0.1, 0.03, -0.04];               // 부챗살 각도 (아래→위)
+    var c = ["#7d8aa0", "#a5b1c4", "#c9d3e2", PAPER];
+    for (var i = 0; i < 4; i++) {
+      ctx.save();
+      ctx.translate(38, 58); ctx.rotate(a[i]);
+      frr(ctx, -18, -48, 36, 48, 2, c[i]);
+      if (i === 3) {                                // 맨 윗장에만 디테일
+        frr(ctx, -14, -42, 20, 4, 1, G3);           // 머리글 칸
+        ctx.fillStyle = G1;                         // 괘선
+        ctx.fillRect(-14, -34, 26, 2);
+        ctx.fillRect(-14, -29, 22, 2);
+        frr(ctx, -4, -48, 8, 48, 0, WOOD);          // 고무줄 (세로)
+        ctx.fillStyle = WOOD2;                      // 고무줄 가장자리
+        ctx.fillRect(-4, -48, 1.5, 48);
+        ctx.fillRect(2.5, -48, 1.5, 48);
+        ctx.save();                                 // 스테이플 심 (좌상단)
+        ctx.translate(-13, -44); ctx.rotate(-0.6);
+        ctx.fillStyle = INK; ctx.fillRect(-4.5, -1.4, 9, 2.8);
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+  });
+
+  /* 심부름 — 던져져 날아오는 접힌 쪽지. 모서리 하나가 들렸고 주황 인덱스 플래그.
+     제일 빠르다 — 공중에 떠서 왼쪽으로 크게 기운다. */
+  var errand = makeFoe(-0.18, 14, function (ctx) {
+    dash(ctx, 56, 24, 58, 34);                      // 속도선 (뒤쪽)
+    ctx.fillStyle = PAPER2;                         // 접힌 윗면
+    ctx.beginPath();
+    ctx.moveTo(14, 34); ctx.lineTo(54, 34); ctx.lineTo(50, 20); ctx.lineTo(10, 20);
+    ctx.closePath(); ctx.fill();
+    ctx.save();                                     // 주황 인덱스 플래그
+    ctx.translate(40, 20); ctx.rotate(-0.1);
+    frr(ctx, -2, -7, 12, 8, 1, ORG);
+    frr(ctx, -2, 0, 12, 4, 1, ORG2);                // 종이를 문 안쪽
+    ctx.restore();
+    frr(ctx, 14, 34, 40, 14, 1.5, PAPER);           // 앞면
+    ctx.fillStyle = PAPER3;                         // 접힌 금
+    ctx.fillRect(14, 33.2, 40, 1.6);
+    ctx.fillStyle = G1;                             // 급히 쓴 글줄
+    ctx.fillRect(20, 38, 22, 2);
+    ctx.fillRect(20, 42, 16, 2);
+    ctx.fillStyle = PAPER3;                         // 들린 모서리 (뒤쪽)
+    ctx.beginPath();
+    ctx.moveTo(54, 48); ctx.lineTo(46, 48); ctx.lineTo(54, 40);
+    ctx.closePath(); ctx.fill();
+  });
+
+  /* 대청소(보스) — 대걸레 + 양동이. 걸레머리는 좌하단, 자루는 오른쪽 위로.
+     녹빛 적색 양동이에 잿빛 물이 찰랑이고 짜놓은 걸레가 테에 걸렸다. 기울지 않는다. */
+  var clean = makeFoe(0, 27, function (ctx) {
+    ctx.strokeStyle = WOOD; ctx.lineWidth = 5; ctx.lineCap = "round";
+    ctx.beginPath();                                // 자루 (양동이 뒤로 지나감)
+    ctx.moveTo(18, 44); ctx.lineTo(60, 4);
+    ctx.stroke();
+    ctx.fillStyle = G4;                             // 자루 끝 마개
+    ctx.beginPath(); ctx.arc(60, 4, 2.8, 0, Math.PI * 2); ctx.fill();
+    frr(ctx, 15, 37, 6, 7, 1.5, G3);                // 자루-머리 연결부
+    frr(ctx, 4, 42, 28, 7, 3, G2);                  // 걸레 머리대
+    ctx.lineWidth = 5; ctx.lineCap = "round";       // 걸레 가닥 (아래로 늘어짐)
+    var sx = [8, 13, 18, 23, 28], tx = [4, 10, 16, 22, 27];
+    for (var i = 0; i < 5; i++) {
+      ctx.strokeStyle = (i % 2 === 0) ? CREAM : CREAM2;
+      ctx.beginPath();
+      ctx.moveTo(sx[i], 48); ctx.lineTo(tx[i], 56);
+      ctx.stroke();
+    }
+    ctx.fillStyle = RUST;                           // 양동이 몸통
+    ctx.beginPath();
+    ctx.moveTo(40, 30); ctx.lineTo(68, 30); ctx.lineTo(64, 56); ctx.lineTo(44, 56);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = RUST2;                          // 몸통 골 2줄
+    ctx.fillRect(41.5, 38, 25, 2);
+    ctx.fillRect(42.5, 46, 23, 2);
+    frr(ctx, 38, 26, 32, 6, 3, RUST2);              // 테
+    ctx.fillStyle = "#a7b6c6";                      // 잿빛 물
+    ctx.beginPath();
+    ctx.ellipse(54, 29, 12, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();                                // 왼쪽으로 찰랑 넘친 물
+    ctx.arc(39, 31, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(35, 38, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(37, 45, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.save();                                     // 짜놓은 걸레 (오른쪽 테)
+    ctx.translate(66, 26); ctx.rotate(0.25);
+    frr(ctx, -4, -4, 8, 16, 3, CREAM);
+    ctx.fillStyle = CREAM2;
+    ctx.fillRect(-4, 2, 8, 1.6);
+    ctx.restore();
+  });
+
+  window.SPRITES_LUNCH = {
+    office: { pallet: pallet, defect: defect, truck: truck },
+    school: { notice: notice, errand: errand, clean: clean }
+  };
+})();
+
+/* 점심 스테이지 적을 각 팩의 foes 테이블에 병합 (키는 FOES id와 동일) */
+(function(){
+  var L=window.SPRITES_LUNCH; if(!L) return;
+  function mix(target,add){ if(!target||!target.foes) return;
+    for(var k in add) if(Object.prototype.hasOwnProperty.call(add,k)) target.foes[k]=add[k]; }
+  mix(window.SPRITES, L.office);
+  mix(window.SPRITES_SCHOOL, L.school);
+})();
+</script>
+
+<script>
+/* _closing_sprites.js — 마감 스테이지 벡터 스프라이트
+   직장인 팩 「월말 마감」 + 학생 팩 「개학 전날」 공용.
+   규격은 game/index.html의 SPRITES / SPRITES_SCHOOL / SPRITES_LUNCH 블록과 동일.
+   전 함수 시그니처: (ctx, cx, cy, s) — cx,cy 중심, s = 정사각 박스 한 변(px).
+   순수 Canvas2D 패스만 사용. 이모지/텍스트/이미지 없음.
+   적은 전부 '사물'이다 — 사람(직원·선생님·학생)은 절대 그리지 않는다.
+   이들은 공격대가 아니라 '처리 대기 항목'이다 — 건조하고 사무적으로.
+   두 팩은 같은 스테이지의 리스킨: stock↔pile(빈 칸 있는 잿빛 더미),
+   tax↔sheet(노란 도장·들린 모서리·돌진), ar↔book(빨간 연체 띠·원형 도장)이 짝.
+   점심 팩의 pallet/notice(따뜻한 갈색·가지런히 닫힌 더미)와 달리
+   마감 더미는 차가운 잿빛에 줄이 안 맞고 가운데가 빈다 — 안 맞는 장부다. */
+(function () {
+  "use strict";
+
+  /* ── 팔레트 (기존 팩과 공유 + 마감 팩 추가색) ── */
+  var PAPER = "#f2f5fa", PAPER2 = "#dfe6f2", PAPER3 = "#c3ccdb";
+  var G1 = "#98a4b8", G2 = "#74829a", G3 = "#5d6a7f", INK = "#2f3542";
+  var YEL = "#f5c451", YEL2 = "#d9a94e";
+  var RED = "#ff6b6b", DRED = "#b93b3b";
+  var STEEL = "#7f96b0", STEEL2 = "#54687f", STEEL3 = "#9db0c7"; // 잿빛 재고/일기장
+  var WARM = "#c49a6c", WARM2 = "#96703f";          // 색이 안 맞는 한 개 — 그게 '차이'
+
+  /* 둥근 사각형 패스 (roundRect 폴리필 불요) */
+  function rr(ctx, x, y, w, h, r) {
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function frr(ctx, x, y, w, h, r, fill) {
+    ctx.fillStyle = fill;
+    rr(ctx, x, y, w, h, r);
+    ctx.fill();
+  }
+
+  /* 72×72 디자인 좌표계로 진입 (기존 팩과 동일) */
+  function in72(ctx, cx, cy, s) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    var k = s / 72;
+    ctx.scale(k, k);
+    ctx.translate(-36, -36);
+  }
+
+  /* ══════════ 적 공통 틀 (왼쪽으로 밀려 쌓이는 사물들) ══════════ */
+  /* tilt: 왼쪽 기울기(라디안). 빠른 서류는 크게, 무거운 더미는 아주 조금.
+     shw: 발밑 그림자 반너비. 날아오는 종이는 좁게, 더미는 넓게. */
+  function makeFoe(tilt, shw, prop) {
+    return function (ctx, cx, cy, s) {
+      in72(ctx, cx, cy, s);
+      ctx.fillStyle = "rgba(0,0,0,.35)";            // 그림자
+      ctx.beginPath();
+      ctx.ellipse(36, 66, shw, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (tilt) {
+        ctx.translate(36, 40); ctx.rotate(tilt); ctx.translate(-36, -40);
+      }
+      prop(ctx);
+      ctx.restore();
+    };
+  }
+
+  /* 돌진조 공용 속도선 — 뒤쪽(오른쪽)에 흐릿하게 2줄 */
+  function dash(ctx, x1, y1, x2, y2) {
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    frr(ctx, x1, y1, 12, 3, 1.5, G2);
+    frr(ctx, x2, y2, 8, 3, 1.5, G2);
+    ctx.restore();
+  }
+
+  /* 들린 모서리 (tax↔sheet 공유) — 우하단이 말려 올라갔다 */
+  function curl(ctx) {
+    ctx.fillStyle = PAPER3;
+    ctx.beginPath();
+    ctx.moveTo(50, 52); ctx.lineTo(43, 52); ctx.lineTo(50, 45);
+    ctx.closePath(); ctx.fill();
+  }
+
+  /* 연체 띠 + 원형 도장 (ar↔book 공유) — 은근히 추궁하는 빨강 */
+  function overdue(ctx) {
+    ctx.save();                                     // 삐딱한 연체 띠
+    ctx.translate(36, 41); ctx.rotate(-0.1);
+    frr(ctx, -21, -4, 42, 8, 1, RED);
+    ctx.fillStyle = DRED;                           // 띠 양끝의 짙은 매듭
+    ctx.fillRect(-18, -4, 3, 8);
+    ctx.fillRect(15, -4, 3, 8);
+    ctx.restore();
+    ctx.save();                                     // 원형 확인 도장 — 이중 테
+    ctx.globalAlpha = 0.85;
+    ctx.strokeStyle = DRED; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(48, 44, 5.5, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(48, 44, 3, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ══════════ 직장인 팩 — 월말 마감 ══════════ */
+
+  /* 재고차이 — 창고 상자 더미. 가운데 줄 한 칸이 비어 맨 위가 삐딱하게 걸쳤고,
+     한 상자만 색이 다르다. 장부와 실물이 안 맞는다 — 마감의 최악. 제일 느리고 무겁다. */
+  var stock = makeFoe(-0.05, 25, function (ctx) {
+    frr(ctx, 8, 44, 20, 14, 1.5, STEEL);            // 아래 줄 상자 3개
+    frr(ctx, 8, 44, 20, 3, 1.5, STEEL2);
+    frr(ctx, 29, 44, 18, 14, 1.5, STEEL);
+    frr(ctx, 29, 44, 18, 3, 1.5, STEEL2);
+    frr(ctx, 48, 44, 16, 14, 1.5, STEEL);
+    frr(ctx, 48, 44, 16, 3, 1.5, STEEL2);
+    frr(ctx, 10, 29, 20, 15, 1.5, WARM);            // 가운데 줄 — 색 안 맞는 한 상자
+    frr(ctx, 10, 29, 20, 3, 1.5, WARM2);
+    ctx.fillStyle = "rgba(0,0,0,.4)";               // 비어 버린 한 칸
+    ctx.fillRect(30, 30.5, 16, 13.5);
+    frr(ctx, 46, 29, 16, 15, 1.5, STEEL);
+    frr(ctx, 46, 29, 16, 3, 1.5, STEEL2);
+    ctx.save();                                     // 맨 위 상자 — 빈 칸 위로 기울었다
+    ctx.translate(52, 29); ctx.rotate(-0.18);
+    frr(ctx, -22, -13, 24, 13, 1.5, STEEL);
+    frr(ctx, -22, -13, 24, 3, 1.5, STEEL2);
+    ctx.restore();
+    frr(ctx, 31, 47, 11, 9, 1, PAPER);              // 실사 태그 — 바를 정(正) 개수 표시
+    ctx.strokeStyle = G3; ctx.lineWidth = 1.2; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(33.4, 49.4); ctx.lineTo(33.4, 53.6);
+    ctx.moveTo(35.4, 49.4); ctx.lineTo(35.4, 53.6);
+    ctx.moveTo(37.4, 49.4); ctx.lineTo(37.4, 53.6);
+    ctx.moveTo(39.4, 49.4); ctx.lineTo(39.4, 53.6);
+    ctx.moveTo(32.4, 53.8); ctx.lineTo(40.4, 49.2); // 다섯 개째 — 세다 만 빗금
+    ctx.stroke();
+  });
+
+  /* 세금계산서 — 다음 달 10일 마감. 날아오는 계산서 한 장 — 머리글 띠 +
+     공급가액 괘선 + 합계 두 줄 + 노란 사각 인감. 제일 빠르다. */
+  var tax = makeFoe(-0.2, 14, function (ctx) {
+    dash(ctx, 54, 20, 57, 30);                      // 속도선 (뒤쪽)
+    frr(ctx, 20, 12, 30, 40, 1.5, PAPER);
+    frr(ctx, 20, 12, 30, 6, 1.5, G1);               // 머리글 띠
+    ctx.fillStyle = G1;                             // 금액 칸 괘선
+    ctx.fillRect(37, 22, 1.4, 21);
+    ctx.fillRect(24, 25, 22, 1.4);
+    ctx.fillRect(24, 30, 22, 1.4);
+    ctx.fillRect(24, 35, 22, 1.4);
+    ctx.fillRect(24, 40, 22, 1.4);
+    ctx.fillStyle = G3;                             // 합계 — 이중선
+    ctx.fillRect(24, 45, 22, 1.4);
+    ctx.fillRect(24, 47.6, 22, 1.4);
+    ctx.save();                                     // 토너 노랑 사각 인감
+    ctx.translate(43.5, 26.5); ctx.rotate(0.12);
+    frr(ctx, -4, -4, 8, 8, 1, YEL);
+    ctx.strokeStyle = YEL2; ctx.lineWidth = 1.4;
+    rr(ctx, -2.2, -2.2, 4.4, 4.4, 0.5);
+    ctx.stroke();
+    ctx.restore();
+    curl(ctx);                                      // 들린 모서리
+  });
+
+  /* 미수금 — 받을 돈을 못 받았다. 접힌 거래명세서에 빨간 연체 띠가 감기고
+     확인 도장이 찍혔다. 은근히 추궁하는 얼굴. 중간 속도. */
+  var ar = makeFoe(-0.12, 18, function (ctx) {
+    frr(ctx, 21, 13, 30, 11, 1.5, PAPER2);          // 펼쳐진 뒷장
+    ctx.fillStyle = PAPER3;                         // 접힌 금
+    ctx.fillRect(21, 22.5, 30, 1.5);
+    frr(ctx, 17, 24, 38, 26, 2, PAPER);             // 본문
+    ctx.fillStyle = G1;                             // 명세 괘선 + 세로 칸
+    ctx.fillRect(22, 29, 28, 1.4);
+    ctx.fillRect(22, 33.5, 22, 1.4);
+    ctx.fillRect(38, 29, 1.4, 6);
+    overdue(ctx);                                   // 연체 띠 + 원형 도장
+  });
+
+  /* ══════════ 학생 팩 — 개학 전날 ══════════ */
+
+  /* 밀린 일기 — 날짜 탭이 달린 일기장 더미. 가운데 며칠이 비어
+     위 권들이 구멍 쪽으로 기울었고, 한 권만 색이 다르다. 제일 느리고 무겁다. */
+  var pile = makeFoe(-0.05, 22, function (ctx) {
+    frr(ctx, 18, 51, 34, 6.5, 2, STEEL2);           // 아래 3권 — 자잘하게 어긋남
+    frr(ctx, 52, 52.5, 5, 3.5, 1, PAPER3);          // 날짜 탭 (오른쪽 옆면)
+    frr(ctx, 16, 44.5, 35, 6.5, 2, STEEL);
+    frr(ctx, 51, 46, 5, 3.5, 1, PAPER3);
+    frr(ctx, 19, 38, 33, 6.5, 2, STEEL3);
+    frr(ctx, 52, 39.5, 5, 3.5, 1, PAPER3);
+    ctx.fillStyle = "rgba(0,0,0,.5)";               // 빠진 날들 — 뻥 뚫린 자리
+    ctx.fillRect(18, 31.5, 17, 6.5);
+    frr(ctx, 35, 31.5, 17, 6.5, 2, WARM);           // 반 권만 남은 색 다른 하루
+    frr(ctx, 52, 33, 5, 3.5, 1, WARM2);
+    ctx.save();                                     // 위 2권 — 구멍 위로 기울어 얹힘
+    ctx.translate(52, 31.5); ctx.rotate(-0.12);
+    frr(ctx, -34, -6.5, 34, 6.5, 2, STEEL);
+    frr(ctx, 0, -5.4, 5, 3.5, 1, PAPER3);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(51, 25.7); ctx.rotate(-0.17);
+    frr(ctx, -33, -6.5, 33, 6.5, 2, STEEL2);
+    frr(ctx, 0, -5.4, 5, 3.5, 1, PAPER3);
+    ctx.restore();
+    ctx.fillStyle = G3;                             // 탭의 날짜 표시 점
+    ctx.fillRect(53.4, 53.5, 2.2, 1.4);
+    ctx.fillRect(52.4, 47, 2.2, 1.4);
+    ctx.fillRect(53.4, 40.5, 2.2, 1.4);
+  });
+
+  /* 문제집 — 풀다 만 낱장이 날아온다. 문항 동그라미 + 풀이 줄 +
+     모서리의 노란 회차 동그라미. 제일 빠르다. */
+  var sheet = makeFoe(-0.2, 14, function (ctx) {
+    dash(ctx, 54, 20, 57, 30);                      // 속도선 (뒤쪽)
+    frr(ctx, 20, 12, 30, 40, 1.5, PAPER);
+    ctx.strokeStyle = G2; ctx.lineWidth = 1.5;      // 문항 번호 동그라미 3개
+    ctx.beginPath(); ctx.arc(26, 23, 2, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(26, 32, 2, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(26, 41, 2, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = G1;                             // 문항 줄
+    ctx.fillRect(30.5, 22, 15, 1.4);
+    ctx.fillRect(30.5, 25.5, 11, 1.4);
+    ctx.fillRect(30.5, 31, 15, 1.4);
+    ctx.fillRect(30.5, 34.5, 11, 1.4);
+    ctx.fillRect(30.5, 40, 15, 1.4);
+    ctx.fillRect(30.5, 43.5, 11, 1.4);
+    ctx.strokeStyle = YEL; ctx.lineWidth = 2;       // 모서리의 노란 회차 동그라미
+    ctx.beginPath(); ctx.arc(43.5, 17.5, 4, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = YEL2;                           // 남은 회차 한 획
+    ctx.fillRect(42.8, 15.7, 1.4, 4);
+    curl(ctx);                                      // 들린 모서리
+  });
+
+  /* 독후감 — 밀린 감상문. 접힌 원고에 제목 칸만 채워졌고
+     빨간 연체 띠와 확인 도장이 찍혔다. 중간 속도. */
+  var book = makeFoe(-0.12, 18, function (ctx) {
+    frr(ctx, 21, 13, 30, 11, 1.5, PAPER2);          // 펼쳐진 뒷장
+    ctx.fillStyle = PAPER3;                         // 접힌 금
+    ctx.fillRect(21, 22.5, 30, 1.5);
+    frr(ctx, 17, 24, 38, 26, 2, PAPER);             // 본문
+    frr(ctx, 25, 27, 22, 4, 1, G3);                 // 제목 칸 — 여기까지만 썼다
+    ctx.fillStyle = G1;                             // 못 쓴 원고 줄
+    ctx.fillRect(22, 34.5, 28, 1.4);
+    overdue(ctx);                                   // 연체 띠 + 원형 도장
+  });
+
+  window.SPRITES_CLOSING = {
+    office: { stock: stock, tax: tax, ar: ar },
+    school: { pile: pile, sheet: sheet, book: book }
+  };
+})();
+
+/* 마감 스테이지 적을 각 팩의 foes 테이블에 병합 */
+(function(){
+  var C=window.SPRITES_CLOSING; if(!C) return;
+  function mix(target,add){ if(!target||!target.foes) return;
+    for(var k in add) if(Object.prototype.hasOwnProperty.call(add,k)) target.foes[k]=add[k]; }
+  mix(window.SPRITES, C.office);
+  mix(window.SPRITES_SCHOOL, C.school);
+})();
+</script>
+
+<script>
+/* _dept_props.js — 부서(과목) 오버레이 소품 스프라이트
+   이미 그려진 직급/사물 스프라이트 '위에' 덧그리는 작은 소품 10종.
+   규격은 다른 스프라이트 팩과 동일: (ctx, cx, cy, s) — cx,cy 중심, s = 정사각 박스 한 변(px).
+   72×72 디자인 좌표계. 순수 Canvas2D 패스만 사용. 이모지/텍스트/이미지 없음.
+   사람은 절대 그리지 않는다 — 소품(물건)만 그린다.
+
+   좌표 참고 (72-공간 환산):
+   · 직장인 적(76×96 공간, ×0.75 환산): 머리 중심 (36,16.5) r10.5, 머리카락 꼭대기 y=6,
+     눈 y≈18.75, 몸통 x24..48 / y27..60. 다섯 직급 모두 동일 체형(makeFoe wide=false).
+   · 학생 적(72×72 공간): 다섯 사물의 공통 점유 영역 대략 x20..45 / y20..47.
+   · 배지가 위(y≈2..17 @72px 기준), HP바가 아래(y≥60)에 그려지므로
+     소품은 위로는 머리카락 선(y≈5) 이상 올라가지 않고 아래로는 y≤54 안에 머문다. */
+(function () {
+  "use strict";
+
+  /* ── 부서 컬러 (배지/HP바와 일치) + 구조용 그레이 ── */
+  var SALES = "#ffb26b", SALES2 = "#d1854a";   // 영업 / 체육
+  var PROD  = "#8fb4ff", PROD2  = "#5f83c9";   // 생산 / 수학
+  var QA    = "#57d98a", QA2    = "#2f9c62";   // 품질 / 과학
+  var FIN   = "#f5c451", FIN2   = "#d9a94e";   // 재무 / 영어
+  var HR    = "#c58fff", HR2    = "#9a63d6";   // 인사 / 음악
+  var PAPER = "#f2f5fa", PAPER2 = "#dfe6f2";
+  var G1 = "#98a4b8", G2 = "#74829a", G3 = "#5d6a7f", G4 = "#4c5769", INK = "#2f3542";
+
+  /* 둥근 사각형 패스 (다른 팩과 동일) */
+  function rr(ctx, x, y, w, h, r) {
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function frr(ctx, x, y, w, h, r, fill) {
+    ctx.fillStyle = fill;
+    rr(ctx, x, y, w, h, r);
+    ctx.fill();
+  }
+
+  /* 72×72 디자인 좌표계로 진입 (다른 팩과 동일) */
+  function in72(ctx, cx, cy, s) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    var k = s / 72;
+    ctx.scale(k, k);
+    ctx.translate(-36, -36);
+  }
+
+  /* ══════════ 직장인 팩 — 몸에 걸치거나 손에 든 소품 ══════════ */
+
+  /* 영업 — 서류가방: 진행 방향(왼쪽) 손에 낮게 든 슬림 가방, 손잡이 보임 */
+  function oSales(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    ctx.strokeStyle = SALES2; ctx.lineWidth = 2.6; // 손잡이 (가방 위 고리)
+    rr(ctx, 17, 37.5, 7, 6, 3);
+    ctx.stroke();
+    frr(ctx, 12, 41, 17, 11, 2, SALES);            // 몸체
+    frr(ctx, 12, 41, 17, 3.2, 2, SALES2);          // 덮개 띠
+    frr(ctx, 19, 45, 3.2, 3, 1, PAPER2);           // 잠금쇠
+    ctx.restore();
+  }
+
+  /* 생산 — 안전모: 머리에 딱 붙는 돔 + 챙 + 정수리 능선 (눈은 가리지 않음) */
+  function oProd(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    ctx.fillStyle = PROD;                          // 돔 (머리 윗반원을 덮음)
+    ctx.beginPath();
+    ctx.arc(36, 17.5, 11.4, Math.PI, 0, false);
+    ctx.closePath(); ctx.fill();
+    frr(ctx, 33.2, 5, 5.6, 9, 2.8, PROD2);         // 정수리 능선
+    frr(ctx, 23.6, 15.4, 24.8, 3.6, 1.8, PROD2);   // 챙 (눈 y≈18.75 바로 위)
+    ctx.restore();
+  }
+
+  /* 품질 — 클립보드: 가슴 높이(왼쪽)로 든 초록 보드, 위 클립 + 줄 + 체크 */
+  function oQa(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 13, 28.5, 16, 20, 2, QA);             // 보드
+    frr(ctx, 15, 32, 12, 14.5, 1.2, PAPER);        // 종이
+    frr(ctx, 17.5, 26.6, 7, 4, 1.5, G3);           // 클립
+    frr(ctx, 19.5, 25.4, 3, 2.6, 1.2, G2);         // 클립 머리
+    ctx.fillStyle = G1;                            // 글줄
+    ctx.fillRect(17, 35, 8, 1.8);
+    ctx.fillRect(17, 38.6, 8, 1.8);
+    ctx.fillRect(17, 42.2, 5, 1.8);
+    ctx.strokeStyle = QA2; ctx.lineWidth = 1.8;    // 체크
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(23.2, 42.4); ctx.lineTo(24.8, 44.2); ctx.lineTo(27.4, 40.8);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* 재무 — 계산기: 가슴 높이의 어두운 몸체, 노란 표시창 + 3×3 키 */
+  function oFin(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 14, 30, 14, 18, 2, INK);              // 몸체
+    ctx.strokeStyle = FIN2; ctx.lineWidth = 1.2;   // 노란 테
+    rr(ctx, 14, 30, 14, 18, 2);
+    ctx.stroke();
+    frr(ctx, 16, 32.4, 10, 4.2, 1, FIN);           // 표시창
+    var kx, ky, i, j;                              // 3×3 키
+    for (i = 0; i < 3; i++) {
+      for (j = 0; j < 3; j++) {
+        kx = 16 + j * 3.7; ky = 38.6 + i * 3.1;
+        frr(ctx, kx, ky, 2.6, 2.2, 0.7,
+            (i === 2 && j === 2) ? FIN : PAPER2);  // 우하단 = 노란 키
+      }
+    }
+    ctx.restore();
+  }
+
+  /* 인사 — 서류철: 진행 방향 옆구리에 낀 링바인더, 링 + 삐져나온 탭 */
+  function oHr(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 8.8, 36.5, 3.6, 6, 1.5, "#e6d6ff");   // 탭 (왼쪽으로 삐져나옴)
+    frr(ctx, 11, 33, 14, 17, 2, HR);               // 표지
+    frr(ctx, 21.5, 33, 3.8, 17, 1.5, HR2);         // 등(몸 쪽)
+    ctx.strokeStyle = PAPER; ctx.lineWidth = 1.4;  // 링 2개
+    ctx.beginPath(); ctx.arc(23.4, 37.5, 1.6, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(23.4, 45.5, 1.6, 0, Math.PI * 2); ctx.stroke();
+    frr(ctx, 13, 36, 7.5, 4.5, 1, PAPER2);         // 라벨
+    ctx.restore();
+  }
+
+  /* ══════════ 학생 팩 — 사물의 진행 방향(왼쪽) 앞면 중앙에 크게 붙는 소품 ══════════
+     사무 팩 소품(클립보드 16×20)과 같은 시각적 무게. 바탕 사물이 밝은 회색/파랑이므로
+     모든 소품에 INK 외곽선을 둘러 분리한다. */
+
+  function outline(ctx) {                          // 공통 외곽선 스타일
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.8;
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+  }
+
+  /* 체육 — 호루라기: 큰 소리통 + 각진 물부리 + 위로 걸린 끈 */
+  function sSales(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    ctx.strokeStyle = INK; ctx.lineWidth = 2.2;    // 끈
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(19, 32);
+    ctx.quadraticCurveTo(21, 24, 28, 23);
+    ctx.quadraticCurveTo(34.5, 22.5, 35, 28);
+    ctx.stroke();
+    ctx.fillStyle = SALES;                         // 소리통 (크게)
+    ctx.beginPath(); ctx.arc(27, 44.5, 8.2, 0, Math.PI * 2); ctx.fill();
+    outline(ctx);
+    ctx.beginPath(); ctx.arc(27, 44.5, 8.2, 0, Math.PI * 2); ctx.stroke();
+    frr(ctx, 11, 31.5, 17.5, 9.5, 4, SALES);       // 몸통(배럴)
+    outline(ctx); rr(ctx, 11, 31.5, 17.5, 9.5, 4); ctx.stroke();
+    ctx.fillStyle = SALES2;                        // 비스듬한 물부리
+    ctx.beginPath();
+    ctx.moveTo(11, 32.5); ctx.lineTo(6.5, 34.5); ctx.lineTo(6.5, 38.5); ctx.lineTo(11, 40);
+    ctx.closePath(); ctx.fill();
+    outline(ctx);
+    ctx.beginPath();
+    ctx.moveTo(11, 32.5); ctx.lineTo(6.5, 34.5); ctx.lineTo(6.5, 38.5); ctx.lineTo(11, 40);
+    ctx.stroke();
+    frr(ctx, 15, 33.6, 9, 2.6, 1.3, SALES2);       // 윗면 홈
+    ctx.fillStyle = INK;                           // 소리통 구멍
+    ctx.beginPath(); ctx.arc(27, 44.5, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  /* 수학 — 삼각자: 화면을 가로지르는 큰 직각삼각형, 가운데 구멍 + 눈금 */
+  function sProd(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    ctx.fillStyle = PROD;
+    ctx.beginPath();                               // 바깥 직각삼각형
+    ctx.moveTo(11, 54); ctx.lineTo(11, 27); ctx.lineTo(36, 54);
+    ctx.closePath();
+    ctx.moveTo(16.5, 48.5); ctx.lineTo(16.5, 38); ctx.lineTo(27.5, 48.5); // 구멍
+    ctx.closePath();
+    ctx.fill("evenodd");
+    outline(ctx);                                  // 외곽선 (바깥 + 구멍)
+    ctx.beginPath();
+    ctx.moveTo(11, 54); ctx.lineTo(11, 27); ctx.lineTo(36, 54); ctx.closePath();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(16.5, 48.5); ctx.lineTo(16.5, 38); ctx.lineTo(27.5, 48.5); ctx.closePath();
+    ctx.stroke();
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.6;    // 세로변 눈금
+    ctx.beginPath();
+    ctx.moveTo(11.8, 32);   ctx.lineTo(15.2, 32);
+    ctx.moveTo(11.8, 36.5); ctx.lineTo(15.2, 36.5);
+    ctx.moveTo(11.8, 41);   ctx.lineTo(15.2, 41);
+    ctx.moveTo(11.8, 45.5); ctx.lineTo(15.2, 45.5);
+    ctx.moveTo(11.8, 50);   ctx.lineTo(15.2, 50);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* 과학 — 비커: 넓은 입 + 왼쪽 주둥이 + 초록 액체 수면 + 기포 */
+  function sQa(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 10.5, 30, 23, 20.5, 2.5, PAPER2);     // 유리 몸체 (넓게)
+    ctx.fillStyle = PAPER2;                        // 주둥이 (왼쪽 위)
+    ctx.beginPath();
+    ctx.moveTo(10.5, 30); ctx.lineTo(7, 32.2); ctx.lineTo(10.5, 34.4);
+    ctx.closePath(); ctx.fill();
+    frr(ctx, 12, 39.5, 20, 9.5, 1.8, QA);          // 액체
+    frr(ctx, 12, 39.5, 20, 2.6, 1.3, QA2);         // 수면 띠
+    ctx.fillStyle = PAPER;                         // 기포
+    ctx.beginPath(); ctx.arc(18, 45, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(24, 43.6, 1.5, 0, Math.PI * 2); ctx.fill();
+    outline(ctx);                                  // 외곽선 + 입 라인
+    rr(ctx, 10.5, 30, 23, 20.5, 2.5); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(10.5, 30); ctx.lineTo(7, 32.2); ctx.lineTo(10.5, 34.4);
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(11, 33.2); ctx.lineTo(33, 33.2); ctx.stroke(); // 입선
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.6;    // 눈금
+    ctx.beginPath();
+    ctx.moveTo(29.5, 37); ctx.lineTo(32.5, 37);
+    ctx.moveTo(29.5, 41.5); ctx.lineTo(32.5, 41.5);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* 영어 — 단어장: 두툼한 노란 수첩, 위 링 제본 + 크게 젖혀진 모서리 */
+  function sFin(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    frr(ctx, 11.5, 32.5, 4, 19, 1.5, PAPER);       // 페이지 두께 (왼쪽)
+    frr(ctx, 13.5, 30.5, 19, 21.5, 2.5, FIN);      // 표지
+    frr(ctx, 13.5, 30.5, 19, 5, 2.5, FIN2);        // 제본 띠
+    ctx.fillStyle = "#b98f3a";                     // 단어 줄
+    ctx.fillRect(16.5, 39, 12, 2);
+    ctx.fillRect(16.5, 43.5, 12, 2);
+    ctx.fillRect(16.5, 48, 8, 2);
+    ctx.fillStyle = "#fbe7b0";                     // 크게 젖혀진 모서리
+    ctx.beginPath();
+    ctx.moveTo(32.5, 52); ctx.lineTo(32.5, 44.5); ctx.lineTo(25, 52);
+    ctx.closePath(); ctx.fill();
+    outline(ctx);                                  // 외곽선 + 접힘선
+    rr(ctx, 13.5, 30.5, 19, 21.5, 2.5); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(32.5, 44.5); ctx.lineTo(25, 52);
+    ctx.stroke();
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.6;    // 링 2개 (제본 위)
+    ctx.beginPath(); ctx.arc(18.5, 30.5, 2, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(27.5, 30.5, 2, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  /* 음악 — 리코더: 사물 앞면을 가로지르는 긴 관, 어두운 취구 + 지공 5개 */
+  function sHr(ctx, cx, cy, s) {
+    in72(ctx, cx, cy, s);
+    ctx.translate(33, 26.5);                       // 취구(오른쪽 위)에서 시작
+    ctx.rotate(2.27);                              // 왼쪽 아래로
+    frr(ctx, 0, -3.6, 34, 7.2, 3.6, HR);           // 관 (길고 두껍게)
+    outline(ctx); rr(ctx, 0, -3.6, 34, 7.2, 3.6); ctx.stroke();
+    ctx.fillStyle = HR2;                           // 취구(비크) — 어두운 끝
+    ctx.beginPath();
+    ctx.moveTo(8, -3.6); ctx.lineTo(0.6, -3.4); ctx.lineTo(-1.8, 0);
+    ctx.lineTo(0.6, 3.4); ctx.lineTo(8, 3.6);
+    ctx.closePath(); ctx.fill();
+    outline(ctx);
+    ctx.beginPath();
+    ctx.moveTo(8, -3.6); ctx.lineTo(0.6, -3.4); ctx.lineTo(-1.8, 0);
+    ctx.lineTo(0.6, 3.4); ctx.lineTo(8, 3.6);
+    ctx.closePath(); ctx.stroke();
+    ctx.fillStyle = INK;                           // 바람길
+    ctx.fillRect(1.6, -1, 4.2, 2);
+    ctx.beginPath(); ctx.arc(12.5, 0, 1.6, 0, Math.PI * 2); ctx.fill(); // 지공 5개
+    ctx.beginPath(); ctx.arc(16.5, 0, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(20.5, 0, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(24.5, 0, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(28.5, 0, 1.6, 0, Math.PI * 2); ctx.fill();
+    frr(ctx, 30, -3.6, 3.4, 7.2, 1.7, HR2);        // 발관 띠
+    ctx.restore();
+  }
+
+  window.SPRITES_DEPT = {
+    office: { sales: oSales, prod: oProd, qa: oQa, fin: oFin, hr: oHr },
+    school: { sales: sSales, prod: sProd, qa: sQa, fin: sFin, hr: sHr }
+  };
+})();
+
+/* 통관 스테이지 전용 유닛 아이콘 — 요건확인서(직장인) / 확인 도장(학생) */
+(function(){
+  function rr2(x,X,Y,W,H,R){ if(R>W/2)R=W/2; if(R>H/2)R=H/2;
+    x.beginPath(); x.moveTo(X+R,Y);
+    x.arcTo(X+W,Y,X+W,Y+H,R); x.arcTo(X+W,Y+H,X,Y+H,R);
+    x.arcTo(X,Y+H,X,Y,R);     x.arcTo(X,Y,X+W,Y,R); x.closePath(); }
+  function box(x,X,Y,W,H,R,C){ rr2(x,X,Y,W,H,R); x.fillStyle=C; x.fill(); }
+  function frame(x,cx,cy,s){ x.save(); x.translate(cx,cy); const k=s/72; x.scale(k,k); x.translate(-36,-36); }
+
+  /* 요건확인서 — 서류 + 초록 승인 도장 */
+  function doc(ctx,cx,cy,s){
+    frame(ctx,cx,cy,s);
+    box(ctx,16,8,40,54,3,"#f2f5fa");                 // 용지
+    box(ctx,16,8,40,10,3,"#dfe6f2");                 // 머리글 띠
+    ctx.fillStyle="#98a4b8";
+    [24,32,40,48].forEach(y=>ctx.fillRect(22,y,22,2.5));   // 본문 줄
+    ctx.fillStyle="#c3ccdb"; ctx.fillRect(22,56,14,2.5);
+    ctx.save();                                       // 승인 도장
+    ctx.translate(46,48); ctx.rotate(-.22);
+    ctx.strokeStyle="#4b8f70"; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.arc(0,0,9,0,7); ctx.stroke();
+    ctx.strokeStyle="#57d98a"; ctx.lineWidth=3; ctx.lineCap="round";
+    ctx.beginPath(); ctx.moveTo(-4,0); ctx.lineTo(-1,3.5); ctx.lineTo(4.5,-3.5); ctx.stroke();
+    ctx.restore();
+    ctx.restore();
+  }
+  /* 확인 도장 — 손잡이 달린 도장 + 찍힌 자국 */
+  function stamp(ctx,cx,cy,s){
+    frame(ctx,cx,cy,s);
+    box(ctx,20,44,32,8,2,"#dfe6f2");                 // 찍힌 종이
+    ctx.save();                                       // 도장 자국
+    ctx.translate(36,48); ctx.rotate(-.15);
+    ctx.strokeStyle="#b93b3b"; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(0,0,7,0,7); ctx.stroke(); ctx.restore();
+    box(ctx,26,26,20,14,3,"#5d6a7f");                // 도장 몸통
+    box(ctx,31,10,10,18,4,"#7f96b0");                // 손잡이
+    box(ctx,24,38,24,5,2,"#c58fff");                 // 인주 면
+    ctx.restore();
+  }
+  if(window.SPRITES && window.SPRITES.units) window.SPRITES.units.doc=doc;
+  if(window.SPRITES_SCHOOL && window.SPRITES_SCHOOL.units) window.SPRITES_SCHOOL.units.stamp=stamp;
+})();
+</script>
+
+<script>
+"use strict";
+
+/* ══════════════ 상수 ══════════════ */
+const COLS=9, ROWS=5, CW=86, CH=92;
+
+const FW=COLS*CW, FH=ROWS*CH;
+const HOME=0;                       // 좌측 경계 = 내 자리
+const $=(s,r)=>(r||document).querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+/* 사운드 안전 호출 — _audio.js(window.SFX)가 없어도 게임은 그대로 동작한다 */
+const S=(m,...a)=>{ try{ const x=window.SFX; if(x&&typeof x[m]==="function") x[m](...a); }catch(e){} };
+
+/* ══════════════ 유닛 ══════════════ */
+const U_OFFICE={
+  water:{id:"water",e:"💧",name:"정수기",cost:50,hp:60,
+         desc:"5초마다 커피 +25",gen:5},
+  wall :{id:"wall", e:"🧱",name:"파티션",cost:50,hp:520,
+         desc:"때리는 동안 시간을 번다"},
+  copy :{id:"copy", e:"🖨️",name:"복사기",cost:100,hp:110,
+         desc:"서류 발사 (1.4초/22)",rate:1.4,dmg:22},
+  stap :{id:"stap", e:"📎",name:"스테이플러",cost:175,hp:110,
+         desc:"연사 (0.55초/14)",rate:.55,dmg:14},
+  quit :{id:"quit", e:"📄",name:"사직서",cost:125,hp:1,
+         desc:"설치 즉시 그 줄 전체 소각",nuke:420},
+  doc  :{id:"doc",  e:"📑",name:"요건확인서",cost:75,hp:1,
+         desc:"그 줄의 보류 건을 전부 반송",release:true},
+};
+const PAL_OFFICE=["water","wall","copy","stap","quit"];
+
+/* ══════════════ 적 ══════════════ */
+const F_OFFICE={
+  intern :{e:"🧑‍💼",name:"인턴",  hp:70,  spd:26,dmg:8 ,color:"#9aa4bb"},
+  staff  :{e:"👔",  name:"사원",  hp:140, spd:20,dmg:11,color:"#c3cbe0"},
+  senior :{e:"🗂️",  name:"대리",  hp:230, spd:17,dmg:13,color:"#8fb4ff"},
+  manager:{e:"🚗",  name:"과장",  hp:280, spd:27,dmg:15,color:"#ffb26b"},
+  gm     :{e:"🧳",  name:"부장",  hp:620, spd:12,dmg:22,color:"#ff8f8f"},
+  drunk  :{e:"🍻",  name:"회식조", hp:180, spd:30,dmg:12,color:"#ffd166"},
+  audit  :{e:"📋",  name:"점검단", hp:1500,spd:10,dmg:34,color:"#f87171",boss:true},
+  pallet :{e:"📦",  name:"파렛트", hp:200, spd:22,dmg:10,color:"#b08968"},
+  defect :{e:"⚠️",  name:"불량품", hp:90,  spd:34,dmg:15,color:"#ff9f43"},
+  truck  :{e:"🚚",  name:"납품차", hp:1300,spd:11,dmg:30,color:"#e0704f",boss:true},
+  stock  :{e:"📊",  name:"재고차이", hp:260, spd:15,dmg:8 ,color:"#7f96b0"},
+  tax    :{e:"🧾",  name:"세금계산서",hp:110,spd:30,dmg:10,color:"#f5c451"},
+  ar     :{e:"💸",  name:"미수금",   hp:190, spd:20,dmg:12,color:"#ff6b6b"},
+};
+
+/* ══════════════ 스테이지 ══════════════ */
+// [초, 레인(0~4), 적]
+function wave(list){ return list.map(([t,l,k,dp])=>({t,l,k,dp,done:false})); }
+
+const S_OFFICE={
+  commute:{
+    id:"commute",icon:"🚇",name:"출근 저지",
+    tagline:"복도로 밀려오는 상사들을 내 자리 앞에서 막아라",
+    brief:"월요일 아침. 복도 끝에서 하나둘 걸어옵니다. 왼쪽 끝 내 자리가 뚫리면 하루가 시작됩니다.",
+    coffee:225, trickle:6,
+    waves:wave([
+      [10,2,"staff"],[17,0,"staff"],[24,4,"intern"],[30,3,"senior"],
+      [27,1,"staff"],[33,2,"senior"],[40,4,"manager"],
+      [47,0,"staff"],[47,3,"staff"],[55,1,"senior"],[62,2,"manager"],
+      [70,3,"gm"],[78,0,"senior"],[78,4,"senior"],
+      [88,2,"gm"],[95,1,"manager"],[95,3,"manager"],
+      [104,0,"gm"],[104,4,"gm"],[112,2,"gm"],
+    ]),
+    winMsg:"복도가 조용해졌습니다. 아무도 자리에 도달하지 못했습니다.",
+    loseMsg:"자리에 도달했습니다. 하루가 시작됩니다.",
+  },
+  lunch:{
+    id:"lunch",icon:"🚚",name:"점심시간 외주납품",
+    tagline:"점심 나가기 직전 들이닥친 납품 물량을 검수대 앞에서 막아라",
+    brief:"12시 정각. 협력사 5톤이 후문에 붙었습니다. 물량은 파도로 들어옵니다 \u2014 한 번에 몰리고, 잠깐 끊기고, 또 몰립니다. 사이 시간에 화력을 세우세요.",
+    coffee:250, trickle:4,
+    waves:wave([
+      /* 1차 입고 — 세 줄 동시 */
+      [12,1,"pallet"],[12,2,"pallet"],[12,3,"pallet"],
+      [20,0,"defect"],[20,4,"defect"],
+      /* 소강 — 라인 보강 */
+      [34,0,"pallet"],[34,1,"pallet"],[34,2,"pallet"],[34,3,"pallet"],[34,4,"pallet"],
+      [42,2,"defect"],[45,1,"defect"],[45,3,"defect"],
+      /* 2차 입고 + 납품차 1호 */
+      [56,2,"truck"],
+      [58,0,"pallet"],[58,4,"pallet"],[62,1,"pallet"],[62,3,"pallet"],
+      [70,0,"defect"],[70,2,"defect"],[70,4,"defect"],
+      /* 소강 */
+      [82,1,"senior"],[82,3,"senior"],[86,2,"manager"],
+      /* 전량 입고 + 납품차 2호 */
+      [96,0,"truck"],
+      [98,1,"pallet"],[98,2,"pallet"],[98,3,"pallet"],[98,4,"pallet"],
+      [106,0,"defect"],[106,1,"defect"],[106,3,"defect"],[106,4,"defect"],
+      [114,2,"gm"],[118,0,"manager"],[118,4,"manager"],
+    ]),
+    winMsg:"전량 반품 처리. 점심은 지켰습니다.",
+    loseMsg:"물량이 검수대를 넘었습니다. 점심은 없습니다.",
+  },
+  dinner:{
+    id:"dinner",icon:"🍻",name:"회식 저지",
+    tagline:"몰려오는 회식조를 전부 돌려보내라",
+    brief:"18시. 팀장이 회식을 소집했습니다. 회식조는 수가 많고 빠릅니다. 화력을 빨리 세우세요.",
+    coffee:250, trickle:5,
+    waves:wave([
+      [11,2,"drunk"],[16,0,"drunk"],[21,4,"drunk"],
+      [17,1,"staff"],[17,3,"staff"],
+      [24,2,"drunk"],[27,0,"drunk"],[30,4,"drunk"],
+      [36,1,"manager"],[40,3,"manager"],
+      [46,0,"drunk"],[48,1,"drunk"],[50,2,"drunk"],[52,3,"drunk"],[54,4,"drunk"],
+      [62,2,"gm"],[68,0,"manager"],[68,4,"manager"],
+      [76,1,"drunk"],[78,3,"drunk"],[80,2,"drunk"],
+      [88,0,"gm"],[88,4,"gm"],[96,2,"gm"],[100,1,"manager"],[100,3,"manager"],
+    ]),
+    winMsg:"정족수 미달. 회식은 다음 주로 미뤄졌습니다.",
+    loseMsg:"회식조가 자리까지 왔습니다. 끌려갑니다.",
+  },
+  weekly:{
+    id:"weekly",icon:"🗂️",name:"주간 업무보고",
+    tagline:"부서가 돌아가며 들어온다. 직급이 아니라 부서를 보고 막아라",
+    brief:"금요일 오후. 다섯 부서가 차례로 보고를 받으러 옵니다. 같은 과장이라도 어느 부서에서 왔는지에 따라 하는 짓이 다릅니다 \u2014 배지를 보세요.",
+    coffee:275, trickle:5,
+    waves:wave([
+      /* 1교대 — 생산 (물량으로 민다) */
+      [10,2,"staff","prod"],[14,1,"staff","prod"],[14,3,"staff","prod"],
+      [20,0,"senior","prod"],[20,4,"senior","prod"],
+      /* 2교대 — 재무 (예산을 깎는다) */
+      [27,2,"staff","fin"],[30,1,"staff","fin"],[30,3,"staff","fin"],
+      [35,0,"senior","fin"],[35,4,"senior","fin"],
+      /* 3교대 — 품질 (발사를 멈춘다) */
+      [42,2,"senior","qa"],[45,1,"staff","qa"],[45,3,"staff","qa"],
+      [50,0,"manager","qa"],[50,4,"manager","qa"],
+      /* 4교대 — 영업 (복도 중간에서 튀어나온다) */
+      [57,1,"staff","sales"],[58,3,"staff","sales"],
+      [62,0,"senior","sales"],[62,2,"senior","sales"],[62,4,"senior","sales"],
+      /* 5교대 — 인사 (사물을 데려간다) */
+      [70,2,"manager","hr"],[73,1,"senior","hr"],[73,3,"senior","hr"],
+      [79,0,"manager","hr"],[79,4,"manager","hr"],
+      /* 전 부서 합동 */
+      [87,2,"gm","prod"],[90,0,"manager","fin"],[90,4,"manager","qa"],
+      [95,1,"senior","sales"],[95,3,"senior","hr"],
+      [101,2,"gm","qa"],[104,0,"gm","hr"],[104,4,"gm","fin"],
+      [111,1,"manager","sales"],[111,3,"manager","prod"],
+      [118,2,"gm","hr"],
+    ]),
+    winMsg:"다섯 부서 전부 돌려보냈습니다. 보고는 월요일로 밀렸습니다.",
+    loseMsg:"보고가 자리까지 왔습니다. 금요일 퇴근은 없습니다.",
+  },
+  customs:{
+    id:"customs",icon:"🛃",name:"통관 대기",
+    tagline:"총이 안 먹히는 적. 죽이는 게 아니라 서류를 대서 돌려보내라",
+    brief:"세관 라인(점선) 뒤에서 물건이 멈춥니다. 보류 중인 건 아무리 쏴도 맞지 않습니다 \u2014 탄이 그대로 지나갑니다. 요건확인서를 그 줄에 대야 반송됩니다. 9초를 넘기면 스스로 통관되어 더 빠르게 옵니다. 한 줄에 3건을 넘기면 그 줄 전체가 일괄 통관됩니다.",
+    coffee:350, trickle:4,
+    extraUnit:"doc",
+    customs:{col:8, hold:9, cap:3, boost:1.5, fee:1.5},  // fee: 보류 1건당 초당 창고비
+    waves:wave([
+      [9,2,"staff"],[12,2,"staff"],[15,2,"staff"],
+      [20,1,"staff"],[23,1,"staff"],[20,3,"staff"],[23,3,"staff"],
+      [29,0,"senior"],[32,0,"senior"],[29,4,"senior"],[32,4,"senior"],
+      [38,2,"senior"],[41,2,"senior"],[44,2,"senior"],
+      [48,1,"manager"],[51,1,"manager"],[48,3,"manager"],[51,3,"manager"],
+      [57,0,"staff"],[59,0,"staff"],[61,0,"staff"],
+      [57,4,"staff"],[59,4,"staff"],[61,4,"staff"],
+      [67,2,"gm"],[70,2,"senior"],[73,2,"senior"],
+      [78,1,"senior"],[80,1,"senior"],[78,3,"senior"],[80,3,"senior"],
+      [86,0,"manager"],[88,0,"manager"],[86,4,"manager"],[88,4,"manager"],
+      [94,2,"gm"],[96,2,"manager"],[98,2,"manager"],
+      [104,1,"gm"],[104,3,"gm"],[107,1,"senior"],[107,3,"senior"],
+      [113,0,"gm"],[113,4,"gm"],[116,2,"gm"],
+      [120,2,"manager"],
+    ]),
+    winMsg:"전량 반송 처리. 통관은 무기한 보류되었습니다.",
+    loseMsg:"통관된 물건이 자리에 도달했습니다.",
+  },
+  refund:{
+    id:"refund",icon:"↩️",name:"반품 처리",
+    tagline:"처리했다고 끝난 게 아니다. 절반이 되돌아온다",
+    brief:"오늘은 물량이 적습니다. 대신 처리한 것의 절반이 반품으로 되돌아옵니다 \u2014 체력은 절반이지만 1.5배 빠릅니다. 화면에 붉은 점선이 쳐진 게 되돌아온 것입니다.",
+    coffee:250, trickle:5,
+    returns:{rate:.5, hp:.5, spd:1.5},   // 처치 2건당 1건이 되돌아온다 (누산, 난수 아님)
+    waves:wave([
+      /* 물량 자체는 적다. 반품이 실질 물량을 두 배로 만든다. */
+      [10,2,"staff"],[15,1,"staff"],[15,3,"staff"],
+      [22,0,"senior"],[22,4,"senior"],
+      [30,2,"manager"],[34,1,"staff"],[34,3,"staff"],
+      [42,0,"senior"],[42,2,"senior"],[42,4,"senior"],
+      [52,1,"manager"],[52,3,"manager"],
+      [61,2,"gm"],
+      [68,0,"senior"],[68,4,"senior"],[72,1,"staff"],[72,3,"staff"],
+      [80,2,"manager"],[84,0,"gm"],[84,4,"gm"],
+      [94,1,"senior"],[94,3,"senior"],[98,2,"manager"],
+      [106,0,"gm"],[106,4,"gm"],
+    ]),
+    winMsg:"반품까지 전부 처리했습니다. 이번엔 진짜 끝입니다.",
+    loseMsg:"되돌아온 것이 자리에 도달했습니다. 처리한 건 처리한 게 아니었습니다.",
+  },
+  closing:{
+    id:"closing",icon:"📊",name:"월말 마감",mode:"closing",
+    tagline:"막는 게 아니라 쳐내는 스테이지. 마감 시각까지 처리 건수를 채워라",
+    brief:"말일입니다. 여기서는 버티는 게 목표가 아닙니다 \u2014 마감 시각까지 정해진 건수를 처리해야 합니다. 놓친 건은 죽지 않고 미처리로 남습니다. 미처리가 한도를 넘으면 마감 실패입니다.",
+    coffee:250, trickle:4,
+    deadline:100,          // 마감 시각(초)
+    quota:40,              // 처리 목표 건수
+    allowLeak:6,           // 미처리 허용 건수 — 넘으면 즉시 실패
+    crunch:22,             // 마감 D-22초부터 가산세 압박 (적 속도 +40%)
+    waves:wave([
+      /* 초반 — 전표가 들어오기 시작한다 */
+      [8,2,"tax"],[11,1,"tax"],[11,3,"tax"],
+      [16,0,"ar"],[16,4,"ar"],[19,2,"tax"],
+      /* 재고가 붙는다 — 느리고 두껍다, 줄이 막히기 시작 */
+      [24,1,"stock"],[24,3,"stock"],
+      [28,0,"tax"],[28,2,"tax"],[28,4,"tax"],
+      [33,2,"stock"],
+      [36,1,"ar"],[36,3,"ar"],
+      /* 중반 — 전표와 재고가 동시에 */
+      [41,0,"stock"],[41,4,"stock"],
+      [44,1,"tax"],[44,2,"tax"],[44,3,"tax"],
+      [48,0,"ar"],[48,2,"ar"],[48,4,"ar"],
+      [53,1,"stock"],[53,3,"stock"],
+      [56,0,"tax"],[56,4,"tax"],
+      /* 후반 — 마감 직전 전량 유입 */
+      [61,2,"stock"],[63,0,"tax"],[63,1,"tax"],[63,3,"tax"],[63,4,"tax"],
+      [68,1,"ar"],[68,3,"ar"],[70,2,"ar"],
+      [73,0,"stock"],[73,2,"stock"],[73,4,"stock"],
+      [77,1,"tax"],[77,3,"tax"],
+      /* D-22 가산세 구간 */
+      [81,0,"tax"],[81,2,"tax"],[81,4,"tax"],
+      [84,1,"ar"],[84,3,"ar"],
+      [88,0,"stock"],[88,4,"stock"],
+      [91,1,"tax"],[91,2,"tax"],[91,3,"tax"],
+      [95,0,"ar"],[95,4,"ar"],
+      [86,2,"tax"],[89,0,"tax"],[89,4,"tax"],
+      [93,1,"stock"],[93,3,"stock"],[97,2,"tax"],
+    ]),
+    winMsg:"마감 완료. 전표는 넘어갔고 재고는 맞췄습니다.",
+    loseMsg:"마감 시각을 넘겼습니다. 미처리 건은 다음 달로 넘어갑니다.",
+  },
+  audit:{
+    id:"audit",icon:"📋",name:"고객사 점검",boss:true,
+    tagline:"점검단 3명을 회의실 앞에서 저지하라",
+    brief:"(주)갑을산업 점검단이 공장에 도착했습니다. 수행 인원이 먼저 들어오고, 점검단 본대가 뒤따릅니다.",
+    coffee:275, trickle:5,
+    waves:wave([
+      [11,2,"staff"],[18,0,"senior"],[18,4,"senior"],
+      [16,1,"manager"],[16,3,"manager"],
+      [25,2,"gm"],[32,0,"senior"],[32,4,"senior"],
+      [42,1,"gm"],[42,3,"gm"],
+      [54,2,"audit"],
+      [64,0,"manager"],[64,4,"manager"],[70,1,"gm"],[70,3,"gm"],
+      [82,0,"audit"],
+      [92,2,"gm"],[96,1,"manager"],[96,3,"manager"],
+      [108,4,"audit"],
+      [116,2,"gm"],[120,0,"gm"],[120,4,"gm"],
+    ]),
+    winMsg:"점검단 전원 저지. 점검은 무기한 연기되었습니다.",
+    loseMsg:"점검단이 회의실에 도달했습니다. 점검이 시작됩니다.",
+  },
+};
+
+
+/* ══════════════ 학생 팩 ══════════════ */
+const U_SCHOOL={
+  vend  :{id:"vend",  name:"자판기", cost:50, hp:60,  desc:"5초마다 포인트 +25", gen:5},
+  locker:{id:"locker",name:"사물함", cost:50, hp:520, desc:"때리는 동안 시간을 번다"},
+  book  :{id:"book",  name:"자습서", cost:100,hp:110, desc:"문제 발사 (1.4초/22)", rate:1.4, dmg:22},
+  pencil:{id:"pencil",name:"필통",   cost:175,hp:110, desc:"연사 (0.55초/14)", rate:.55, dmg:14},
+  leave :{id:"leave", name:"조퇴증", cost:125,hp:1,   desc:"설치 즉시 그 줄 전체 소각", nuke:420},
+  stamp :{id:"stamp",name:"확인 도장", cost:75,hp:1,
+          desc:"그 줄의 검사 대기를 전부 반려",release:true},
+};
+const PAL_SCHOOL=["vend","locker","book","pencil","leave"];
+
+const F_SCHOOL={
+  hw    :{name:"숙제",     hp:70,  spd:26,dmg:8 ,color:"#9aa4bb"},
+  quiz  :{name:"쪽지시험", hp:140, spd:20,dmg:11,color:"#c3cbe0"},
+  task  :{name:"수행평가", hp:230, spd:17,dmg:13,color:"#8fb4ff"},
+  group :{name:"조별과제", hp:280, spd:27,dmg:15,color:"#ffb26b"},
+  roll  :{name:"출석부",   hp:620, spd:12,dmg:22,color:"#ff8f8f"},
+  night :{name:"야자",     hp:180, spd:30,dmg:12,color:"#ffd166"},
+  final :{name:"기말고사", hp:1500,spd:10,dmg:34,color:"#f87171",boss:true},
+  notice:{name:"가정통신문",hp:200, spd:22,dmg:10,color:"#b08968"},
+  errand:{name:"심부름",   hp:90,  spd:34,dmg:15,color:"#ff9f43"},
+  clean :{name:"대청소",   hp:1300,spd:11,dmg:30,color:"#e0704f",boss:true},
+  pile  :{name:"밀린 일기", hp:260, spd:15,dmg:8 ,color:"#7f96b0"},
+  sheet :{name:"문제집",   hp:110, spd:30,dmg:10,color:"#f5c451"},
+  book  :{name:"독후감",   hp:190, spd:20,dmg:12,color:"#ff6b6b"},
+};
+
+// 오피스 팩의 검증된 웨이브 테이블을 학생 팩 적으로 치환 (밸런스 동일)
+/* ══════════════ 부서 ══════════════
+   직급이 체격(HP·속도)이라면 부서는 능력이다.
+   같은 과장이라도 품질팀 과장과 재무팀 과장은 다른 방식으로 사람을 괴롭힌다.
+   좀비는 내 경제를 건드리지 않고 내 사물을 뺏어가지 않는다 — 부서는 그걸 한다. */
+const DEPTS={
+  sales:{key:"sales",tag:"영업",color:"#ffb26b",hp:.85,spd:1.30,
+         desc:"예고 없이 복도 중간에서 나타난다",
+         descS:"예고 없이 복도 중간에서 튀어나온다", ambush:.55},
+  prod :{key:"prod", tag:"생산",color:"#8fb4ff",hp:1.55,spd:.80,
+         desc:"물량으로 민다", descS:"양으로 민다 — 두껍고 느리다"},
+  qa   :{key:"qa",   tag:"품질",color:"#57d98a",hp:1.00,spd:.90,
+         desc:"앞의 사물을 점검한다 — 점검 중엔 발사 정지",
+         descS:"앞의 사물을 검사한다 — 검사 중엔 발사 정지", silence:true},
+  fin  :{key:"fin",  tag:"재무",color:"#f5c451",hp:.90,spd:1.00,
+         desc:"전진하는 동안 예산을 깎는다",
+         descS:"전진하는 동안 매점 포인트를 깎는다", drain:9},
+  hr   :{key:"hr",   tag:"인사",color:"#c58fff",hp:1.15,spd:.95,
+         desc:"사물을 부수지 않고 차출한다 — 데려가며 회복",
+         descS:"사물을 부수지 않고 데려간다 — 데려가며 회복", poach:1.9, heal:.3},
+};
+/* 학생 팩에서는 부서가 과목이 된다 (능력은 그대로) */
+const DEPT_TAG_SCHOOL={sales:"체육",prod:"수학",qa:"과학",fin:"영어",hr:"음악"};
+
+const KMAP={staff:"quiz",intern:"hw",senior:"task",manager:"group",
+            gm:"roll",drunk:"night",audit:"final",
+            pallet:"notice",defect:"errand",truck:"clean",
+            stock:"pile",tax:"sheet",ar:"book"};
+function reskin(st, over){
+  return Object.assign({}, st, over, {
+    waves: st.waves.map(w=>({t:w.t, l:w.l, k:KMAP[w.k], dp:w.dp, done:false}))
+  });
+}
+const S_SCHOOL={
+  commute: reskin(S_OFFICE.commute,{
+    id:"commute", icon:"🎒", name:"등교 저지",
+    tagline:"복도로 밀려오는 숙제를 내 책상 앞에서 막아라",
+    brief:"월요일 아침. 안 한 숙제가 복도 끝에서 걸어옵니다. 왼쪽 끝 내 책상이 뚫리면 하루가 시작됩니다.",
+    winMsg:"복도가 조용해졌습니다. 아무것도 책상에 도달하지 못했습니다.",
+    loseMsg:"책상에 도달했습니다. 하루가 시작됩니다."}),
+  lunch: reskin(S_OFFICE.lunch,{
+    id:"lunch", icon:"🍱", name:"점심시간 사수",
+    tagline:"급식 뛰기 직전 밀려온 가정통신문을 책상 앞에서 막아라",
+    brief:"4교시 종. 급식 뛰려는데 가정통신문이 뭉치로 넘어옵니다. 한 번에 몰리고, 잠깐 끊기고, 또 몰립니다. 사이 시간에 화력을 세우세요.",
+    winMsg:"전부 처리 완료. 점심시간은 지켰습니다.",
+    loseMsg:"책상까지 넘어왔습니다. 급식은 물 건너갔습니다."}),
+  dinner: reskin(S_OFFICE.dinner,{
+    id:"dinner", icon:"🌙", name:"야자 저지",
+    tagline:"몰려오는 야자를 전부 돌려보내라",
+    brief:"저녁 6시. 야자가 몰려옵니다. 수가 많고 빠릅니다. 화력을 빨리 세우세요.",
+    winMsg:"야자 인원 미달. 오늘은 집에 갑니다.",
+    loseMsg:"야자가 책상까지 왔습니다. 10시까지입니다."}),
+  weekly: reskin(S_OFFICE.weekly,{
+    id:"weekly", icon:"🗂️", name:"수행평가 주간",
+    tagline:"과목이 돌아가며 들어온다. 난이도가 아니라 과목을 보고 막아라",
+    brief:"금요일 오후. 다섯 과목이 차례로 수행평가를 들고 옵니다. 같은 수행평가라도 어느 과목인지에 따라 하는 짓이 다릅니다 \u2014 배지를 보세요.",
+    winMsg:"다섯 과목 전부 넘겼습니다. 수행평가는 다음 주로 밀렸습니다.",
+    loseMsg:"수행평가가 책상까지 왔습니다. 주말은 없습니다."}),
+  customs: reskin(S_OFFICE.customs,{
+    id:"customs", icon:"🔎", name:"검사 대기", extraUnit:"stamp",
+    tagline:"손을 못 대는 적. 푸는 게 아니라 도장을 받아서 돌려보내라",
+    brief:"검사 줄(점선) 뒤에서 멈춥니다. 검사 중인 건 아무리 풀어도 맞지 않습니다 \u2014 문제가 그대로 지나갑니다. 확인 도장을 그 줄에 대야 반려됩니다. 9초를 넘기면 검사가 끝나 더 빠르게 옵니다. 한 줄에 3건을 넘기면 그 줄 전체가 한꺼번에 통과합니다.",
+    winMsg:"전량 반려 처리. 검사는 무기한 미뤄졌습니다.",
+    loseMsg:"검사를 통과한 것이 책상에 도달했습니다."}),
+  refund: reskin(S_OFFICE.refund,{
+    id:"refund", icon:"↩️", name:"재시험",
+    tagline:"통과했다고 끝난 게 아니다. 절반이 다시 온다",
+    brief:"오늘은 양이 적습니다. 대신 통과한 것의 절반이 재시험으로 다시 옵니다 \u2014 난이도는 절반이지만 1.5배 빠릅니다. 붉은 점선이 쳐진 게 다시 온 것입니다.",
+    winMsg:"재시험까지 전부 끝냈습니다. 이번엔 진짜 끝입니다.",
+    loseMsg:"다시 온 것이 책상에 도달했습니다. 통과한 건 통과한 게 아니었습니다."}),
+  closing: reskin(S_OFFICE.closing,{
+    id:"closing", icon:"📚", name:"개학 전날",
+    tagline:"막는 게 아니라 쳐내는 스테이지. 자정까지 밀린 숙제를 끝내라",
+    brief:"개학 전날 밤입니다. 여기서는 버티는 게 목표가 아닙니다 \u2014 자정까지 정해진 개수를 끝내야 합니다. 놓친 건 사라지지 않고 안 한 숙제로 남습니다. 한도를 넘으면 그대로 개학입니다.",
+    winMsg:"전부 끝냈습니다. 자고 일어나면 개학입니다.",
+    loseMsg:"자정을 넘겼습니다. 안 한 숙제는 그대로 들고 갑니다."}),
+  audit: reskin(S_OFFICE.audit,{
+    id:"audit", icon:"📕", name:"기말고사", boss:true,
+    tagline:"기말고사 3과목을 책상 앞에서 저지하라",
+    brief:"시험 주간입니다. 수행평가와 출석부가 먼저 들어오고, 기말고사 본체가 뒤따릅니다.",
+    winMsg:"기말고사 전원 저지. 시험은 무기한 연기되었습니다.",
+    loseMsg:"기말고사가 책상에 도달했습니다. 시험이 시작됩니다."}),
+};
+
+/* ══════════════ 팩 ══════════════ */
+const ICO_COFFEE='<svg viewBox="0 0 24 24" width="22" height="22" style="vertical-align:-4px">'
+ +'<path d="M4 8h13v6a6 6 0 0 1-6 6H10a6 6 0 0 1-6-6z" fill="#f5c451"/>'
+ +'<path d="M17 10h2a3 3 0 0 1 0 6h-2" fill="none" stroke="#f5c451" stroke-width="2"/></svg>';
+const ICO_POINT='<svg viewBox="0 0 24 24" width="22" height="22" style="vertical-align:-4px">'
+ +'<path d="M7 9h10v11a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1z" fill="#f5c451"/>'
+ +'<path d="M7 9l2.5-4h5L17 9z" fill="#d9a94e"/>'
+ +'<rect x="10" y="13" width="4" height="4" rx="1" fill="#0b0e14" opacity=".35"/></svg>';
+
+const PACKS={
+  office:{ id:"office", name:"직장인 팩", tagline:"복도로 걸어오는 상사를 내 자리 앞에서 막는다",
+    home:"내 자리", res:{name:"커피", ico:ICO_COFFEE}, sprites:"SPRITES",
+    units:U_OFFICE, pal:PAL_OFFICE, foes:F_OFFICE, stages:S_OFFICE },
+  school:{ id:"school", name:"학생 팩", tagline:"복도로 걸어오는 숙제를 내 책상 앞에서 막는다",
+    home:"내 책상", res:{name:"매점 포인트", ico:ICO_POINT}, sprites:"SPRITES_SCHOOL",
+    units:U_SCHOOL, pal:PAL_SCHOOL, foes:F_SCHOOL, stages:S_SCHOOL },
+};
+
+let PACK=null, UNITS=null, PAL=null, FOES=null, STAGES=null, RES=null;
+function usePack(id){
+  PACK=PACKS[id]; UNITS=PACK.units; PAL=PACK.pal; FOES=PACK.foes;
+  STAGES=PACK.stages; RES=PACK.res;
+  if(document.getElementById("bossSheet")) buildBossSheet(id);
+}
+/* 보스키(ESC) — 팩마다 다른 위장 화면 */
+const BOSSSHEET={
+  office:{ title:"Excel — 2026년_생산실적_집계.xlsx",
+    head:["공정","계획","실적","달성률","불량","비고"],
+    rows:["전처리","노광","에칭","전해","검사","출하"].map((n,i)=>{
+      const p=1200+i*130, a=p-(i*37+11);
+      return [n,p,a,((a/p)*100).toFixed(1)+"%",3+i,""]; }) },
+  school:{ title:"Excel — 2학기_중간고사_오답노트.xlsx",
+    head:["과목","범위","문항","정답률","오답","복습"],
+    rows:[["국어","1~4단원",40,"82.5%",7,"O"],["수학","이차함수",30,"70.0%",9,"O"],
+          ["영어","Unit 1-3",45,"88.9%",5,"O"],["과학","전기와 자기",35,"77.1%",8,""],
+          ["사회","경제 단원",30,"90.0%",3,"O"],["한국사","근현대",25,"84.0%",4,""]] },
+};
+function buildBossSheet(id){
+  const cfg=BOSSSHEET[id]||BOSSSHEET.office;
+  const cols=["","A","B","C","D","E","F"];
+  let rows="<tr>"+cols.map(c=>"<th>"+c+"</th>").join("")+"</tr>";
+  for(let r=1;r<=22;r++){
+    let t="<th>"+r+"</th>";
+    if(r===1) t+=cfg.head.map(h=>"<td>"+esc(h)+"</td>").join("");
+    else if(r<=1+cfg.rows.length) t+=cfg.rows[r-2].map(v=>"<td>"+esc(v)+"</td>").join("");
+    else t+="<td></td>".repeat(6);
+    rows+="<tr>"+t+"</tr>";
+  }
+  $("#bossTitle").textContent=cfg.title;
+  $("#bossSheet").innerHTML=rows;
+}
+
+usePack("office");
+
+/* ══════════════ 상태 ══════════════ */
+let G=null, raf=null, ctx=null, cvs=null;
+
+function newGame(stageId,grudge){
+  const st=STAGES[stageId];
+  return {
+    st, grudge,
+    coffee:st.coffee, t:0, trickle:0,
+    grid:Array.from({length:ROWS},()=>Array(COLS).fill(null)),
+    foes:[], shots:[], fx:[],
+    waves:st.waves.map(w=>({...w,done:false})),
+    sel:"water", over:null, toast:"", toastT:0,
+    killed:0, leaked:0, last:0, retAcc:0, returned:0,
+  };
+}
+
+/* ══════════════ 배치 ══════════════ */
+function place(r,c){
+  const g=G; if(!g||g.over) return;
+  if(r<0||r>=ROWS||c<1||c>=COLS) { flash(g,PACK.home+" 열에는 설치할 수 없습니다."); return; }
+  const def=UNITS[g.sel];
+  // 세관 라인 바깥은 내 관할이 아니다 — 여기엔 아무것도 놓을 수 없다
+  if(g.st.customs && !def.release && !def.nuke && c>=g.st.customs.col){
+    flash(g,(PACK.id==="school"?"검사 줄":"세관 라인")+" 바깥에는 설치할 수 없습니다."); return; }
+  if(g.coffee<def.cost){ flash(g,RES.name+"이(가) 부족합니다 ("+def.cost+" 필요)"); return; }
+
+  if(def.release){
+    const n=sendBack(g,r);
+    if(!n){ flash(g,"그 줄에 보류 건이 없습니다."); return; }
+    g.coffee-=def.cost; S("nuke");
+    flash(g,def.name+" — "+(r+1)+"번 줄 "+n+"건 반송");
+    return;
+  }
+  if(def.nuke){
+    const hitFoes=g.foes.filter(f=>f.lane===r);
+    if(!hitFoes.length){ flash(g,"그 줄에 아무도 없습니다."); return; }
+    g.coffee-=def.cost;
+    hitFoes.forEach(f=>{ f.hp-=def.nuke; });
+    g.fx.push({type:"nuke",lane:r,t:0});
+    S("nuke"); flash(g,UNITS[g.sel].name+" — "+(r+1)+"번 줄 소각");
+    return;
+  }
+  if(g.grid[r][c]){ flash(g,"이미 뭔가 놓여 있습니다."); return; }
+  g.coffee-=def.cost; S("place",def.id);
+  g.grid[r][c]={type:def.id,hp:def.hp,maxhp:def.hp,cd:def.rate?def.rate*0.5:0,gen:0,stun:0};
+}
+function flash(g,msg){ g.toast=msg; g.toastT=2.2; S("deny"); }
+
+/* ══════════════ 루프 ══════════════ */
+function step(dt){
+  const g=G; if(!g||g.over) return;
+  g.t+=dt;
+  if(g.toastT>0){ g.toastT-=dt; if(g.toastT<=0) g.toast=""; }
+
+  // 커피 기본 수급
+  g.trickle+=dt;
+  if(g.trickle>=g.st.trickle){ g.trickle=0; g.coffee+=25; S("coin"); }
+
+  // 스폰
+  g.waves.forEach(w=>{
+    if(!w.done && g.t>=w.t){
+      w.done=true;
+      const d=FOES[w.k], dp=w.dp?DEPTS[w.dp]:null;
+      const hp=Math.round(d.hp*(dp?dp.hp:1));
+      g.foes.push({kind:w.k,dept:w.dp||null,lane:w.l,
+                   x:(dp&&dp.ambush)?FW*dp.ambush:FW+18,
+                   hp:hp,maxhp:hp,spd:d.spd*(dp?dp.spd:1),
+                   dmg:d.dmg,eat:0,slow:0,poach:0});
+      if(d.boss) S("bossIn");
+      else if(dp&&dp.ambush) S("deny");        // 기습 — 갑자기 나타났다는 신호
+    }
+  });
+
+  // 유닛
+  for(let r=0;r<ROWS;r++) for(let c=1;c<COLS;c++){
+    const u=g.grid[r][c]; if(!u) continue;
+    const def=UNITS[u.type];
+    if(def.gen){
+      u.gen+=dt;
+      if(u.gen>=def.gen){ u.gen=0; g.coffee+=25; S("coin"); g.fx.push({type:"coin",x:c*CW+CW/2,y:r*CH+30,t:0}); }
+    }
+    if(u.stun>0) u.stun-=dt;                 // 품질 점검 중 — 발사 정지
+    if(def.rate){
+      // 같은 레인 오른쪽에 적이 있을 때만 발사
+      const ahead=g.foes.some(f=>f.lane===r && f.x>c*CW);
+      u.cd-=dt;
+      if(ahead && u.cd<=0 && u.stun<=0){
+        u.cd=def.rate;
+        g.shots.push({lane:r,x:c*CW+CW*0.72,dmg:def.dmg}); S("shoot",u.type);
+      }
+    }
+  }
+
+  // 탄
+  for(let i=g.shots.length-1;i>=0;i--){
+    const s=g.shots[i];
+    const px=s.x;                       // 스윕 판정 — 프레임 간 관통 방지
+    s.x+=430*dt;
+    if(px>FW+20){ g.shots.splice(i,1); continue; }
+    // 보류 중인 적은 손을 댈 수 없다 — 탄이 그대로 통과한다
+    const hit=g.foes.find(f=>f.lane===s.lane && !f.held && f.x>=px-16 && f.x<=s.x+16);
+    if(hit){ hit.hp-=s.dmg; S("hit"); g.fx.push({type:"hit",x:s.x,y:s.lane*CH+CH/2,t:0}); g.shots.splice(i,1); }
+  }
+
+  // 적
+  for(let i=g.foes.length-1;i>=0;i--){
+    const f=g.foes[i];
+    if(f.hp<=0){ g.foes.splice(i,1); g.killed++; S("kill",!!FOES[f.kind].boss);
+      g.fx.push({type:"pop",x:f.x,y:f.lane*CH+CH/2,t:0});
+      requeue(g,f);                       // 반품 — 처리했다고 끝난 게 아니다
+      continue; }
+
+    if(f.held>0){
+      // 보류 중 — 전진도, 공격도, 피격도 없다. 오직 시간만 간다.
+      f.held-=dt;
+      if(f.held<=0){ f.held=0; f.cleared=1; f.spd*=g.st.customs.boost; S("bossIn"); }
+      continue;
+    }
+    const cc=clamp(Math.floor((f.x-20)/CW),0,COLS-1);
+    const front=g.grid[f.lane][cc];
+    const dp=f.dept?DEPTS[f.dept]:null;
+    if(front){
+      f.eat+=dt;
+      if(dp&&dp.poach){
+        // 인사 — 부수지 않는다. 데려간다.
+        f.poach+=dt;
+        if(f.poach>=dp.poach){
+          f.poach=0;
+          g.grid[f.lane][cc]=null;
+          f.hp=Math.min(f.maxhp,f.hp+f.maxhp*dp.heal);  // 자기 체급만큼만 채운다
+          S("nuke");
+          g.fx.push({type:"poach",x:cc*CW+CW/2,y:f.lane*CH+CH/2,t:0});
+        }
+      } else if(dp&&dp.silence){
+        // 품질 — 점검. 사물은 거의 안 부수지만 그동안 발사가 멈춘다.
+        front.stun=.35;
+        front.hp-=f.dmg*.3*dt; S("chew");
+        if(front.hp<=0){ g.grid[f.lane][cc]=null;
+          g.fx.push({type:"pop",x:cc*CW+CW/2,y:f.lane*CH+CH/2,t:0}); }
+      } else {
+        front.hp-=f.dmg*dt; S("chew");
+        if(front.hp<=0){ g.grid[f.lane][cc]=null;
+          g.fx.push({type:"pop",x:cc*CW+CW/2,y:f.lane*CH+CH/2,t:0}); }
+      }
+    } else {
+      f.x-=f.spd*crunchMul(g)*dt;
+      const CU=g.st.customs;
+      if(CU && !f.cleared && f.x<=CU.col*CW){
+        // 세관 라인 도달 — 줄 뒤쪽으로 줄 서서 보류된다
+        const q=g.foes.filter(o=>o.lane===f.lane&&o.held>0).length;
+        f.x=CU.col*CW+q*30;
+        f.held=CU.hold;
+        S("deny");
+        g.fx.push({type:"hold",x:f.x,y:f.lane*CH+CH/2,t:0});
+        if(q+1>CU.cap) releaseLane(g,f.lane,true);   // 한도 초과 → 일괄 통관
+        continue;
+      }
+      if(dp&&dp.drain&&g.coffee>0){                     // 재무 — 전진하는 동안 예산 삭감
+        g.drainAcc=(g.drainAcc||0)+dp.drain*dt;
+        if(g.drainAcc>=1){ const n=Math.floor(g.drainAcc); g.drainAcc-=n;
+          g.coffee=Math.max(0,g.coffee-n); }
+      }
+    }
+    if(f.x<=HOME){
+      g.leaked++;
+      if(g.st.mode==="closing"){
+        // 마감 모드 — 뚫려도 지지 않는다. 미처리로 남을 뿐이다.
+        g.foes.splice(i,1); S("deny");
+        g.fx.push({type:"leak",x:HOME+14,y:f.lane*CH+CH/2,t:0});
+        if(g.leaked>g.st.allowLeak){ finish("lose"); return; }
+        continue;
+      }
+      finish("lose"); return;
+    }
+  }
+
+  // 창고비 — 보류된 건마다 초당 자원이 샌다. 묶어두는 건 공짜가 아니다.
+  if(g.st.customs && g.st.customs.fee){
+    const held=g.foes.reduce((n,f)=>n+(f.held>0?1:0),0);
+    g.heldNow=held;
+    if(held && g.coffee>0){
+      g.feeAcc=(g.feeAcc||0)+held*g.st.customs.fee*dt;
+      if(g.feeAcc>=1){ const n=Math.floor(g.feeAcc); g.feeAcc-=n;
+        g.coffee=Math.max(0,g.coffee-n); }
+    }
+  }
+
+  // 이펙트
+  for(let i=g.fx.length-1;i>=0;i--){ g.fx[i].t+=dt; if(g.fx[i].t>.5) g.fx.splice(i,1); }
+
+  // 승리 판정
+  if(g.st.mode==="closing"){
+    // 마감 모드 — 목표 건수를 채우면 그 즉시 마감, 시각을 넘기면 실패
+    if(g.killed>=g.st.quota){ finish("win"); return; }
+    if(g.t>=g.st.deadline){ finish("lose"); return; }
+    return;
+  }
+  if(g.waves.every(w=>w.done) && g.foes.length===0) finish("win");
+}
+
+/* 일괄 통관 — 한 줄의 보류 건이 한도를 넘으면 전부 한꺼번에 풀린다. */
+function releaseLane(g,lane,burst){
+  let n=0;
+  g.foes.forEach(f=>{ if(f.lane===lane && f.held>0){
+    f.held=0; f.cleared=1; if(burst) f.spd*=g.st.customs.boost; n++; } });
+  if(n){ S("bossIn"); g.fx.push({type:"burst",lane:lane,t:0});
+         flash(g,"보류 한도 초과 — "+(lane+1)+"번 줄 일괄 통관"); }
+  return n;
+}
+/* 반송 — 요건확인서를 대면 그 줄의 보류 건이 전부 되돌아간다. */
+function sendBack(g,lane){
+  let n=0;
+  for(let i=g.foes.length-1;i>=0;i--){ const f=g.foes[i];
+    if(f.lane===lane && f.held>0){
+      g.foes.splice(i,1); n++;
+      g.fx.push({type:"back",x:f.x,y:lane*CH+CH/2,t:0});
+    } }
+  return n;
+}
+
+/* 반품 — 처리한 적의 일부가 되돌아온다.
+   난수를 쓰지 않는다. 누산 방식이라 "절반이 돌아온다"가 정확히 절반이고,
+   플레이어가 다음에 뭐가 올지 배울 수 있다. */
+function requeue(g,f){
+  const R=g.st.returns; if(!R) return;
+  if(f.ret) return;                       // 반품은 한 번만 — 무한 루프 방지
+  if(FOES[f.kind].boss) return;           // 보스는 반품되지 않는다
+  g.retAcc+=R.rate;
+  if(g.retAcc<1) return;
+  g.retAcc-=1;
+  const d=FOES[f.kind];
+  const hp=Math.max(1,Math.round(f.maxhp*R.hp));
+  g.foes.push({kind:f.kind,dept:f.dept,lane:f.lane,x:FW+18,
+               hp:hp,maxhp:hp,spd:f.spd*R.spd,dmg:d.dmg,eat:0,slow:0,poach:0,ret:1});
+  g.returned++;
+  S("deny");
+  g.fx.push({type:"ret",x:f.x,y:f.lane*CH+CH/2,t:0});
+}
+
+/* 마감 D-crunch초부터 가산세 압박 — 적 속도 +40% */
+function crunchMul(g){
+  if(g.st.mode!=="closing") return 1;
+  return (g.st.deadline-g.t)<=g.st.crunch ? 1.4 : 1;
+}
+
+function finish(o){
+  if(G.over) return;
+  G.over=o; S(o==="win"?"win":"lose");
+  if(raf) cancelAnimationFrame(raf);
+  raf=null;
+  render();
+}
+
+/* ══════════════ 그리기 ══════════════ */
+function draw(){
+  const g=G; if(!g||!ctx) return;
+  const SP=window[PACK.sprites];
+  ctx.clearRect(0,0,FW,FH);
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+
+  // 바닥
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    ctx.fillStyle=(r+c)%2 ? "#141a24" : "#111721";
+    ctx.fillRect(c*CW,r*CH,CW,CH);
+  }
+  // 내 자리 열
+  ctx.fillStyle="rgba(158,200,255,.10)";
+  ctx.fillRect(0,0,CW,FH);
+  ctx.strokeStyle="rgba(158,200,255,.55)";
+  ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(CW,0); ctx.lineTo(CW,FH); ctx.stroke();
+  for(let r=0;r<ROWS;r++){
+    if(SP&&SP.seat) SP.seat(ctx,CW/2,r*CH+CH/2,34);
+    else { ctx.fillStyle="#6f9fd8"; ctx.fillRect(CW/2-11,r*CH+CH/2-8,22,16); }
+  }
+
+  // 세관 라인
+  if(g.st.customs){
+    const cx=g.st.customs.col*CW;
+    ctx.save();
+    ctx.strokeStyle="rgba(158,200,255,.6)"; ctx.lineWidth=2; ctx.setLineDash([7,5]);
+    ctx.beginPath(); ctx.moveTo(cx,0); ctx.lineTo(cx,FH); ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle="rgba(158,200,255,.07)"; ctx.fillRect(cx,0,FW-cx,FH);
+  }
+
+  // 유닛
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  for(let r=0;r<ROWS;r++) for(let c=1;c<COLS;c++){
+    const u=g.grid[r][c]; if(!u) continue;
+    const x=c*CW+CW/2, y=r*CH+CH/2;
+    const su=SP&&SP.units&&SP.units[u.type];
+    if(u.stun>0){                       // 품질 점검 중 — 이 사물은 지금 못 쓴다
+      ctx.save(); ctx.globalAlpha=.45;
+      ctx.strokeStyle="#57d98a"; ctx.lineWidth=2;
+      ctx.strokeRect(x-30,y-32,60,60); ctx.restore();
+      ctx.save(); ctx.globalAlpha=.5;
+    }
+    if(su) su(ctx,x,y-4,54);
+    else if(UNITS[u.type]&&UNITS[u.type].e){ ctx.font="30px sans-serif"; ctx.fillText(UNITS[u.type].e,x,y-4); }
+    if(u.stun>0) ctx.restore();
+    const ratio=u.hp/u.maxhp;
+    if(ratio<1){
+      ctx.fillStyle="#0b0e14"; ctx.fillRect(x-22,y+22,44,4);
+      ctx.fillStyle=ratio>.5?"#57d98a":ratio>.25?"#f5c451":"#ff6b6b";
+      ctx.fillRect(x-22,y+22,44*ratio,4);
+    }
+  }
+
+  // 탄
+  ctx.fillStyle="#f2f5fa";
+  g.shots.forEach(s=>{
+    ctx.fillRect(s.x-7,s.lane*CH+CH/2-4,13,8);
+  });
+
+  // 적
+  g.foes.forEach(f=>{
+    const d=FOES[f.kind], y=f.lane*CH+CH/2;
+    const sf=SP&&SP.foes&&SP.foes[f.kind];
+    const size=d.boss?68:52;
+    if(sf) sf(ctx,f.x,y-4,size);
+    if(f.dept){                        // 부서 소품 — 직급 위에 덧그린다 (5개로 25종 커버)
+      const DPS=window.SPRITES_DEPT, set=DPS&&DPS[PACK.id];
+      const pf=set&&set[f.dept]; if(pf) pf(ctx,f.x,y-4,size);
+    }
+    else if(d.e){ ctx.font=(d.boss?"36px":"28px")+" sans-serif"; ctx.fillText(d.e,f.x,y-4); }
+    const dp=f.dept?DEPTS[f.dept]:null;
+    const ratio=clamp(f.hp/f.maxhp,0,1), w=d.boss?52:38;
+    ctx.fillStyle="#0b0e14"; ctx.fillRect(f.x-w/2,y+20,w,5);
+    ctx.fillStyle=dp?dp.color:d.color; ctx.fillRect(f.x-w/2,y+20,w*ratio,5);
+    if(f.held>0){
+      // 보류 — 총이 안 먹힌다는 걸 눈으로 알아야 한다
+      const CU=g.st.customs, p=clamp(f.held/CU.hold,0,1);
+      ctx.save(); ctx.globalAlpha=.5;
+      ctx.strokeStyle="#9ec8ff"; ctx.lineWidth=1.5;
+      ctx.strokeRect(f.x-24,y-26,48,48); ctx.restore();
+      ctx.fillStyle="#0b0e14"; ctx.fillRect(f.x-20,y-33,40,4);
+      ctx.fillStyle="#9ec8ff"; ctx.fillRect(f.x-20,y-33,40*p,4);
+      ctx.font="700 11px 'Gothic A1','Malgun Gothic',sans-serif";
+      const hl=(PACK.id==="school"?"검사중":"보류");
+      const hw2=ctx.measureText(hl).width+10;
+      ctx.fillStyle="#9ec8ff"; ctx.fillRect(f.x-hw2/2,y+27,hw2,15);
+      ctx.fillStyle="#0b0e14"; ctx.fillText(hl,f.x,y+35);
+    }
+    if(f.ret){
+      // 되돌아온 적 — 한눈에 알아야 한다. 「처리 완료」가 완료가 아니었다는 신호.
+      ctx.save();
+      ctx.strokeStyle="#ff6b6b"; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+      ctx.strokeRect(f.x-24,y-26,48,48); ctx.restore();
+      const lb=(PACK.id==="school"?"재시험":"반품");
+      ctx.font="700 11px 'Gothic A1','Malgun Gothic',sans-serif";
+      const rw=ctx.measureText(lb).width+10;
+      ctx.fillStyle="#ff6b6b"; ctx.fillRect(f.x-rw/2,y+27,rw,15);
+      ctx.fillStyle="#0b0e14"; ctx.fillText(lb,f.x,y+35);
+    }
+    if(dp){
+      // 부서 배지 — 같은 직급이라도 어느 부서인지 한눈에 보여야 한다
+      const tag=(PACK.id==="school"?DEPT_TAG_SCHOOL[dp.key]:dp.tag);
+      ctx.font="700 11px 'Gothic A1','Malgun Gothic',sans-serif";
+      const bw=ctx.measureText(tag).width+10;
+      ctx.fillStyle=dp.color;
+      ctx.fillRect(f.x-bw/2,y-34,bw,15);
+      ctx.fillStyle="#0b0e14"; ctx.fillText(tag,f.x,y-26);
+    }
+    if(d.boss){
+      ctx.fillStyle="#ff6b6b"; ctx.font="10px 'Gothic A1','Malgun Gothic',sans-serif";
+      ctx.fillText(d.name,f.x,y+34);
+    }
+  });
+
+  // 이펙트
+  g.fx.forEach(e=>{
+    const a=1-e.t/.5;
+    if(e.type==="hit"){ ctx.fillStyle="rgba(255,255,255,"+a+")";
+      ctx.beginPath(); ctx.arc(e.x,e.y,7*(1-a)+3,0,7); ctx.fill(); }
+    else if(e.type==="pop"){ ctx.fillStyle="rgba(255,107,107,"+a+")";
+      ctx.beginPath(); ctx.arc(e.x,e.y,20*(1-a)+6,0,7); ctx.fill(); }
+    else if(e.type==="coin"){ ctx.fillStyle="rgba(245,196,81,"+a+")";
+      ctx.font="15px sans-serif"; ctx.fillText("+25",e.x,e.y-e.t*26); }
+    else if(e.type==="nuke"){ ctx.fillStyle="rgba(245,196,81,"+a*.55+")";
+      ctx.fillRect(0,e.lane*CH,FW,CH); }
+    else if(e.type==="hold"){ ctx.fillStyle="rgba(158,200,255,"+a+")";
+      ctx.font="700 14px 'Gothic A1','Malgun Gothic',sans-serif";
+      ctx.fillText(PACK.id==="school"?"검사 대기":"통관 보류",e.x,e.y-e.t*22); }
+    else if(e.type==="back"){ ctx.fillStyle="rgba(87,217,138,"+a+")";
+      ctx.font="700 14px 'Gothic A1','Malgun Gothic',sans-serif";
+      ctx.fillText(PACK.id==="school"?"반려":"반송",e.x,e.y-e.t*22); }
+    else if(e.type==="burst"){ ctx.fillStyle="rgba(158,200,255,"+a*.45+")";
+      ctx.fillRect(0,e.lane*CH,FW,CH); }
+    else if(e.type==="ret"){ ctx.fillStyle="rgba(255,107,107,"+a+")";
+      ctx.font="700 15px 'Gothic A1','Malgun Gothic',sans-serif";
+      ctx.fillText(PACK.id==="school"?"재시험":"반품",e.x,e.y-e.t*26); }
+    else if(e.type==="poach"){ ctx.fillStyle="rgba(197,143,255,"+a+")";
+      ctx.font="700 14px 'Gothic A1','Malgun Gothic',sans-serif";
+      ctx.fillText("차출",e.x,e.y-e.t*24);
+      ctx.strokeStyle="rgba(197,143,255,"+a+")"; ctx.lineWidth=2;
+      ctx.strokeRect(e.x-26,e.y-26,52,52); }
+    else if(e.type==="leak"){ ctx.fillStyle="rgba(255,107,107,"+a+")";
+      ctx.font="700 14px 'Gothic A1','Malgun Gothic',sans-serif";
+      ctx.fillText("미처리",e.x+18,e.y-e.t*20); }
+  });
+}
+
+/* ══════════════ 화면 ══════════════ */
+/* 화면을 떠날 때 게임 루프를 반드시 끊는다 (팩을 바꾸면 UNITS/FOES 테이블이 통째로 갈린다) */
+function stopLoop(){ if(raf){ cancelAnimationFrame(raf); raf=null; } }
+let SCREEN="pack";
+
+function heroHTML(){
+  return `<div class="hero">
+      <div class="lamps"></div><div class="bars"><i></i><i></i><i></i></div>
+      <svg class="silh" viewBox="0 0 260 190" width="260" height="190">
+        <g fill="#39424f">
+          <circle cx="60" cy="26" r="10"/><rect x="49" y="38" width="22" height="34" rx="6"/>
+          <circle cx="150" cy="86" r="10"/><rect x="139" y="98" width="22" height="34" rx="6"/>
+          <circle cx="86" cy="144" r="10"/><rect x="75" y="156" width="22" height="30" rx="6"/>
+        </g>
+        <g fill="#586477">
+          <circle cx="224" cy="34" r="12"/><rect x="211" y="48" width="26" height="40" rx="7"/>
+          <rect x="238" y="66" width="17" height="13" rx="2" fill="#f5c451"/>
+        </g>
+      </svg>
+      <div class="in">
+        <div class="kicker">OFFICE LANE DEFENSE</div>
+        <div class="ttl big">출근 저지</div>
+        <div class="rule"></div>
+        <div class="lede">복도 끝에서 걸어옵니다.<br>내 자리 앞에서 막으세요.</div>
+      </div>
+    </div>`;
+}
+
+function renderPackSelect(){
+  SCREEN="pack";
+  stopLoop(); G=null;
+  const cards=Object.values(PACKS).map(pk=>`
+    <button class="stage" data-pack="${pk.id}">
+      <span class="ico">${pk.id==="office"?"🏢":"🎒"}</span>
+      <span><span class="t">${esc(pk.name)}</span>
+      <span class="d">${esc(pk.tagline)}</span>
+      <span class="d" style="color:#59627a">${Object.values(pk.stages).map(x=>esc(x.name)).join(" · ")}</span></span>
+    </button>`).join("");
+  $("#app").innerHTML=heroHTML()+`
+    <div class="panel">
+      <div class="kicker" style="margin-bottom:10px">누구를 막을 건가요</div>
+      <div class="stages">${cards}</div>
+    </div>
+    <div class="hint">ESC — 보스키 (즉시 엑셀 화면)</div>`;
+  $("#app").querySelectorAll("[data-pack]").forEach(b=>b.onclick=()=>{
+    S("resume"); S("select"); usePack(b.dataset.pack); renderStageSelect();
+  });
+}
+
+function renderStageSelect(){
+  stopLoop(); G=null;
+  SCREEN="stage";
+  const items=Object.values(STAGES).map(s=>`
+    <button class="stage" data-stage="${s.id}">
+      <span class="ico">${s.icon}</span>
+      <span><span class="t">${esc(s.name)}${s.boss?'<span class="tag boss">BOSS</span>':
+        (s.id==="commute"?'<span class="tag">기본</span>':'')}</span>
+      <span class="d">${esc(s.tagline)}</span></span>
+    </button>`).join("");
+  $("#app").innerHTML=`
+    <h1>${esc(PACK.name)}</h1>
+    <div class="sub">${esc(PACK.tagline)}</div>
+    <div class="panel"><div class="stages">${items}</div>
+      <button class="ghost" id="toPack">← 팩 선택</button></div>
+    <div class="hint">ESC — 보스키 (즉시 엑셀 화면)</div>`;
+  $("#app").querySelectorAll("[data-stage]").forEach(b=>b.onclick=()=>{S("resume");S("select");renderSetup(b.dataset.stage);});
+  $("#toPack").onclick=renderPackSelect;
+}
+
+/* 부서가 나오는 스테이지에서만 — 무엇이 어떤 짓을 하는지 미리 알려준다.
+   품질이 발사를 멈춘다는 걸 죽고 나서 알게 하면 안 된다. */
+function deptLegend(st){
+  const seen=[];
+  st.waves.forEach(w=>{ if(w.dp && seen.indexOf(w.dp)<0) seen.push(w.dp); });
+  if(!seen.length) return "";
+  const school=PACK.id==="school";
+  const rows=seen.map(k=>{ const d=DEPTS[k];
+    const tag=school?DEPT_TAG_SCHOOL[k]:d.tag;
+    return `<div class="dl-row"><span class="dl-tag" style="background:${d.color}">${esc(tag)}</span>`
+         + `<span class="dl-d">${esc((school&&d.descS)||d.desc)}</span></div>`;
+  }).join("");
+  return `<div class="deptlegend">
+    <div class="kicker" style="color:var(--dim);margin-bottom:8px">${school?"이번 주 과목":"오늘 들어오는 부서"}</div>
+    ${rows}
+    <div class="dl-note">${school?"난이도는 체격(체력·속도), 과목은":"직급은 체격(체력·속도), 부서는"} 능력입니다. 배지를 보세요.</div>
+  </div>`;
+}
+
+function renderSetup(id){
+  stopLoop(); G=null;
+  const st=STAGES[id];
+  $("#app").innerHTML=`
+    <h1>${st.icon} ${esc(st.name)}</h1>
+    <div class="sub">${esc(st.tagline)}</div>
+    <div class="panel">
+      <div class="sub" style="margin:0">${esc(st.brief)}</div>
+      ${deptLegend(st)}
+      <label>오늘 누구 때문에 힘드셨나요? (적 말풍선이 됩니다)</label>
+      <input id="grudge" maxlength="40" placeholder="예: 이거 오늘 안에 되죠?" autocomplete="off">
+      <button class="primary" id="go">시작</button>
+      <button class="ghost" id="back">← 스테이지 선택</button>
+    </div>
+    <div class="hint">설치할 사물을 고른 뒤 복도 칸을 클릭하세요 · ESC — 보스키</div>`;
+  $("#back").onclick=renderStageSelect;
+  $("#go").onclick=()=>{
+    G=newGame(id,($("#grudge").value.trim())||"이거 오늘 안에 되죠?");
+    renderGame(); start();
+  };
+}
+
+const coffeeMark=n=>RES.ico+' <span class="num">'+n+'</span> <small>'+RES.name+'</small>';
+
+function palList(st){ return st.extraUnit ? PAL.concat([st.extraUnit]) : PAL; }
+
+function renderGame(){
+  SCREEN="game";
+  const g=G;
+  const pal=palList(g.st).map(k=>{
+    const u=UNITS[k];
+    return `<button class="u ${g.sel===k?"sel":""} ${g.coffee<u.cost?"poor":""}" data-u="${k}">
+      <canvas class="uico" width="72" height="72" data-ico="${k}"></canvas><span class="n">${esc(u.name)}</span>
+      <span class="c">${RES.name+' '+u.cost}</span><span class="d">${esc(u.desc)}</span></button>`;
+  }).join("");
+  const total=g.waves.length, done=g.waves.filter(w=>w.done).length;
+  const closing=g.st.mode==="closing";
+
+  $("#app").innerHTML=`
+    <h1>${g.st.icon} ${esc(g.st.name)}</h1>
+    <div class="sub">${esc(g.st.tagline)}</div>
+    <div class="panel" id="cvwrap">
+      <div class="hud">
+        <div class="coffee" id="cf">${coffeeMark(g.coffee)}</div>
+        <div class="wavebar"><i id="wb" style="width:${closing?0:(done/total*100).toFixed(1)}%${closing?";background:var(--good)":""}"></i></div>
+        <div class="hp" id="stat">${closing
+          ?`마감 <b class="num">D-${g.st.deadline}</b> · 처리 <b>0/${g.st.quota}</b> · 미처리 <b>0/${g.st.allowLeak}</b>`
+          :`복도 <b>${g.foes.length}</b>명 · 처리 <b>${g.killed}</b>`}</div>
+      </div>
+      <div class="pal" id="pal">${pal}</div>
+      <canvas id="cv" width="${FW}" height="${FH}"></canvas>
+      <div class="toast" id="toast"></div>
+    </div>
+    <div class="hint">사물 선택 → 복도 칸 클릭 · 파란 칸(${PACK.home})에는 설치 불가 · ESC — 보스키</div>`;
+
+  cvs=$("#cv"); ctx=cvs.getContext("2d");
+  $("#pal").querySelectorAll("[data-u]").forEach(b=>{
+    b.onclick=()=>{ S("select"); g.sel=b.dataset.u; syncPal(); };
+  });
+  drawPalIcons();
+  cvs.onpointerdown=e=>{
+    const r=cvs.getBoundingClientRect();
+    const x=(e.clientX-r.left)*(FW/r.width), y=(e.clientY-r.top)*(FH/r.height);
+    place(Math.floor(y/CH),Math.floor(x/CW));
+    syncPal();
+  };
+}
+
+function drawPalIcons(){
+  const S=window[PACK.sprites]; if(!S) return;
+  document.querySelectorAll("canvas[data-ico]").forEach(c=>{
+    const fn=S.units[c.dataset.ico]; if(!fn) return;
+    const x=c.getContext("2d"); x.clearRect(0,0,72,72); fn(x,36,36,64);
+  });
+}
+
+function syncPal(){
+  const g=G; if(!g||g.over) return;
+  const pal=$("#pal"); if(!pal) return;
+  pal.querySelectorAll("[data-u]").forEach(b=>{
+    const u=UNITS[b.dataset.u];
+    b.classList.toggle("sel",g.sel===b.dataset.u);
+    b.classList.toggle("poor",g.coffee<u.cost);
+  });
+}
+
+function syncHud(){
+  const g=G; if(!g||g.over) return;
+  const cf=$("#cf"); if(!cf) return;
+  cf.innerHTML=coffeeMark(g.coffee);
+  if(g.st.mode==="closing"){
+    const st=g.st, left=Math.max(0,st.deadline-g.t), crunch=left<=st.crunch;
+    $("#wb").style.width=(Math.min(1,g.killed/st.quota)*100).toFixed(1)+"%";
+    $("#wb").style.background=crunch?"var(--bad)":"var(--good)";
+    $("#stat").innerHTML="마감 <b class=num>D-"+left.toFixed(0)+"</b> · 처리 <b>"
+      +g.killed+"/"+st.quota+"</b> · 미처리 <b style=\"color:"
+      +(g.leaked>=st.allowLeak?"var(--bad)":g.leaked?"var(--accent)":"inherit")
+      +'">'+g.leaked+"/"+st.allowLeak+"</b>";
+    $("#cvwrap").classList.toggle("crunch",crunch);
+  } else {
+    const total=g.waves.length, done=g.waves.filter(w=>w.done).length;
+    $("#wb").style.width=(done/total*100).toFixed(1)+"%";
+    $("#stat").innerHTML="복도 <b>"+g.foes.length+"</b>명 · 처리 <b>"+g.killed+"</b>"
+      +(g.st.customs?' · <b style="color:'+(g.heldNow?"var(--bad)":"var(--blue)")+'">'
+        +(PACK.id==="school"?"검사대기":"보류")+" "+(g.heldNow||0)
+        +(g.heldNow?" (창고비 -"+(g.heldNow*g.st.customs.fee)+"/초)":"")+"</b>":"")
+      +(g.st.returns?' · <b style="color:var(--bad)">'+(PACK.id==="school"?"재시험":"반품")
+        +" "+g.returned+"</b>":"");
+  }
+  $("#toast").textContent=g.toast;
+}
+
+function renderEnd(){
+  const g=G, win=g.over==="win";
+  const acc=win?"var(--good)":"var(--bad)";
+  $("#app").innerHTML=`
+    <h1>${g.st.icon} ${esc(g.st.name)}</h1>
+    <div class="sub">${g.st.mode==="closing"?(win?"클리어":"마감 실패"):(win?"클리어":"방어 실패")}</div>
+    <div class="panel result" style="border-color:${win?"#22402f":"#43242a"}">
+      <div class="kicker" style="color:var(--dim)">${win?"CLEAR":"FAILED"}</div>
+      <h2 class="ttl" style="color:${acc}">${g.st.mode==="closing"?(win?"마감 완료":"마감 실패"):(win?"저지 성공":"자리 함락")}</h2>
+      <div class="bubble ${win?"pop":""}">${esc(g.grudge)}</div>
+      <p style="margin-top:16px">${esc(win?g.st.winMsg:g.st.loseMsg)}</p>
+      <div class="tally">${g.st.mode==="closing"?`
+        <div><b class="num">${g.killed}/${g.st.quota}</b><span>처리</span></div>
+        <div><b class="num" style="color:${g.leaked>g.st.allowLeak?"var(--bad)":"inherit"}">${g.leaked}</b><span>미처리</span></div>
+        <div><b class="num">${g.t.toFixed(0)}초</b><span>소요</span></div>`:`
+        <div><b class="num">${g.killed}</b><span>처리</span></div>
+        <div><b class="num">${g.t.toFixed(0)}초</b><span>생존</span></div>`}
+      </div>
+      <button class="primary" id="again" style="background:${acc}">다시 하기</button>
+      <button class="ghost" id="back">← 스테이지 선택</button>
+    </div>
+    <div class="hint">ESC — 보스키</div>`;
+  $("#again").onclick=()=>renderSetup(g.st.id);
+  $("#back").onclick=()=>{ G=null; renderStageSelect(); };
+}
+
+function render(){
+  if(!G) (SCREEN==="pack"?renderPackSelect():renderStageSelect());
+  else if(G.over) renderEnd();
+  else renderGame();
+}
+
+/* ══════════════ 시작/루프 ══════════════ */
+function start(){
+  G.last=performance.now();
+  const loop=now=>{
+    if(!G||G.over||SCREEN!=="game"){ raf=null; return; }
+    let dt=(now-G.last)/1000; G.last=now;
+    dt=Math.min(dt,0.05)*(window.__fast||1);
+    step(dt);
+    if(!G||G.over||SCREEN!=="game"){ raf=null; return; }
+    draw(); syncHud();
+    raf=requestAnimationFrame(loop);
+  };
+  raf=requestAnimationFrame(loop);
+}
+
+/* ══════════════ 보스키 ══════════════ */
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){ e.preventDefault(); $("#boss").classList.toggle("on"); }
+});
+
+/* ── 음소거 토글 ── */
+(function(){
+  const b=$("#mute"); if(!b) return;
+  const sync=()=>{ const m=!!(window.SFX&&window.SFX.muted);
+    b.setAttribute("aria-pressed", m?"true":"false");
+    b.setAttribute("aria-label", m?"소리 켜기":"소리 끄기"); };
+  const toggle=()=>{ if(!window.SFX) return;
+    S("resume"); window.SFX.setMuted(!window.SFX.muted); sync();
+    if(!window.SFX.muted) S("select"); };
+  b.onclick=toggle;
+  document.addEventListener("keydown",e=>{
+    if((e.key==="m"||e.key==="M") && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)){
+      e.preventDefault(); toggle();
+    }
+  });
+  sync();
+})();
+
+window.__g=()=>G;   // 테스트 훅
+buildBossSheet(PACK.id);
+renderPackSelect();
+</script>
+</body>
+</html>

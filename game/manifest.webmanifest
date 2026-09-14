@@ -1,0 +1,31 @@
+{
+  "name": "정시 퇴근",
+  "short_name": "정시 퇴근",
+  "description": "18:00까지 회사 건물을 뚫고 정문으로 나가는 게임. 아홉 개 구역, 서른세 가지 무기, 다섯 직군.",
+  "lang": "ko",
+  "start_url": "./rush.html",
+  "scope": "./",
+  "id": "/game/rush.html",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#0b0e14",
+  "theme_color": "#0b0e14",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {"src": "store/icon-192.png",  "sizes": "192x192",   "type": "image/png", "purpose": "any"},
+    {"src": "store/icon-512.png",  "sizes": "512x512",   "type": "image/png", "purpose": "any"},
+    {"src": "store/icon-512.png",  "sizes": "512x512",   "type": "image/png", "purpose": "maskable"},
+    {"src": "store/icon-1024.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any"}
+  ],
+  "screenshots": [
+    {"src": "store/shot-1-phone.png", "sizes": "1080x1920", "type": "image/png",
+     "form_factor": "narrow", "label": "아홉 개 구역을 지나 정문까지"},
+    {"src": "store/shot-2-phone.png", "sizes": "1080x1920", "type": "image/png",
+     "form_factor": "narrow", "label": "레벨업 카드가 싸우는 방식을 정합니다"},
+    {"src": "store/shot-3-phone.png", "sizes": "1080x1920", "type": "image/png",
+     "form_factor": "narrow", "label": "직군 다섯 — 시작 무기부터 다릅니다"},
+    {"src": "store/shot-4-wide.png",  "sizes": "1920x1080", "type": "image/png",
+     "form_factor": "wide",   "label": "몰려오는 사무실"}
+  ]
+}

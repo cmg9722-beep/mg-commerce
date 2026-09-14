@@ -1,0 +1,7 @@
+{
+  "name": "jeongsi-tools",
+  "private": true,
+  "type": "module",
+  "description": "「정시 퇴근」 에셋 최적화 도구",
+  "dependencies": { "sharp": "^0.34.0" }
+}

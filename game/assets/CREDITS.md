@@ -1,0 +1,140 @@
+# 에셋 출처
+
+상업 이용 가능한 것만 씁니다. CC0가 아니면 출처 표기 의무가 있으니
+게임 안(타이틀 또는 결과 화면)에도 넣어야 합니다.
+
+## 소리 — Kenney · CC0 1.0 Universal
+
+CC0는 저작권을 완전히 포기한 것이라 **상업 이용 가능하고 출처 표기 의무도
+없습니다.** 그래도 예의상, 그리고 나중에 어디서 왔는지 알기 위해 적어 둡니다.
+
+| 게임 안 이름 | 원본 파일 | 팩 |
+|---|---|---|
+| `hit` 명중 | bookPlace1.ogg | RPG Audio |
+| `kill` 처치 | dropLeather.ogg | RPG Audio |
+| `killBoss` 보스 처치 | metalPot3.ogg | RPG Audio |
+| `coin` 획득 | handleCoins2.ogg | RPG Audio |
+| `place` 설치·선택 | click1.ogg | UI Audio |
+| `levelup` 레벨업 | jingles_PIZZA00.ogg | Music Jingles |
+| `win` 정시 퇴근 | jingles_STEEL00.ogg | Music Jingles |
+| `lose` 쓰러짐 | jingles_PIZZA14.ogg | Music Jingles |
+
+- 출처: https://kenney.nl/assets
+- 라이선스 전문: CC0 1.0 Universal
+- 받은 경로: GitHub 미러 `iwenzhou/kenney` (같은 CC0)
+
+### 고른 근거
+
+들어보고 고른 게 아니라 **재서** 골랐습니다. 길이·피크·평균 음량을
+브라우저에서 디코딩해 숫자로 뽑고, 용도에 맞는 것을 뽑았습니다.
+
+- 명중음은 초당 여러 번 나므로 **실제 소리 길이 0.12초**짜리로
+- 획득음도 자주 나므로 0.21초짜리로
+- 보스 처치는 커야 하니 0.62초에 피크가 제일 큰 것으로
+- 결말 징글은 0.5~0.7초 — 더 길면 결과 화면이 늘어진다
+
+원본들의 평균 음량이 0.014~0.268로 **19배 차이**가 나서, 그대로 쓰면
+동전은 안 들리고 보스는 귀를 때립니다.
+
+### 재가공 (2차)
+
+외부 검토에서 더 정확한 수치가 나왔습니다 — 평균 음량 편차가 26dB,
+그리고 **명중음과 보스 처치음은 원본이 이미 0dBTP에 붙어 찌그러져**
+있었습니다. `SFX_GAIN`(≤1)으로는 올릴 수도 내릴 수도 없는 상태였습니다.
+
+그래서 파일 자체를 **진피크 −3dBTP**로 다시 맞췄습니다(측정은 192kHz
+업샘플 후 astats). 편차가 26dB → 13.6dB로 줄고, 남은 차이는 클릭과
+징글의 성격 차이입니다. 그 위에서 `SFX_GAIN`은 「역할」만 정합니다.
+
+| 소리 | 정규화 보정 | 정규화 뒤 평균 | 목표 | SFX_GAIN |
+|---|---|---|---|---|
+| hit | −3.00 | −21.5 | −34 | .237 |
+| kill | −2.92 | −21.6 | −28 | .478 |
+| killBoss | −3.00 | −15.8 | −23 | .437 |
+| coin | **+7.46** | −26.6 | −33 | .478 |
+| place | **+11.87** | −26.1 | −30 | .638 |
+| levelup | +3.10 | −14.4 | −24 | .331 |
+| win | −0.38 | −19.4 | −22 | .741 |
+| lose | +1.93 | −13.0 | −22 | .355 |
+
+
+## 음악 — Abstraction (Ben Burnes) · CC0 1.0 Universal
+
+| 게임 안 이름 | 원본 파일 | 팩 |
+|---|---|---|
+| `bgmPad` 패드 겹 | 2023-12-06 Coding Vibes - Lush Pad Loop.wav | 2HTC Samples Vol 4 Addendum |
+| `bgmDrum` 드럼 겹 | 2023-12-06 Coding Vibes - Hard To Go Wrong With DnB.wav | 2HTC Samples Vol 4 Addendum |
+
+- 라이선스 원문: "These sounds are public domain (Creative Commons 0).
+  You are free to enhance, reuse, remix, or do whatever with these files."
+  → 상업 이용 가능, 출처 표기 의무 없음. 그래도 적어 둡니다.
+- 받은 경로: GitHub `lavenderdotpet/CC0-Public-Domain-Sounds` (CC0 모음)
+
+### 왜 이 둘인가
+
+합성으로 만든 배경음이 「띡 띡 띡 띡」으로 들린다는 지적을 받았습니다.
+사각파 아르페지오를 한 음씩 울린 것이라 맞는 지적이었습니다 —
+그건 음악이 아니라 삐 소리입니다. 실제 게임들은 합성하지 않고 곡을 깝니다.
+
+**같은 곡에서 나온 레이어 둘**을 골랐습니다. 서로 다른 곡을 겹치면 조와
+템포가 어긋나는데, 같은 곡이면 처음부터 맞습니다. 실제로 길이가
+11.29초 : 5.65초로 정확히 2:1이었습니다(170BPM, 8마디 : 4마디).
+
+곡 이름이 「Coding Vibes」인 것은 우연이지만, 사무실 게임에 이보다
+맞는 이름이 없어 그대로 씁니다.
+
+### 가공
+
+- 드럼을 두 번 이어 붙여 패드와 같은 497,982샘플로 맞췄습니다.
+  길이가 다르면 몇 분 뒤부터 박자가 밀립니다.
+- loudnorm으로 정규화(패드 I=−21, 드럼 I=−20, TP −6/−4) — 겹쳐도 안 깨지게.
+- OGG Vorbis q3 — 117KB + 151KB.
+- Vorbis 디코드가 끝에 832샘플(19ms) 패딩을 붙이므로, 재생할 때
+  `loopEnd`를 악보상 길이(11.29211초)로 못 박습니다.
+
+### 우리 요소
+
+소재는 남의 것이지만, **하루가 조여 오는 방식은 이 게임이 정한 것**입니다.
+게임이 매 프레임 시각을 넘겨주면(0=09시, 1=18시) 아침엔 패드만 420Hz
+로우패스 뒤에서 멀게 깔리고, 오후에 드럼이 붙고, 마감이 가까울수록
+필터가 16kHz까지 열려 음악이 앞으로 나옵니다. 곡이 바뀌는 게 아니라
+같은 곡이 조여 오는 것이라 끊기지 않습니다.
+
+## 그림
+
+| 파일 | 출처 | 라이선스 | 표기 의무 |
+|---|---|---|---|
+| (아직 없음 — 전부 코드로 그립니다) | | | |
+
+## 바꾸고 싶을 때
+
+`game/assets/sfx/` 에 같은 이름으로 덮어쓰고 `node tools/build-assets.mjs`.
+파일을 지우면 그 소리만 다시 코드 합성음으로 돌아갑니다.
+
+---
+
+## 글꼴
+
+| 글꼴 | 출처 | 라이선스 | 쓰는 곳 |
+|---|---|---|---|
+| Black Han Sans | [Google Fonts](https://fonts.google.com/specimen/Black+Han+Sans) | SIL OFL 1.1 (`fonts/OFL-BlackHanSans.txt`) | 제목·시계 |
+| Gothic A1 (400·700·800) | [Google Fonts](https://fonts.google.com/specimen/Gothic+A1) | SIL OFL 1.1 (`fonts/OFL-GothicA1.txt`) | 본문 전체 |
+
+**왜 파일로 들고 있는가.** 처음엔 구글에서 받아 썼는데, 그러면 네트워크가
+없을 때 글꼴이 통째로 대체된다. 앱스토어에 내는 게임이 지하철에서 다르게
+보이면 안 된다. `game/test/cases/offline.mjs` 가 바깥으로 나가는 요청이
+하나라도 있으면 실패시킨다.
+
+**어떻게 줄였는가.** 원본 넷을 합치면 7.9MB다. 게임이 실제로 화면에 띄우는
+글자만 남겨 **191KB**로 줄였다(한글 697자 + 라틴·숫자·기호 114자).
+서브셋은 OFL이 명시적으로 허용한다 — 파생물도 OFL로 배포하면 된다.
+
+설정에 직접 적는 「내 한 줄」처럼 여기 없는 글자는 시스템 글꼴로 떨어진다.
+글자 단위로 대체되니 화면이 깨지지 않는다.
+
+재현:
+```bash
+pip install fonttools brotli
+pyftsubset GothicA1-Regular.ttf --text-file=chars.txt --flavor=woff2 \
+  --layout-features='*' --no-hinting --desubroutinize --name-IDs='*'
+```

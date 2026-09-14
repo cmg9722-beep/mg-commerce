@@ -1,0 +1,722 @@
+<title>정시 퇴근 기획서</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;600;800&display=swap">
+<style>
+:root{
+  --bg:#0d1117; --panel:#151b24; --panel2:#1a212c; --line:#252d3a;
+  --ink:#e8ecf4; --dim:#838da1; --faint:#5b6577;
+  --gold:#f5c451; --green:#57d98a; --red:#ff6b6b; --blue:#9ec8ff; --deep:#6f9fd8;
+  --violet:#a78bd0; --amber:#e0aa4b;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:'Gothic A1',"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  font-size:15px; line-height:1.75; -webkit-font-smoothing:antialiased;
+}
+.page{max-width:880px; margin:0 auto; padding-block:56px 96px; padding-left:20px; padding-right:20px}
+h1,h2,h3{font-family:'Black Han Sans',"Malgun Gothic",sans-serif; font-weight:400;
+  text-wrap:balance; margin:0; letter-spacing:-.01em}
+h1{font-size:clamp(34px,7vw,52px); line-height:1.08}
+h2{font-size:clamp(22px,4vw,28px); line-height:1.2; margin:0 0 6px}
+h3{font-size:17px; line-height:1.3}
+p{margin:0}
+a{color:var(--blue)}
+
+/* 머리 */
+.hero{display:flex; flex-direction:column; gap:14px; padding-bottom:34px;
+  border-bottom:1px solid var(--line); margin-bottom:46px}
+.eyebrow{font-size:12px; letter-spacing:.16em; color:var(--faint); text-transform:uppercase}
+.logline{font-size:clamp(17px,3vw,20px); color:var(--ink); max-width:46ch; line-height:1.55}
+.logline b{color:var(--gold); font-weight:800}
+.meta{display:flex; flex-wrap:wrap; gap:8px; margin-top:4px}
+.tag{font-size:12px; color:var(--dim); background:var(--panel); border:1px solid var(--line);
+  border-radius:999px; padding:5px 12px}
+
+/* 섹션 */
+section{margin-bottom:54px}
+.lead{color:var(--dim); max-width:62ch; margin-top:10px}
+.snum{font-family:'Black Han Sans',sans-serif; color:var(--faint); font-size:13px;
+  letter-spacing:.1em; display:block; margin-bottom:8px}
+
+/* 문제→해법 */
+.fix{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:22px}
+.fixcol{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px 20px}
+.fixcol.now{border-left:3px solid var(--red)}
+.fixcol.next{border-left:3px solid var(--green)}
+.fixcol h3{font-size:14px; color:var(--dim); margin-bottom:10px}
+.fixcol ul{margin:0; padding-left:17px; color:var(--ink); font-size:14px}
+.fixcol li{margin-bottom:7px}
+.fixcol li:last-child{margin-bottom:0}
+
+/* 루프 */
+.loop{display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:22px}
+.step{background:var(--panel2); border:1px solid var(--line); border-radius:8px;
+  padding:11px 15px; font-size:14px; font-weight:600}
+.step b{color:var(--gold)}
+.arr{color:var(--faint); font-size:15px}
+
+/* 구역 타임라인 — 하루가 실제로 순서이므로 시간축이 곧 구조다 */
+.zones{margin-top:26px; position:relative}
+.zones::before{content:""; position:absolute; left:63px; top:14px; bottom:14px;
+  width:2px; background:linear-gradient(180deg,var(--deep),var(--gold),var(--red))}
+.zone{display:grid; grid-template-columns:52px 1fr; gap:22px; margin-bottom:16px; position:relative}
+.ztime{font-family:'Black Han Sans',sans-serif; font-size:18px; color:var(--gold);
+  text-align:right; padding-top:15px; font-variant-numeric:tabular-nums}
+.zbody{background:var(--panel); border:1px solid var(--line); border-radius:10px;
+  padding:16px 18px; margin-left:12px}
+.zone.boss .zbody{border-color:#4a2a2e; background:#1a1418}
+.zone::after{content:""; position:absolute; left:59px; top:22px; width:10px; height:10px;
+  border-radius:50%; background:var(--deep); border:2px solid var(--bg)}
+.zone.boss::after{background:var(--red); width:14px; height:14px; left:57px}
+.zhead{display:flex; flex-wrap:wrap; align-items:baseline; gap:10px; margin-bottom:9px}
+.zname{font-family:'Black Han Sans',sans-serif; font-size:19px}
+.zboss{font-size:11px; color:var(--red); border:1px solid #4a2a2e; background:#231519;
+  border-radius:4px; padding:2px 7px; letter-spacing:.04em}
+.zrow{display:flex; gap:9px; font-size:13.5px; margin-bottom:5px; align-items:baseline}
+.zrow:last-child{margin-bottom:0}
+.zk{color:var(--faint); flex:0 0 52px; font-size:12px}
+.zv{color:var(--ink)}
+.zv.rule{color:var(--green)}
+.zv.door{color:var(--amber)}
+
+/* 표 */
+.tw{overflow-x:auto; margin-top:22px; border:1px solid var(--line); border-radius:10px}
+table{border-collapse:collapse; width:100%; font-size:13.5px; min-width:620px}
+th{background:var(--panel2); color:var(--dim); font-weight:600; text-align:left;
+  padding:11px 14px; font-size:12px; letter-spacing:.03em; border-bottom:1px solid var(--line);
+  white-space:nowrap}
+td{padding:11px 14px; border-bottom:1px solid #1d242f; vertical-align:top}
+tr:last-child td{border-bottom:0}
+.sw{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:7px;
+  vertical-align:-1px; border:1px solid rgba(255,255,255,.18)}
+.nm{font-weight:700; white-space:nowrap}
+
+/* 에셋 목록 */
+.buy{background:var(--panel); border:1px solid var(--line); border-radius:10px;
+  padding:20px 22px; margin-top:22px}
+.buy h3{font-size:15px; margin-bottom:12px; color:var(--gold)}
+.buy ol{margin:0; padding-left:19px; font-size:14px}
+.buy li{margin-bottom:9px}
+.buy li:last-child{margin-bottom:0}
+.buy code{background:var(--panel2); border:1px solid var(--line); border-radius:4px;
+  padding:1px 6px; font-size:12.5px; font-family:ui-monospace,monospace; color:var(--blue)}
+
+/* 다음 */
+.next-list{counter-reset:n; margin-top:22px; display:flex; flex-direction:column; gap:11px}
+.nx{display:grid; grid-template-columns:34px 1fr; gap:14px; align-items:start;
+  background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:15px 18px}
+.nx .n{font-family:'Black Han Sans',sans-serif; color:var(--gold); font-size:19px; line-height:1.2}
+.nx .t{font-weight:700; margin-bottom:3px}
+.nx .d{color:var(--dim); font-size:13.5px}
+.who{font-size:11.5px; color:var(--faint); border:1px solid var(--line); border-radius:4px;
+  padding:1px 7px; margin-left:8px; white-space:nowrap}
+
+.note{border-left:3px solid var(--gold); background:#1b1710; padding:14px 18px;
+  border-radius:0 8px 8px 0; margin-top:20px; font-size:14px; color:#e6dcc4}
+
+@media (max-width:640px){
+  .fix{grid-template-columns:1fr}
+  .zones::before{left:43px}
+  .zone{grid-template-columns:34px 1fr; gap:14px}
+  .zone::after{left:39px}
+  .zone.boss::after{left:37px}
+  .ztime{font-size:15px; padding-top:16px}
+  .zbody{margin-left:6px; padding:14px 15px}
+}
+</style>
+
+<div class="page">
+
+<div class="hero">
+  <span class="eyebrow">기획서 v2 · 2026.09.12</span>
+  <h1>정시 퇴근</h1>
+  <p class="logline">09:00 지하주차장에서 출근해, <b>18:00까지 건물을 뚫고 정문으로 나간다.</b>
+    아홉 개 층을 지나며 사방에서 몰려오는 상사들을 갈아버린다.</p>
+  <div class="meta">
+    <span class="tag">뱀서라이크 + 구역 돌파</span>
+    <span class="tag">픽셀아트</span>
+    <span class="tag">모바일 + PC</span>
+    <span class="tag">한 판 = 하루 = 7분</span>
+  </div>
+</div>
+
+<section style="border:1px solid #2a3a2e;background:#111713;border-radius:12px;
+                padding:26px 24px;margin-bottom:54px">
+  <span class="snum" style="color:var(--green)">확정</span>
+  <h2>더 이상 바꾸지 않는 것 넷</h2>
+  <p class="lead">하루 만에 방향을 세 번 뒤집었다 — 레인디펜스에서 뱀서로,
+    「에셋을 사라」에서 「사지 마라」로, 뱀서 모델에서 하데스 모델로.
+    매번 근거는 있었지만 그만큼 시간을 버렸다.
+    아래 넷은 데이터로 확인했고, <b>이제 논의하지 않고 만들기만 한다.</b></p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>확정</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><td class="nm" style="color:var(--green)">1. 구조<br>
+            <span style="font-weight:400;color:var(--dim)">방 단위 진행<br>(Archero·하데스식)</span></td>
+          <td>같은 장르에서 <b>방 단위가 엔들리스보다 30일 잔존율이 3배 가까이 높다</b> —
+            Archero D30 <b>11%</b> vs Survivor.io <b>4%</b>.
+            우리는 이미 구역 아홉 개를 순서대로 지나는 구조다. 바꿀 게 아니라 확정할 것.<br>
+            <span style="color:var(--faint);font-size:12px">Naavik · Mobilegamer</span></td></tr>
+        <tr><td class="nm" style="color:var(--green)">2. 인게임 아트<br>
+            <span style="font-weight:400;color:var(--dim)">코드로 유지. 안 산다</span></td>
+          <td>매직 서바이벌(한국 1인 개발)이 <b>검은 바탕에 원과 선으로 500만 다운로드</b>.
+            Brotato는 플랫 도형으로 최상위 매출. 이 장르는 배경이 단순하고
+            군중·이펙트가 볼거리다. 픽셀 타일셋은 적 400명 아래서 노이즈가 된다.</td></tr>
+        <tr><td class="nm" style="color:var(--green)">3. 돈 쓸 곳<br>
+            <span style="font-weight:400;color:var(--dim)">스토어 등록 이미지</span></td>
+          <td>그래픽이 나빠서 안 하는 게 아니라 <b>그래픽 때문에 받지도 않는다.</b>
+            사람들은 스토어 스크린샷 3~5장을 보고 받을지 정한다.
+            힉스필드 키아트 + 캔바 스크린샷이 인게임 타일셋보다 다운로드에 직접 영향이 크다.</td></tr>
+        <tr><td class="nm" style="color:var(--green)">4. 재플레이 동력<br>
+            <span style="font-weight:400;color:var(--dim)">이야기 진행 (하데스식)</span></td>
+          <td>하데스는 판이 끝날 때마다 이야기를 조금씩 풀고, 인물들이 진행 상황에
+            반응해 새 말을 한다. <b>실패도 이야기의 일부</b>라 다시 하는 게 자연스럽다.
+            우리도 <b>매일 출근하는 게 당연한</b> 구조라 그대로 맞는다.
+            무기 해금은 이 위에 얹는다.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">
+    한국 시장 숫자도 같이 확인했다 — Survivor.io 매출의 <b>21.2%가 한국</b>이고
+    다운로드당 <b>$15.50</b>로 미국($4.90)의 3배다. 이 장르가 한국에서 유난히 돈이 된다.
+  </div>
+</section>
+
+<section>
+  <span class="snum">01</span>
+  <h2>왜 갈아엎는가</h2>
+  <p class="lead">플레이해 본 결과 나온 말이 그대로 진단이다 —
+    <i>"이동도 안 되고, 컨텐츠가 너무 적고, 누가 오는지 식별도 안 되고,
+    무엇을 방어하는지…"</i> 앞의 셋은 버그와 부족이지만, 마지막 하나가 근본이다.</p>
+  <div class="fix">
+    <div class="fixcol now">
+      <h3>지금 (버티기)</h3>
+      <ul>
+        <li>끝없이 똑같은 카펫 위에서 제자리 생존</li>
+        <li>화면에 목표물이 없다 → "뭘 방어하는 거지"</li>
+        <li>구역도 층도 없어 하루가 한 덩어리</li>
+        <li>적이 색만 다르고 실루엣·소품이 같다</li>
+      </ul>
+    </div>
+    <div class="fixcol next">
+      <h3>바꾼 뒤 (돌파)</h3>
+      <ul>
+        <li>아홉 개 공간을 순서대로 통과한다</li>
+        <li>눈앞에 <b>잠긴 문</b>이 있다 → 목표가 보인다</li>
+        <li>구역마다 배경·적·규칙·보스가 다르다</li>
+        <li>색 + 실루엣 + 소품, 세 겹으로 구분한다</li>
+      </ul>
+    </div>
+  </div>
+  <div class="note">
+    방어가 아니라 <b>전진</b>이다. 이 한 줄이 바뀌면 "무엇을 방어하는지" 라는 질문 자체가 없어진다.
+  </div>
+</section>
+
+<section>
+  <span class="snum">02</span>
+  <h2>핵심 루프</h2>
+  <p class="lead">구역에 들어가면 그 구역의 결재함이 열린다. 출구 문은 잠겨 있고,
+    미결을 0으로 만들어야 열린다. 시간은 그동안에도 계속 간다.</p>
+  <div class="loop">
+    <span class="step">구역 진입</span><span class="arr">→</span>
+    <span class="step">미결 <b>40건</b></span><span class="arr">→</span>
+    <span class="step">갈아버린다</span><span class="arr">→</span>
+    <span class="step">미결 <b>0</b></span><span class="arr">→</span>
+    <span class="step">문 열림</span><span class="arr">→</span>
+    <span class="step">다음 구역</span>
+  </div>
+  <p class="lead" style="margin-top:18px">
+    18:00까지 정문을 못 나가면 <b style="color:var(--amber)">야근</b>. 야근은 시간이 곧 체력이라
+    버티기로는 끝나지 않는다 — 남은 미결을 비우는 것 말고 답이 없다.
+    <b style="color:var(--green)">정시 퇴근</b> · <b style="color:var(--amber)">야근 퇴근</b> ·
+    <b style="color:var(--red)">쓰러짐</b> 세 등급으로 하루가 끝난다.</p>
+</section>
+
+<section>
+  <span class="snum">03</span>
+  <h2>세대 — 이 게임이 진짜 하는 이야기</h2>
+  <p class="lead">주인공은 정시에 나가려는 사람이다. 그걸 막는 건 넷이다 —
+    <b>야근 · 회식 · 진급 · 간섭.</b> 넷이 각각 게임 규칙이 된다.
+    지금 기획서엔 야근 하나뿐이었다.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>실제로 겪는 것</th><th>게임 규칙</th></tr></thead>
+      <tbody>
+        <tr><td class="nm">야근 강요</td>
+            <td>18시에 미결이 남으면 야근. 시간이 곧 체력이라 버티기로는 안 끝난다</td></tr>
+        <tr><td class="nm">회식 소집</td>
+            <td>부장이 광역 장판을 깐다. 밟히면 3초간 끌려가고 미결이 는다</td></tr>
+        <tr><td class="nm">진급 미끼</td>
+            <td>레벨업에 「승진」 카드가 섞인다 — 아래 참조</td></tr>
+        <tr><td class="nm">간섭</td>
+            <td>상사 반경 안에 있으면 <i>지금 뭐 하고 있나?</i> 공격 속도가 준다. 멀어지면 풀린다</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="margin-top:32px">승진 딜레마</h3>
+  <p class="lead">레벨업 카드에 가끔 섞인다. 이 게임의 중심 선택이다.</p>
+  <div class="fix">
+    <div class="fixcol now">
+      <h3>승진을 받는다</h3>
+      <ul>
+        <li>모든 능력 <b>+15%</b></li>
+        <li>오늘 미결 <b>+30</b></li>
+        <li>다음 출근부터 시작 미결이 는다</li>
+      </ul>
+    </div>
+    <div class="fixcol next">
+      <h3>받는 만큼만 한다</h3>
+      <ul>
+        <li>능력은 그대로</li>
+        <li>오늘 미결 <b>−20</b></li>
+        <li>내일도 오늘만큼만 한다</li>
+      </ul>
+    </div>
+  </div>
+  <div class="note">
+    승진을 쌓으면 강해지지만 매일이 더 힘들어진다. 안 받으면 약하지만 하루가 편하다.
+    <b>플레이어가 자기 직장생활 철학을 고르게 된다.</b> 정답이 없어야 한다.
+  </div>
+
+  <h3 style="margin-top:32px">노동조합</h3>
+  <p class="lead">야근·회식·간섭을 혼자 피하는 건 회피지 해결이 아니다.
+    뭉치면 규칙 자체가 없어진다. 이게 이 게임의 최종 답이다.</p>
+  <div class="loop">
+    <span class="step">후배가 따라붙는다</span><span class="arr">→</span>
+    <span class="step">인원 <b>5명</b></span><span class="arr">→</span>
+    <span class="step">노조 결성</span><span class="arr">→</span>
+    <span class="step">단체교섭</span>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>단계</th><th>조건</th><th>얻는 것</th></tr></thead>
+      <tbody>
+        <tr><td class="nm">동조</td><td>구역 미결을 빨리 비우면 젠지 후배가 따라붙는다</td>
+            <td>같이 싸운다. 한 명당 화력 증가</td></tr>
+        <tr><td class="nm">결성</td><td>5명 이상</td>
+            <td>회식 소집 무효 · 간섭 반경 절반 · 야근 피로 감소</td></tr>
+        <tr><td class="nm" style="color:var(--gold)">단체교섭</td><td>대표이사실 도달</td>
+            <td>최종전이 전투에서 협상으로 바뀐다. 조합원 수가 협상력이다</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">
+    젠지 후배는 적이 아니다. 죽일 대상이 아니라 <b>모을 대상</b>이다.
+    중립으로 돌아다니다가, 내가 제때 퇴근할 것 같으면 따라온다 —
+    그게 실제로 회사에서 벌어지는 일이다.
+  </div>
+</section>
+
+<section style="border:1px solid #3a2f1a; background:#14120c; border-radius:12px;
+                padding:26px 24px; margin-bottom:54px">
+  <span class="snum" style="color:var(--gold)">03-B</span>
+  <h2>자동화 — 이기는 것처럼 보이면서 지는 법</h2>
+  <p class="lead">야근·회식·진급·간섭을 다 이겨내고 정시 퇴근을 쟁취했다.
+    그런데 그 자리가 없어진다. <b>이게 이 게임의 매듭이다.</b></p>
+
+  <h3 style="margin-top:26px">자동화 로봇</h3>
+  <p class="lead">다른 적과 반대로 설계한다. <b>로봇은 나를 때리지 않는다.</b>
+    쫓아오지도 않는다. 그냥 조용히 내 일을 한다.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>다른 적</th><th>자동화 로봇</th></tr></thead>
+      <tbody>
+        <tr><td>나를 쫓아온다</td><td>나를 무시한다</td></tr>
+        <tr><td>체력을 깎는다</td><td>체력을 안 깎는다</td></tr>
+        <tr><td>잡으면 미결이 준다</td><td><b style="color:var(--gold)">가만둬도 미결이 준다</b></td></tr>
+        <tr><td>위협이 눈에 보인다</td><td>도움처럼 보인다</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="lead" style="margin-top:16px">
+    로봇이 있으면 편하다. 미결이 저절로 줄고, 하루가 수월해진다.
+    그래서 부수기가 아깝다 — <b>그 망설임이 이 적의 무기다.</b></p>
+
+  <h3 style="margin-top:30px">대체율</h3>
+  <p class="lead">오늘 처리된 일 중 로봇이 한 몫의 비율. HUD에 계속 떠 있다.</p>
+  <div class="loop">
+    <span class="step">대체율 <b style="color:var(--green)">0~29%</b><br>
+      <span style="font-weight:400;color:var(--dim);font-size:12px">아직 내 일이다</span></span>
+    <span class="arr">→</span>
+    <span class="step">대체율 <b style="color:var(--amber)">30~44%</b><br>
+      <span style="font-weight:400;color:var(--dim);font-size:12px">경고가 뜬다</span></span>
+    <span class="arr">→</span>
+    <span class="step">대체율 <b style="color:var(--red)">45% 이상</b><br>
+      <span style="font-weight:400;color:var(--dim);font-size:12px">18시에 「대체」</span></span>
+  </div>
+
+  <h3 style="margin-top:30px">네 번째 결말</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>결말</th><th>조건</th><th>마지막 문장</th></tr></thead>
+      <tbody>
+        <tr><td class="nm" style="color:var(--green)">정시 퇴근</td><td>18시에 미결 0</td>
+            <td>18:00. 가방 들고 나왔습니다.</td></tr>
+        <tr><td class="nm" style="color:var(--amber)">야근 퇴근</td><td>야근 끝에 미결 0</td>
+            <td>늦었지만, 끝내고 나왔습니다.</td></tr>
+        <tr><td class="nm" style="color:var(--red)">쓰러짐</td><td>체력 0</td>
+            <td>미결 N건을 남기고 쓰러졌습니다.</td></tr>
+        <tr><td class="nm" style="color:var(--gold)">대체</td><td>대체율 45% 이상</td>
+            <td><b>18:00. 정시에 퇴근했습니다.<br>내일부터는 안 나오셔도 됩니다.</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">
+    「대체」는 <b>정시 퇴근한 채로 지는</b> 유일한 결말이다.
+    시계는 18:00이고 미결은 0인데, 결과 화면 색이 초록이 아니다.
+    이 게임에서 제일 무서운 화면이어야 한다 — 야근보다.
+  </div>
+
+  <h3 style="margin-top:30px">노조가 여기서 쓸모를 갖는다</h3>
+  <p class="lead">혼자서는 로봇을 부수는 것 말곤 답이 없다. 부수면 또 온다.
+    노조가 있으면 <b>도입 자체를 협상 대상으로 만든다</b> — 현실에서 노조가
+    실제로 하는 일이 그거다.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>노조</th><th>로봇에게</th></tr></thead>
+      <tbody>
+        <tr><td>없음</td><td>부수는 것 말곤 방법이 없다. 재가동되어 다시 온다</td></tr>
+        <tr><td>결성(5명)</td><td>로봇 투입 속도가 느려진다. 대체율이 천천히 오른다</td></tr>
+        <tr><td>단체협약</td><td>대체율 상한이 생긴다 — 45%에 닿지 않는다</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <span class="snum">04</span>
+  <h2>아홉 개 구역</h2>
+  <p class="lead">원칙: <b>공간 이름 하나 = 규칙 하나.</b>
+    이름과 배경만 바꾸고 웨이브 표만 손본 건 구역이 아니라 스킨이다.</p>
+
+  <div class="zones">
+
+    <div class="zone">
+      <div class="ztime">09:00</div>
+      <div class="zbody">
+        <div class="zhead"><span class="zname">지하 주차장</span></div>
+        <div class="zrow"><span class="zk">문</span><span class="zv door">차단기 — 미결을 비우면 올라간다</span></div>
+        <div class="zrow"><span class="zk">적</span><span class="zv">신입, 인턴</span></div>
+        <div class="zrow"><span class="zk">규칙</span><span class="zv rule">차와 기둥이 시야를 막는다. 모퉁이에서 튀어나온다</span></div>
+        <div class="zrow"><span class="zk">역할</span><span class="zv">튜토리얼. 이동과 자동공격을 손에 익힌다</span></div>
+      </div>
+    </div>
+
+    <div class="zone">
+      <div class="ztime">10:00</div>
+      <div class="zbody">
+        <div class="zhead"><span class="zname">출입구 · 로비</span></div>
+        <div class="zrow"><span class="zk">문</span><span class="zv door">스피드게이트 — 한 번에 한 명만 통과</span></div>
+        <div class="zrow"><span class="zk">적</span><span class="zv">인턴, 사원, 경비</span></div>
+        <div class="zrow"><span class="zk">규칙</span><span class="zv rule">게이트를 지날 때 1.2초 무방비. 주변을 먼저 비워야 한다</span></div>
+      </div>
+    </div>
+
+    <div class="zone">
+      <div class="ztime">11:00</div>
+      <div class="zbody">
+        <div class="zhead"><span class="zname">사무실 — 우리 팀</span></div>
+        <div class="zrow"><span class="zk">문</span><span class="zv door">팀 출입문</span></div>
+        <div class="zrow"><span class="zk">적</span><span class="zv">사원, 대리, 인사팀</span></div>
+        <div class="zrow"><span class="zk">규칙</span><span class="zv rule">내 책상에 서면 체력이 찬다. 대신 서 있는 동안 미결이 쌓인다</span></div>
+      </div>
+    </div>
+
+    <div class="zone">
+      <div class="ztime">12:00</div>
+      <div class="zbody">
+        <div class="zhead"><span class="zname">구내식당</span></div>
+        <div class="zrow"><span class="zk">문</span><span class="zv door">배식대 뒤 통로</span></div>
+        <div class="zrow"><span class="zk">적</span><span class="zv">회식조, 협력사</span></div>
+        <div class="zrow"><span class="zk">규칙</span><span class="zv rule">점심시간 40분 — 적이 느려지지만 미결도 안 줄어든다. 이 시간을 뭘로 쓸 것인가</span></div>
+      </div>
+    </div>
+
+    <div class="zone">
+      <div class="ztime">13:00</div>
+      <div class="zbody">
+        <div class="zhead"><span class="zname">소회의실 복도</span></div>
+        <div class="zrow"><span class="zk">문</span><span class="zv door">복도 끝 방화문</span></div>
+        <div class="zrow"><span class="zk">적</span><span class="zv">과장, 인사팀, 신입</span></div>
+        <div class="zrow"><span class="zk">규칙</span><span class="zv rule">양옆 유리문이 열리며 기습. 복도라 좌우로 못 피한다</span></div>
+      </div>
+    </div>
+
+    <div class="zone boss">
+      <div class="ztime">14:00</div>
+      <div class="zbody">
+        <div class="zhead"><span class="zname">대회의실</span><span class="zboss">보스 · 본부장</span></div>
+        <div class="zrow"><span class="zk">문</span><span class="zv door">본부장을 넘어야 열린다</span></div>
+        <div class="zrow"><span class="zk">적</span><span class="zv">본부장 + 과장·부장 수행</span></div>
+        <div class="zrow"><span class="zk">규칙</span><span class="zv rule">발표 중 — 화이트보드 앞에 서 있어야 미결이 준다. 가장 위험한 자리에서 가장 오래 버텨야 한다</span></div>
+      </div>
+    </div>
+
+    <div class="zone">
+      <div class="ztime">15:00</div>
+      <div class="zbody">
+        <div class="zhead"><span class="zname">탕비실 · 복사실</span></div>
+        <div class="zrow"><span class="zk">문</span><span class="zv door">비상계단</span></div>
+        <div class="zrow"><span class="zk">적</span><span class="zv">회식조, 대리, 협력사</span></div>
+        <div class="zrow"><span class="zk">규칙</span><span class="zv rule">복합기 용지 걸림. 고치면 그 판 내내 쓰는 광역 공격을 얻는다</span></div>
+      </div>
+    </div>
+
+    <div class="zone boss">
+      <div class="ztime">16:00</div>
+      <div class="zbody">
+        <div class="zhead"><span class="zname">임원층 복도</span><span class="zboss">보스 · 점검단</span></div>
+        <div class="zrow"><span class="zk">문</span><span class="zv door">임원실 이중문</span></div>
+        <div class="zrow"><span class="zk">적</span><span class="zv">점검단 + 부장</span></div>
+        <div class="zrow"><span class="zk">규칙</span><span class="zv rule">조용한 층. 연속 처치가 쌓일수록 더 몰려온다 — 몰아치면 빨리 끝나지만 더 위험해진다</span></div>
+      </div>
+    </div>
+
+    <div class="zone boss">
+      <div class="ztime">17:00</div>
+      <div class="zbody">
+        <div class="zhead"><span class="zname">대표이사실 → 정문</span><span class="zboss">최종 · 대표이사</span></div>
+        <div class="zrow"><span class="zk">문</span><span class="zv door">정문 회전문 — 여기가 퇴근이다</span></div>
+        <div class="zrow"><span class="zk">적</span><span class="zv">대표이사 + 전 직급</span></div>
+        <div class="zrow"><span class="zk">규칙</span><span class="zv rule">앞 구역에서 남긴 미결이 전부 여기로 몰린다. 하루를 어떻게 살았는지가 마지막에 청구된다</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <span class="snum">05</span>
+  <h2>적 — 세 겹 식별</h2>
+  <p class="lead">색만 다르면 40픽셀에서 구분이 안 된다.
+    <b>색 · 실루엣 · 손에 든 것</b> 세 개가 전부 달라야 한 눈에 읽힌다.
+    소품은 장식이 아니라 그 적이 뭘 하는 놈인지를 말한다.</p>
+  <div class="tw">
+    <table>
+      <thead><tr>
+        <th>적</th><th>실루엣</th><th>손에 든 것</th><th>행동</th><th>등장</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="nm"><span class="sw" style="background:#aeb7c6"></span>인턴</td>
+            <td>작고 웅크림</td><td>종이컵</td><td>느리게 몰려온다</td><td>주차장·로비</td></tr>
+        <tr><td class="nm"><span class="sw" style="background:#5a6f8f"></span>신입</td>
+            <td>작고 앞으로 쏠림</td><td>서류 뭉치</td><td>제일 빠르다. 반드시 잡힌다</td><td>주차장·복도</td></tr>
+        <tr><td class="nm"><span class="sw" style="background:#4e5a76"></span>사원</td>
+            <td>표준 체형</td><td>노트북</td><td>기본. 수로 민다</td><td>로비·사무실</td></tr>
+        <tr><td class="nm"><span class="sw" style="background:#5e80b2"></span>대리</td>
+            <td>어깨 처짐</td><td>머그컵</td><td>기본. 조금 단단하다</td><td>사무실·탕비실</td></tr>
+        <tr><td class="nm"><span class="sw" style="background:#948b7c"></span>과장</td>
+            <td>배가 나옴</td><td>결재판</td><td>단단하고 꾸준하다</td><td>복도·회의실</td></tr>
+        <tr><td class="nm"><span class="sw" style="background:#a34d4d"></span>부장</td>
+            <td>크고 팔자걸음</td><td>골프채</td><td>느리지만 한 대가 아프다</td><td>회의실·임원층</td></tr>
+        <tr><td class="nm"><span class="sw" style="background:#e0aa4b"></span>회식조</td>
+            <td>비틀거림</td><td>소주병</td><td>빠르고 지그재그로 온다</td><td>식당·탕비실</td></tr>
+        <tr><td class="nm"><span class="sw" style="background:#4b7d72"></span>인사팀</td>
+            <td>단정·안경</td><td>클립보드</td><td>경험치를 가로챈다</td><td>사무실·복도</td></tr>
+        <tr><td class="nm"><span class="sw" style="background:#7a6a9a"></span>협력사</td>
+            <td>상자를 안음</td><td>샘플 상자</td><td>단단하고 빠르다</td><td>식당·탕비실</td></tr>
+        <tr><td class="nm"><span class="sw" style="background:#39404f"></span>경비</td>
+            <td>모자·각진 어깨</td><td>무전기</td><td>게이트를 막고 서 있다</td><td>로비</td></tr>
+        <tr><td class="nm"><span class="sw" style="background:#3f4a63"></span>본부장</td>
+            <td>각진 어깨·붉은 넥타이</td><td>지시봉</td><td>보스 — 돌진</td><td>대회의실</td></tr>
+        <tr><td class="nm"><span class="sw" style="background:#2d3444"></span>점검단</td>
+            <td>줄지어 선 무리</td><td>체크리스트</td><td>보스 — 소환·충격파</td><td>임원층</td></tr>
+        <tr><td class="nm"><span class="sw" style="background:#22283a"></span>대표이사</td>
+            <td>발목까지 오는 코트</td><td>만년필</td><td>최종 — 소환·충격파</td><td>대표이사실</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <span class="snum">06</span>
+  <h2>경고 — 위험은 읽을 수 있어야 한다</h2>
+  <p class="lead">맞고 나서야 뭐에 맞았는지 아는 건 스트레스다.
+    맞기 전에 보이면 그건 실력이 된다. 모든 위험은 오기 전에 말해 준다.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>언제</th><th>어떻게 알려주나</th><th>여유</th></tr></thead>
+      <tbody>
+        <tr><td class="nm">보스 패턴</td>
+            <td>바닥에 붉은 범위가 차오르고, 화면 위에 띠가 뜬다 — <i>본부장, 돌진 준비</i></td>
+            <td>0.9초</td></tr>
+        <tr><td class="nm">복도 기습</td>
+            <td>양옆 유리문이 덜컹거린 뒤 열린다</td><td>0.6초</td></tr>
+        <tr><td class="nm">구역 진입</td>
+            <td>문이 열리기 전 다음 공간과 그 규칙을 예고 — <i>다음: 대회의실 · 발표해야 합니다</i></td>
+            <td>문 열리기 전</td></tr>
+        <tr><td class="nm">마감 압박</td>
+            <td>17:00에 미결이 남아 있으면 시계가 붉어지고 경고가 뜬다</td><td>한 시간</td></tr>
+        <tr><td class="nm">야근 진입</td>
+            <td>화면 가장자리가 붉게 맥동하고 체력이 계속 깎인다</td><td>즉시 표시</td></tr>
+        <tr><td class="nm">고객사 접근</td>
+            <td>잡으면 안 되는 대상에 파란 테두리. 내 공격 범위에 들면 테두리가 깜빡인다</td>
+            <td>상시</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <span class="snum">07</span>
+  <h2>처치 연출 — 손에 든 게 터진다</h2>
+  <p class="lead">식별 소품과 처치 연출을 하나로 묶는다.
+    들고 있던 것이 그대로 터지니까, <b>무엇이 터졌는지를 보면 무엇을 잡았는지 안다.</b>
+    구분 문제와 타격감 문제를 한 번에 푼다.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>적</th><th>쓰러질 때</th></tr></thead>
+      <tbody>
+        <tr><td class="nm">신입 · 과장</td><td>서류가 공중에 흩날린다. 천천히 떨어져 바닥에 깔린다</td></tr>
+        <tr><td class="nm">인턴</td><td>종이컵이 튀고 커피가 바닥에 번진다</td></tr>
+        <tr><td class="nm">회식조</td><td>소주병이 깨진다. 유리 파편 + 짧은 화면 흔들림</td></tr>
+        <tr><td class="nm">협력사</td><td>상자가 터지며 샘플이 사방으로 쏟아진다</td></tr>
+        <tr><td class="nm">사원</td><td>노트북이 회전하며 날아간다</td></tr>
+        <tr><td class="nm">인사팀</td><td>클립보드에서 서류가 부챗살로 퍼진다</td></tr>
+        <tr><td class="nm">부장</td><td>골프채가 튕겨 나가 바닥에 꽂힌다</td></tr>
+        <tr><td class="nm">보스</td><td>화면 정지 0.3초 → 느려짐 → 서류 폭발 + 흰 섬광</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="lead" style="margin-top:18px">연속 처치가 10·25·50에 닿을 때마다 화면 전체가 한 번 친다.
+    많이 몰아칠수록 화면이 커진다 — 갈아버리는 맛이 여기서 나온다.</p>
+</section>
+
+<section>
+  <span class="snum">08</span>
+  <h2>설치물 — 내 주변에 세운다</h2>
+  <p class="lead">자동 공격만 있으면 위치를 잡는 재미가 없다.
+    사무실 집기를 세워서 길을 막고 화력을 깐다. 레벨업 선택지의 한 계열.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>설치물</th><th>하는 일</th><th>수명</th></tr></thead>
+      <tbody>
+        <tr><td class="nm">파티션</td><td>벽을 세워 적을 막는다. 맞으면 부서진다</td><td>체력제</td></tr>
+        <tr><td class="nm">복합기</td><td>주변에 서류를 계속 뿜어 지속 피해</td><td>18초</td></tr>
+        <tr><td class="nm">정수기</td><td>범위 안에 있으면 체력이 찬다</td><td>12초</td></tr>
+        <tr><td class="nm">커피머신</td><td>범위 안에서 공격 속도 증가</td><td>15초</td></tr>
+        <tr><td class="nm">미끄럼 주의 표지</td><td>밟은 적이 미끄러져 감속 + 넘어진다</td><td>20초</td></tr>
+        <tr><td class="nm">회의실 예약</td><td>범위 안 적들을 회의에 묶는다 — 4초간 못 움직임</td><td>1회</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">
+    「회의실 예약」이 이 게임만 할 수 있는 농담이다.
+    회의를 잡아서 사람들을 묶어 두는 건 실제로 회사에서 일어나는 일이고,
+    게임 규칙으로도 정확히 군중 제어다.
+  </div>
+</section>
+
+<section>
+  <span class="snum">09</span>
+  <h2>이벤트 — 전부 적은 아니다</h2>
+  <p class="lead">모두가 나를 죽이러 오면 단조롭다.
+    도와주는 사람, 건드리면 안 되는 사람, 지나가는 사람이 섞여야 판단이 생긴다.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>누가</th><th>무슨 일</th><th>어떻게 대해야 하나</th></tr></thead>
+      <tbody>
+        <tr><td class="nm" style="color:var(--green)">내 후임</td>
+            <td>따라다니며 대신 처리한다</td>
+            <td>20초간 아군. 지켜주면 다음 구역에서 또 온다</td></tr>
+        <tr><td class="nm" style="color:var(--green)">동기</td>
+            <td>탕비실에서 마주친다</td>
+            <td>체력 회복 + 다음 구역 보스를 미리 알려준다</td></tr>
+        <tr><td class="nm" style="color:var(--blue)">고객사</td>
+            <td>중립. 파란 테두리를 두르고 돌아다닌다</td>
+            <td><b style="color:var(--red)">절대 건드리면 안 된다.</b> 잡으면 미결 급증</td></tr>
+        <tr><td class="nm" style="color:var(--blue)">엔드 고객사</td>
+            <td>고객사의 고객. 더 크고 더 위험하다</td>
+            <td>잡으면 그 구역 미결이 두 배. 지키면 큰 보상</td></tr>
+        <tr><td class="nm">지인</td>
+            <td>로비에서 우연히 마주친다</td>
+            <td>말을 섞으면 시간이 간다. 무시하면 미결이 조금 는다</td></tr>
+        <tr><td class="nm">퀵 기사</td>
+            <td>화면을 가로질러 달려간다</td>
+            <td>따라잡으면 그 자리에서 설치물 하나를 준다</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">
+    고객사가 이 게임의 핵심 긴장이다. 공격이 자동이라
+    <b>가까이 가는 것만으로 사고가 난다.</b> 갈아버리는 게임에서 딱 하나,
+    건드리면 안 되는 것이 있으면 그때부터 위치 선정이 실력이 된다.
+  </div>
+</section>
+
+<section>
+  <span class="snum">10</span>
+  <h2>아트 — 무엇을 사고 무엇을 만드는가</h2>
+  <p class="lead">코드로 그린 벡터로는 상용 게임 아트가 안 나온다. 몇 시간 더 만져도 같다.
+    픽셀아트로 통일하고, 타일셋과 캐릭터는 산다.</p>
+
+  <div class="buy">
+    <h3>사야 할 것</h3>
+    <ol>
+      <li><b>탑다운 오피스 타일셋</b> — 주차장·로비·사무실·식당·회의실·탕비실·임원실 바닥과 벽,
+        가구. <code>16×16</code> 또는 <code>32×32</code>, 상업 이용 허가 필수.</li>
+      <li><b>캐릭터 스프라이트</b> — 직급 13종 + 주인공. 걷기 8프레임·피격·사망이 있어야 한다.
+        직군 유니폼 레이어가 있는 팩이면 13종을 한 팩으로 덮는다.</li>
+      <li><b>문 · 게이트 · 차단기</b> — 구역 사이 출구. 열림/닫힘 두 상태.</li>
+    </ol>
+  </div>
+
+  <div class="buy" style="margin-top:14px">
+    <h3>도구를 어디에 쓰는가</h3>
+    <ol>
+      <li><b>에셋팩</b> — 인게임 타일셋과 캐릭터. 여기가 핵심이고, 나머지 도구로는 대체가 안 된다.</li>
+      <li><b>힉스필드</b> — 컨셉아트, 키아트, 스토어 홍보 이미지.
+        낱장 한 장은 잘 뽑지만 <b>한 캐릭터를 걷기·피격·사망 프레임 내내 똑같이 유지하지 못한다.</b>
+        인게임 스프라이트용으로는 안 된다.</li>
+      <li><b>캔바</b> — 스토어 등록 이미지, 아이콘, 배너, 스크린샷 레이아웃.</li>
+      <li><b>클로드 디자인</b> — 게임 UI 시안(타이틀·레벨업·결과·상점·HUD). 인게임 아트는 못 만든다.</li>
+    </ol>
+  </div>
+
+  <div class="note">
+    스타일은 하나여야 한다. 픽셀 타일셋 위에 벡터 캐릭터를 얹으면 둘 다 싸구려로 보인다.
+    픽셀로 정한 이상 <b>지금 코드로 그린 캐릭터 13종은 버린다.</b> 아깝지만, 섞는 것보다 낫다.
+  </div>
+</section>
+
+<section>
+  <span class="snum">11</span>
+  <h2>작업 순서</h2>
+  <div class="next-list">
+    <div class="nx"><span class="n">1</span><div>
+      <div class="t">에셋팩 구매<span class="who">사장님</span></div>
+      <div class="d">타일셋 + 캐릭터. 링크는 따로 추려서 드립니다. 사고 나면 압축 파일만 넘겨주시면 됩니다.</div></div></div>
+    <div class="nx"><span class="n">2</span><div>
+      <div class="t">타일맵 엔진<span class="who">저</span></div>
+      <div class="d">구역 = 타일맵. 카메라·충돌·레이어. 에셋이 오기 전에 만들어 둘 수 있습니다.</div></div></div>
+    <div class="nx"><span class="n">3</span><div>
+      <div class="t">구역 · 문 시스템<span class="who">저</span></div>
+      <div class="d">진입 → 미결 → 문 열림 → 다음. 이게 붙는 순간 "뭘 방어하는지"가 사라집니다.</div></div></div>
+    <div class="nx"><span class="n">4</span><div>
+      <div class="t">스프라이트 연결<span class="who">저</span></div>
+      <div class="d">산 캐릭터를 걷기·피격·사망에 물립니다. 지금 코드 캐릭터를 들어냅니다.</div></div></div>
+    <div class="nx"><span class="n">5</span><div>
+      <div class="t">구역별 규칙 아홉 개<span class="who">저</span></div>
+      <div class="d">배식대·발표·복합기·기습처럼 공간마다 하나씩. 여기서 컨텐츠가 붙습니다.</div></div></div>
+    <div class="nx"><span class="n">6</span><div>
+      <div class="t">경고 + 처치 연출<span class="who">저</span></div>
+      <div class="d">예고 범위·경고 띠, 그리고 손에 든 게 터지는 처치 연출. 에셋 없이도 됩니다.</div></div></div>
+    <div class="nx"><span class="n">7</span><div>
+      <div class="t">설치물 · 이벤트<span class="who">저</span></div>
+      <div class="d">파티션·복합기·회의실 예약, 그리고 후임·고객사. 여기서 판마다 이야기가 생깁니다.</div></div></div>
+    <div class="nx"><span class="n">8</span><div>
+      <div class="t">UI 다시<span class="who">저 + 클로드 디자인</span></div>
+      <div class="d">구역 이름, 문 게이지, 층 표시. 지금 HUD는 구역 개념이 없습니다.</div></div></div>
+  </div>
+  <p class="lead" style="margin-top:20px">
+    1번을 기다리는 동안 2·3번을 먼저 합니다. 에셋이 없어도 임시 도형으로 구조는 만들 수 있고,
+    에셋이 오면 갈아끼우기만 하면 됩니다.
+  </p>
+</section>
+
+</div>

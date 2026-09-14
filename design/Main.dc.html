@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;600;800&display=swap">
+  <style>
+    body{margin:0;background:#0b0e14;color:#e8ecf4;
+      font-family:'Gothic A1','Malgun Gothic','Apple SD Gothic Neo',sans-serif}
+    a{color:#9ec8ff}a:hover{color:#c5dfff}
+    .ttl{font-family:'Black Han Sans','Malgun Gothic',sans-serif;font-weight:400}
+  </style>
+</helmet>
+<div style="width:960px;height:600px;position:relative;overflow:hidden;background:
+  radial-gradient(120% 80% at 50% -10%, #1b2433 0%, #0b0e14 60%)">
+
+  <!-- 형광등 -->
+  <div style="position:absolute;top:0;left:0;right:0;height:170px;
+    background:linear-gradient(180deg, rgba(158,200,255,.22) 0%, rgba(158,200,255,0) 100%)"></div>
+  <div style="position:absolute;top:26px;left:50%;transform:translateX(-50%);
+    display:flex;gap:26px">
+    <div style="width:150px;height:9px;border-radius:2px;background:#cfe4ff;box-shadow:0 0 34px 8px rgba(158,200,255,.5)"></div>
+    <div style="width:150px;height:9px;border-radius:2px;background:#8fb4e6;box-shadow:0 0 22px 5px rgba(158,200,255,.28)"></div>
+    <div style="width:150px;height:9px;border-radius:2px;background:#4d6280"></div>
+  </div>
+
+  <div style="position:absolute;top:112px;left:64px;display:flex;flex-direction:column;gap:0">
+    <div style="font-size:13px;letter-spacing:.42em;color:#9ec8ff;font-weight:800">OFFICE LANE DEFENSE</div>
+    <div class="ttl" style="font-size:104px;line-height:.94;color:#f2f6ff;margin-top:12px;
+      text-shadow:0 0 46px rgba(158,200,255,.28)">출근<br>저지</div>
+    <div style="width:96px;height:5px;background:#f5c451;margin-top:22px"></div>
+    <div style="font-size:16px;color:#9aa4b8;margin-top:18px;line-height:1.7;max-width:330px">
+      복도 끝에서 걸어옵니다.<br>내 자리 앞에서 막으세요.
+    </div>
+  </div>
+
+  <!-- 시작 버튼 -->
+  <div style="position:absolute;left:64px;bottom:96px;display:flex;gap:12px;align-items:center">
+    <div style="background:#f5c451;color:#17191f;font-weight:800;font-size:17px;
+      padding:15px 40px;border-radius:4px">시작하기</div>
+    <div style="border:1px solid #2b3444;color:#9aa4b8;font-size:15px;
+      padding:14px 24px;border-radius:4px">스테이지 선택</div>
+  </div>
+
+  <!-- 우측: 다가오는 실루엣 -->
+  <div style="position:absolute;right:0;top:150px;width:420px;height:400px;
+    display:flex;flex-direction:column;justify-content:space-between">
+    <div style="height:1px;background:#1c2431"></div>
+    <div style="height:1px;background:#1c2431"></div>
+    <div style="height:1px;background:#1c2431"></div>
+    <div style="height:1px;background:#1c2431"></div>
+    <div style="height:1px;background:#1c2431"></div>
+    <div style="height:1px;background:#1c2431"></div>
+  </div>
+  <svg viewBox="0 0 420 400" width="420" height="400"
+       style="position:absolute;right:0;top:150px">
+    <g fill="#3d4757">
+      <circle cx="96" cy="46" r="13"/><rect x="82" y="62" width="28" height="42" rx="7"/>
+      <circle cx="214" cy="112" r="13"/><rect x="200" y="128" width="28" height="42" rx="7"/>
+      <circle cx="132" cy="180" r="13"/><rect x="118" y="196" width="28" height="42" rx="7"/>
+      <circle cx="318" cy="246" r="13"/><rect x="304" y="262" width="28" height="42" rx="7"/>
+      <circle cx="238" cy="314" r="13"/><rect x="224" y="330" width="28" height="42" rx="7"/>
+    </g>
+    <g fill="#5b6577">
+      <circle cx="356" cy="46" r="15"/><rect x="340" y="64" width="32" height="48" rx="8"/>
+      <rect x="374" y="86" width="20" height="16" rx="2" fill="#f5c451"/>
+    </g>
+  </svg>
+
+  <!-- 내 자리(좌측 방어선) -->
+  <div style="position:absolute;left:0;top:150px;bottom:50px;width:20px;
+    background:linear-gradient(90deg, rgba(158,200,255,.30), rgba(158,200,255,0))"></div>
+
+  <div style="position:absolute;bottom:30px;left:64px;font-size:12px;color:#59627a">
+    한 명이라도 자리에 도달하면 하루가 시작됩니다
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

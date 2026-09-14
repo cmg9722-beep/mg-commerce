@@ -4,7 +4,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from flask import Flask, render_template, jsonify, request, session, redirect, url_for
+from flask import (Flask, render_template, jsonify, request, session, redirect,
+                   url_for, send_from_directory)
 from functools import wraps
 import hashlib
 from werkzeug.utils import secure_filename
@@ -81,6 +82,47 @@ def logout():
 @login_required
 def admin():
     return render_template("index.html")
+
+
+# === 게임 ===
+# 「정시 퇴근」은 game/ 아래에 파일로만 있어서 웹에서 열 수가 없었다.
+# 스토어에 내려면 두 가지가 URL로 있어야 한다 —
+#   · 개인정보처리방침 (스토어가 접근 가능한 주소를 요구한다)
+#   · 게임 자체 (TWA로 감싸려면 호스팅된 주소가 있어야 한다)
+GAME_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "game")
+
+# 검사 스크립트는 서비스하지 않는다 — 제품이 아니다
+_GAME_BLOCKED = ("test/",)
+
+
+@app.route("/game/")
+def game_index():
+    return send_from_directory(GAME_DIR, "rush.html")
+
+
+@app.route("/game/privacy")
+def game_privacy():
+    """스토어 등재에 넣을 개인정보처리방침 주소."""
+    return send_from_directory(GAME_DIR, "privacy.html")
+
+
+@app.route("/.well-known/assetlinks.json")
+def well_known_assetlinks():
+    """안드로이드 TWA — 이 도메인이 그 앱의 것임을 증명한다.
+    이게 없으면 앱 안에 브라우저 주소창이 그대로 보인다.
+    서명 키 지문은 소유자만 만들 수 있어서 파일에 자리만 비워 두었다
+    (game/store/twa/README.md)."""
+    return send_from_directory(
+        os.path.join(GAME_DIR, "store", "twa"), "assetlinks.json",
+        mimetype="application/json")
+
+
+@app.route("/game/<path:sub>")
+def game_files(sub):
+    if any(sub.startswith(b) for b in _GAME_BLOCKED):
+        return jsonify({"error": "not found"}), 404
+    # send_from_directory 가 safe_join 으로 상위 경로 탈출을 막는다
+    return send_from_directory(GAME_DIR, sub)
 
 
 # === API: 문의 (홈페이지 연동) ===

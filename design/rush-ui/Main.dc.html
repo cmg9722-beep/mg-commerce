@@ -1,0 +1,113 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;600;800&display=swap">
+  <style>
+    body{margin:0;font-family:'Gothic A1',"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+      background:#0b0e14;color:#e8ecf4;-webkit-font-smoothing:antialiased}
+    a{color:#f5c451} a:hover{color:#d9a94e}
+    .ttl{font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400}
+    .num{font-variant-numeric:tabular-nums}
+  </style>
+</helmet>
+<div style="width:1000px;height:760px;position:relative;overflow:hidden;
+  background:radial-gradient(120% 90% at 50% -10%, #17202e 0%, #0b0e14 62%)">
+
+  <!-- 배경: 꺼진 형광등 복도의 암시 -->
+  <div style="position:absolute;inset:0;opacity:.5">
+    <div style="position:absolute;left:120px;top:64px;width:300px;height:9px;border-radius:3px;
+      background:#cfe4ff;box-shadow:0 0 70px 22px rgba(158,200,255,.28)"></div>
+    <div style="position:absolute;right:90px;top:210px;width:220px;height:9px;border-radius:3px;
+      background:#2a3444"></div>
+    <div style="position:absolute;left:60px;bottom:150px;width:260px;height:9px;border-radius:3px;
+      background:#2a3444"></div>
+  </div>
+
+  <div style="position:absolute;inset:0;background:rgba(8,10,15,.82);
+    display:flex;align-items:center;justify-content:center;padding:20px">
+
+    <div style="width:100%;max-width:760px;background:#141922;border:1px solid #232a36;
+      border-radius:14px;padding:24px">
+
+      <!-- 제목: 게임 정체성을 한 번에 -->
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <h1 class="ttl" style="font-size:44px;margin:0;letter-spacing:-.5px;line-height:1">정시 퇴근</h1>
+        <span style="font-size:12px;color:#7d8699;letter-spacing:2px;font-weight:800">09:00 — 18:00</span>
+      </div>
+      <div style="color:#7d8699;font-size:14px;margin:8px 0 0">
+        오늘도 6시에 나간다. 사방에서 몰려오는 것들을 버텨내면서.
+      </div>
+
+      <!-- 기록: 숫자가 주인공 -->
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;
+        margin-top:20px;background:#232a36;border:1px solid #232a36;border-radius:10px;overflow:hidden">
+        <div style="background:#171d27;padding:14px 14px 12px;display:flex;flex-direction:column;gap:3px">
+          <b class="ttl num" style="font-size:26px;color:#f5c451;line-height:1">1,284</b>
+          <span style="font-size:11px;color:#7d8699">보유 경력</span>
+        </div>
+        <div style="background:#171d27;padding:14px 14px 12px;display:flex;flex-direction:column;gap:3px">
+          <b class="ttl num" style="font-size:26px;line-height:1">17</b>
+          <span style="font-size:11px;color:#7d8699">출근 일수</span>
+        </div>
+        <div style="background:#171d27;padding:14px 14px 12px;display:flex;flex-direction:column;gap:3px">
+          <b class="ttl num" style="font-size:26px;line-height:1">5,127</b>
+          <span style="font-size:11px;color:#7d8699">최다 처리</span>
+        </div>
+        <div style="background:#171d27;padding:14px 14px 12px;display:flex;flex-direction:column;gap:3px">
+          <b class="ttl" style="font-size:26px;color:#57d98a;line-height:1">있음</b>
+          <span style="font-size:11px;color:#7d8699">정시 퇴근</span>
+        </div>
+      </div>
+
+      <!-- 적용 중인 영구 능력 -->
+      <div style="margin-top:12px;padding:10px 12px;border:1px solid #2a3a2f;border-radius:8px;
+        background:#101a14;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:800;color:#57d98a;letter-spacing:.5px">적용 중</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span style="font-size:12px;color:#9fd9b6;background:#16251c;border:1px solid #24402f;
+            border-radius:999px;padding:3px 9px">체력 +45</span>
+          <span style="font-size:12px;color:#9fd9b6;background:#16251c;border:1px solid #24402f;
+            border-radius:999px;padding:3px 9px">속도 +12%</span>
+          <span style="font-size:12px;color:#9fd9b6;background:#16251c;border:1px solid #24402f;
+            border-radius:999px;padding:3px 9px">경험치 +40%</span>
+          <span style="font-size:12px;color:#9fd9b6;background:#16251c;border:1px solid #24402f;
+            border-radius:999px;padding:3px 9px">공속 +5%</span>
+
+        </div>
+      </div>
+
+      <!-- 입력 -->
+      <label style="display:block;font-size:13px;color:#7d8699;margin:18px 0 6px">
+        오늘 누구 때문에 힘드셨나요? <span style="color:#59627a">적 대사가 됩니다</span>
+      </label>
+      <div style="width:100%;padding:12px;border-radius:8px;border:1px solid #232a36;
+        background:#0b0d12;font-size:14px;color:#59627a">이거 오늘 안에 되죠?</div>
+
+      <!-- 액션 -->
+      <button style="background:#f5c451;color:#17191f;border:0;border-radius:8px;font-weight:800;
+        padding:15px;width:100%;margin-top:16px;font-size:16px;font-family:inherit;cursor:pointer">출근</button>
+      <button style="background:transparent;color:#e8ecf4;border:1px solid #232a36;border-radius:8px;
+        padding:13px;width:100%;margin-top:8px;font-family:inherit;font-size:14px;cursor:pointer;
+        display:flex;align-items:center;justify-content:center;gap:8px">
+        <span>자기계발</span>
+        <span style="color:#f5c451;font-weight:800">경력 1,284</span>
+      </button>
+
+      <div style="color:#7d8699;font-size:12px;margin-top:16px;line-height:1.7;
+        display:flex;gap:18px;flex-wrap:wrap">
+        <span>이동 <b style="color:#e8ecf4">WASD·방향키</b> <span style="color:#59627a">(터치는 드래그)</span></span>
+        <span>공격 <b style="color:#e8ecf4">자동</b></span>
+        <span>음소거 <b style="color:#e8ecf4">M</b></span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

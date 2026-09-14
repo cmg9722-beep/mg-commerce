@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>정시 퇴근 — 개인정보처리방침</title>
+<meta name="description" content="「정시 퇴근」은 개인정보를 수집하지 않습니다. 기록은 전부 기기 안에만 남습니다.">
+<meta name="theme-color" content="#0b0e14">
+<link rel="icon" href="store/icon-192.png" sizes="192x192">
+<style>
+/* 게임과 같은 글꼴·색을 쓴다. 스토어 심사자가 열었을 때 같은 제품으로 보여야 한다 */
+@font-face{font-family:'Black Han Sans';font-style:normal;font-weight:400;font-display:swap;
+  src:url(assets/fonts/BlackHanSans-subset.woff2) format('woff2')}
+@font-face{font-family:'Gothic A1';font-style:normal;font-weight:400;font-display:swap;
+  src:url(assets/fonts/GothicA1-400-subset.woff2) format('woff2')}
+@font-face{font-family:'Gothic A1';font-style:normal;font-weight:700;font-display:swap;
+  src:url(assets/fonts/GothicA1-700-subset.woff2) format('woff2')}
+@font-face{font-family:'Gothic A1';font-style:normal;font-weight:800;font-display:swap;
+  src:url(assets/fonts/GothicA1-800-subset.woff2) format('woff2')}
+:root{--bg:#0b0e14;--panel:#141922;--line:#232a36;--ink:#e8ecf4;--dim:#7d8699;
+  --accent:#f5c451;--good:#57d98a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);line-height:1.7;
+  font-family:'Gothic A1',"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:40px 20px 72px}
+header{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+header img{width:52px;height:52px;border-radius:12px;flex-shrink:0}
+h1{font-family:'Black Han Sans',"Malgun Gothic",sans-serif;font-weight:400;
+  font-size:30px;margin:0;line-height:1.15}
+.when{color:var(--dim);font-size:13px;margin:0 0 26px}
+.lead{border-left:3px solid var(--accent);padding:14px 0 14px 16px;margin:0 0 30px;
+  background:linear-gradient(90deg,rgba(245,196,81,.08),transparent)}
+.lead b{color:var(--accent);font-size:17px}
+h2{font-size:17px;margin:34px 0 10px;padding-top:20px;border-top:1px solid var(--line)}
+h2:first-of-type{border-top:0;padding-top:0}
+p{margin:0 0 12px}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;display:block;overflow-x:auto}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--dim);font-weight:700;font-size:12.5px;white-space:nowrap}
+code{background:#1a212c;border:1px solid var(--line);border-radius:5px;
+  padding:2px 6px;font-size:13px;color:var(--accent);white-space:nowrap}
+.note{background:#141922;border:1px solid var(--line);border-radius:11px;padding:14px 16px;margin:14px 0}
+.note b{color:var(--accent)}
+a{color:var(--accent)}
+.langs{display:flex;gap:8px;margin:0 0 28px}
+.langs a{font-size:13px;font-weight:700;text-decoration:none;color:var(--dim);
+  border:1px solid var(--line);border-radius:999px;padding:7px 14px}
+.langs a.on{color:var(--accent);border-color:var(--accent);background:rgba(245,196,81,.1)}
+footer{margin-top:44px;padding-top:20px;border-top:1px solid var(--line);
+  color:var(--dim);font-size:13px}
+[hidden]{display:none!important}
+@media(max-width:560px){.wrap{padding:28px 16px 56px}h1{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="store/icon-192.png" alt="">
+    <div>
+      <h1 id="t">개인정보처리방침</h1>
+      <div class="when" id="sub">정시 퇴근 (On-Time Departure) · 최종 수정 2026-09-13</div>
+    </div>
+  </header>
+
+  <div class="langs">
+    <a href="#ko" id="lko" class="on">한국어</a>
+    <a href="#en" id="len">English</a>
+  </div>
+
+  <section id="ko">
+    <div class="lead"><b>이 게임은 개인정보를 수집하지 않습니다.</b><br>
+      서버로 보내는 것이 아무것도 없습니다. 기록은 전부 이용자의 기기 안에만 남습니다.</div>
+
+    <h2>1. 수집하는 개인정보</h2>
+    <p>없습니다. 이름·이메일·전화번호·주소·생년월일·성별·기기식별자·광고식별자·위치정보를
+      포함해 어떤 개인정보도 수집하지 않습니다. 계정을 만들지 않으며 로그인이 없습니다.</p>
+
+    <h2>2. 기기에 저장되는 것</h2>
+    <p>게임은 브라우저의 로컬 저장소(localStorage)에만 다음 네 가지를 남깁니다.
+      이 값들은 이용자의 기기를 떠나지 않습니다.</p>
+    <table>
+      <tr><th>저장 키</th><th>담는 것</th></tr>
+      <tr><td><code>jeongsi.save.v1</code></td><td>경력 점수, 최고 기록, 진행 일수, 해금한 업적,
+        고른 직군, 멀리 보는 목표 달성 여부, 동기 기록, 설정(소리·화면 흔들림),
+        「내 한 줄」에 적은 문장</td></tr>
+      <tr><td><code>jeongsi.lang</code></td><td>고른 언어 (한국어 / English)</td></tr>
+      <tr><td><code>jeongsi.tut.v1</code></td><td>첫 판 안내를 봤는지 여부</td></tr>
+      <tr><td><code>chulgeun.muted</code></td><td>소리를 껐는지 여부</td></tr>
+    </table>
+    <div class="note"><b>「내 한 줄」에 대하여.</b> 설정에서 한 문장(최대 40자)을 직접 적을 수 있고,
+      게임 속 상사들이 그 문장을 말합니다. 이 문장 역시 기기에만 저장되며 전송되지 않습니다.
+      다만 이용자가 직접 적는 자유 입력란이므로,
+      <b>다른 사람의 실명이나 민감한 내용은 적지 않기를 권합니다.</b>
+      비워 두면 게임이 기본 문장을 씁니다.</div>
+    <p>지우는 방법: 게임 안 <b>설정 → 기록 초기화</b>. 또는 브라우저·앱의 저장 데이터 삭제.
+      앱을 삭제해도 함께 지워집니다.</p>
+
+    <h2>3. 네트워크 통신</h2>
+    <p>게임은 실행 중 외부로 어떤 요청도 보내지 않습니다. 글꼴·소리·그림을 포함한 모든 자원이
+      앱 안에 들어 있습니다. 이 사실은 자동 검사로 매 배포 전에 확인하며,
+      외부 요청이 하나라도 발견되면 배포가 중단됩니다.</p>
+
+    <h2>4. 제3자 제공·위탁</h2>
+    <p>없습니다. 광고 네트워크, 분석 도구(애널리틱스), 크래시 리포터, 소셜 로그인,
+      결제 모듈을 일절 사용하지 않습니다.</p>
+
+    <h2>5. 아동의 개인정보</h2>
+    <p>수집하는 개인정보가 없으므로 만 14세 미만 아동으로부터 수집하는 정보도 없습니다.</p>
+
+    <h2>6. 이용자의 권리</h2>
+    <p>수집·보관하는 개인정보가 없어 열람·정정·삭제를 요청할 대상이 없습니다.
+      기기에 저장된 게임 기록은 위 2항의 방법으로 이용자가 직접 언제든 지울 수 있습니다.</p>
+
+    <h2>7. 방침의 변경</h2>
+    <p>이 방침이 바뀌면 수정일을 갱신하고 변경 내용을 이 문서에 적습니다.</p>
+
+    <h2>8. 문의</h2>
+    <p><a href="mailto:cmg9722@gmail.com">cmg9722@gmail.com</a></p>
+  </section>
+
+  <section id="en" hidden>
+    <div class="lead"><b>This game collects no personal information.</b><br>
+      Nothing is sent to any server. All records stay on the player's own device.</div>
+
+    <h2>1. Personal information collected</h2>
+    <p>None. No name, email, phone number, address, date of birth, gender, device
+      identifier, advertising identifier, or location. There are no accounts and no sign-in.</p>
+
+    <h2>2. What is stored on the device</h2>
+    <p>The game writes only these four values to browser local storage. They never leave the device.</p>
+    <table>
+      <tr><th>Key</th><th>Contents</th></tr>
+      <tr><td><code>jeongsi.save.v1</code></td><td>Career points, best records, days played,
+        unlocked achievements, chosen role, long-game goals reached, rival record,
+        settings (sound, screen shake), and the sentence typed into "Your line"</td></tr>
+      <tr><td><code>jeongsi.lang</code></td><td>Chosen language (Korean / English)</td></tr>
+      <tr><td><code>jeongsi.tut.v1</code></td><td>Whether the first-run guide has been seen</td></tr>
+      <tr><td><code>chulgeun.muted</code></td><td>Whether sound is muted</td></tr>
+    </table>
+    <div class="note"><b>About "Your line".</b> In Settings the player may type one sentence
+      (max 40 characters); in-game bosses then say it. It is stored on the device only and is
+      never transmitted. Because it is a free-text field,
+      <b>we recommend not entering another person's real name or any sensitive content.</b>
+      Left blank, the game picks its own line.</div>
+    <p>To erase: <b>Settings → Erase records</b> in-game, or clear the app's stored data.
+      Uninstalling the app also removes it.</p>
+
+    <h2>3. Network activity</h2>
+    <p>The game makes no outbound requests while running. Every resource — fonts, sounds,
+      graphics — ships inside the app. This is verified before every release by an automated
+      check; the release is blocked if any external request is found.</p>
+
+    <h2>4. Third parties</h2>
+    <p>None. No advertising networks, analytics, crash reporters, social sign-in, or
+      payment modules are used.</p>
+
+    <h2>5. Children</h2>
+    <p>Since no personal information is collected, none is collected from children.</p>
+
+    <h2>6. Your rights</h2>
+    <p>There is no personal data held to access, correct, or delete. Game records stored on
+      the device can be erased at any time by the player using the methods in section 2.</p>
+
+    <h2>7. Changes</h2>
+    <p>If this policy changes, the date above is updated and the change is recorded here.</p>
+
+    <h2>8. Contact</h2>
+    <p><a href="mailto:cmg9722@gmail.com">cmg9722@gmail.com</a></p>
+  </section>
+
+  <footer>정시 퇴근 — 오늘도 6시에 나간다 · <a href="rush.html">게임으로</a></footer>
+</div>
+<script>
+/* 언어 전환 — 주소의 #en 을 따른다. 스크립트가 죽어도 한국어가 보인다. */
+(function(){
+  var ko=document.getElementById('ko'), en=document.getElementById('en'),
+      lko=document.getElementById('lko'), len=document.getElementById('len'),
+      t=document.getElementById('t'), sub=document.getElementById('sub');
+  function show(which){
+    var isEn = which==='en';
+    en.hidden=!isEn; ko.hidden=isEn;
+    len.className=isEn?'on':''; lko.className=isEn?'':'on';
+    t.textContent = isEn ? 'Privacy Policy' : '개인정보처리방침';
+    sub.textContent = isEn
+      ? 'On-Time Departure (정시 퇴근) · Last updated 2026-09-13'
+      : '정시 퇴근 (On-Time Departure) · 최종 수정 2026-09-13';
+    document.documentElement.lang = isEn ? 'en' : 'ko';
+  }
+  function fromHash(){ show(location.hash==='#en' ? 'en' : 'ko'); }
+  addEventListener('hashchange', fromHash);
+  /* 처음 열 때는 브라우저 언어를 따른다 — 주소에 지정이 없을 때만 */
+  if(!location.hash){
+    var n=((navigator.languages&&navigator.languages[0])||navigator.language||'ko').toLowerCase();
+    show(n.indexOf('ko')===0 ? 'ko' : 'en');
+  } else fromHash();
+})();
+</script>
+</body>
+</html>
