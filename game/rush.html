@@ -3558,6 +3558,13 @@ const L10N = { ko:null, en:{
   "불이 꺼진 층을 지나왔다. 예전엔 여기가 제일 환했다.":"Walked past a floor with the lights off. This used to be the brightest one.",
   "후배가 후배를 데리고 왔다. 나한테 묻지 않고 자기가 답했다.":"My junior brought their own junior. Answered for me without asking.",
   "이제 이 이야기는 내 것이 아니다. 그래서 끝이 아니다.":"This story isn't mine anymore. That's why it isn't over.",
+  "외근":"Field Visit","배포":"Deploy","면담":"One-on-one","안전모":"Hard Hat","루틴":"Routine",
+  "젖음이 오래 갑니다 (+40%)":"Wet lasts longer (+40%)",
+  "설치기가 묶임을 겁니다 (+0.5초)":"Placed gear holds them (+0.5s)",
+  "참조가 멀리 갑니다 (+35%)":"CC reaches further (+35%)",
+  "묶인 적에게 더 아픕니다 (+25%)":"Held targets take more (+25%)",
+  "번짐이 더 퍼집니다 (+20%)":"Bleed spreads wider (+20%)",
+  "직군 전용":"Role-only","{0}(으)로 출근한 날에만":"Only on days you clock in as {0}",
   "무기 도감":"Codex","{0}종":"{0} kinds","반응":"Reactions","진화":"Evolutions","무기":"Weapons",
   "무엇이 무엇과 맞물리는지. 쥐는 건 그날 카드가 정합니다.":"What locks into what. Which you get is still up to the cards.",
   "번짐":"Bleed","지적":"Called out","전달":"Forwarded","{0} + {1}":"{0} + {1}",
@@ -4543,6 +4550,8 @@ const EVOLVED={
 Object.assign(WEAPONS, EVOLVED);
 for(const base in EVO) for(const e of evoPairs(base)) EVO_BASE[e.to]=base;
 /* ── 강화(패시브) ─────────────────────────────────────────────── */
+/* 직군 전용은 아래 PERKS 뒤에 따로 붙인다(CHAR_PERKS). 그 직군으로
+   출근한 판에서만 카드 풀에 든다 — 「직군 = 반응 성향」이 되게. */
 const PERKS = {
   shoes :{ id:"shoes", name:"편한 구두",   max:5, desc:"이동 속도 +12%",        f:(P,l)=>P.spd*=1.12 },
   laptop:{ id:"laptop",name:"노트북",      max:5, desc:"공격 속도 +10%",        f:(P,l)=>P.haste*=.90 },
@@ -4854,7 +4863,8 @@ function stats(g){
   const P={ spd:168*(1+M.spd), haste:1*(1-M.haste), range:1,
             xpMul:1+M.xp, magnet:1+M.magnet, maxhp:160+M.hp,
             inv0:0, late:1, work:1, blink:0, annual:0, allyDmg:1, fatigue:1, meddleR:1,
-            dmgMul:1, push:1, buildLife:1, offers:3 };
+            dmgMul:1, push:1, buildLife:1, offers:3,
+            wetT:1, buildHold:0, ccR:1, holdDmg:1, splash:1 };
   /* 직군 먼저 — 카드로 쌓는 것들보다 앞에 온다. 그래야 「영업으로 시작해
      체력을 채워 간다」 같은 판이 성립한다. */
   charOf(g.charId).f(P);
@@ -4866,6 +4876,29 @@ function stats(g){
          P.maxhp=Math.round(P.maxhp*m); P.haste/=m; }
   return P;
 }
+/* ── 직군 전용 특성 ────────────────────────────────────────────
+   직군 다섯은 능력치만 달랐다. 반응이 생긴 지금은 그 위에 한 겹을 더
+   얹을 수 있다 — 같은 무기를 들어도 직군에 따라 다른 반응으로 싸운다.
+
+   영업은 젖음을 오래 끌고, 개발은 설치기가 상태를 건다.
+   인사는 참조가 멀리 가고, 현장은 묶은 적을 더 아프게 때린다.
+   사무직은 반응 자체를 조금씩 다 키운다 — 균형이라는 성격 그대로.
+
+   그 직군으로 출근한 판에서만 카드에 나온다. */
+const CHAR_PERKS = {
+  sales : { id:"outfield", char:"sales",  name:"외근",   max:3,
+            desc:"젖음이 오래 갑니다 (+40%)",      f:(P,l)=>P.wetT=(P.wetT||1)*1.40 },
+  dev   : { id:"deploy",   char:"dev",    name:"배포",   max:3,
+            desc:"설치기가 묶임을 겁니다 (+0.5초)", f:(P,l)=>P.buildHold=(P.buildHold||0)+0.5 },
+  hr    : { id:"talk",     char:"hr",     name:"면담",   max:3,
+            desc:"참조가 멀리 갑니다 (+35%)",       f:(P,l)=>P.ccR=(P.ccR||1)*1.35 },
+  field : { id:"helmet",   char:"field",  name:"안전모", max:3,
+            desc:"묶인 적에게 더 아픕니다 (+25%)",  f:(P,l)=>P.holdDmg=(P.holdDmg||1)*1.25 },
+  office: { id:"routine",  char:"office", name:"루틴",   max:3,
+            desc:"번짐이 더 퍼집니다 (+20%)",       f:(P,l)=>P.splash=(P.splash||1)*1.20 },
+};
+for(const k in CHAR_PERKS) PERKS[CHAR_PERKS[k].id]=CHAR_PERKS[k];
+
 function applyPerks(g){
   const P=stats(g), p=g.P;
   const dh = P.maxhp - p.maxhp;
@@ -4874,6 +4907,7 @@ function applyPerks(g){
   p.inv0=P.inv0; p.late=P.late; p.work=P.work; p.blink=P.blink;
   p.annual=P.annual; p.allyDmg=P.allyDmg; p.fatigue=P.fatigue; p.meddleR=P.meddleR;
   p.dmgMul=P.dmgMul; p.push=P.push; p.buildLife=P.buildLife; p.offers=P.offers;
+  p.wetT=P.wetT; p.buildHold=P.buildHold; p.ccR=P.ccR; p.holdDmg=P.holdDmg; p.splash=P.splash;
   p.maxhp=P.maxhp; if(dh>0) p.hp=Math.min(p.maxhp,p.hp+dh);
   p.hp=Math.min(p.hp,p.maxhp);
 }
@@ -5431,7 +5465,9 @@ function stepBuilds(g,dt){
         if(Math.hypot(f.x-b.x,f.y-b.y)<L.r+f.r){
           f.slow=Math.min(f.slow,L.slow);
           f.wetT=(f.wetT||0)+dt;
-          if(f.wetT>0.9){ f.wetT=0; damage(g,f,L.dmg,b.x,b.y,4,b.id); }
+          if(f.wetT>0.9){ f.wetT=0;
+            if((g.P.buildHold||0)>0 && !f.boss) f.hold=Math.max(f.hold||0,g.P.buildHold);
+            damage(g,f,L.dmg,b.x,b.y,4,b.id); }
         }
       }
     } else if(b.id==="book"){
@@ -5441,7 +5477,8 @@ function stepBuilds(g,dt){
         let n=0;
         for(const f of g.foes){
           if(f.boss) continue;
-          if(Math.hypot(f.x-b.x,f.y-b.y)<L.r){ f.hold=L.hold; damage(g,f,L.dmg,b.x,b.y,0,b.id); n++; }
+          if(Math.hypot(f.x-b.x,f.y-b.y)<L.r){ f.hold=L.hold+(g.P.buildHold||0);
+            damage(g,f,L.dmg,b.x,b.y,0,b.id); n++; }
         }
         if(n){ S("deny"); flash(g,"회의실 예약 — "+n+"명 묶임"); }
         g.fx.push({type:"ring",x:b.x,y:b.y,t:0,r0:12,r1:L.r,c:"#f5c451"});
@@ -5803,19 +5840,21 @@ function damage(g,f,dmg,sx,sy,kb,src){
   /* ── 반응 ── 소스 무기를 아는 자리는 여기 하나뿐이다 */
   const W = src ? WEAPONS[src] : null;
   if(W && !f.boss){
-    if(W.tag) tagFoe(f, W.tag, W.tag==="wet"?3.2:4.0);
-    /* 지적 — 회의에 묶여 있으면 더 아프다 */
-    if(f.hold>0){ dmg*=1.6; f.hold=Math.max(0,f.hold-0.5); f.react=.22; }
+    /* 직군 전용 특성이 여기서 걸린다 — 같은 무기를 들어도 직군마다
+       다른 반응으로 싸우게 하는 한 겹이다(영업은 젖음이 오래 간다) */
+    if(W.tag) tagFoe(f, W.tag, (W.tag==="wet"?3.2*(g.P.wetT||1):4.0));
+    /* 지적 — 회의에 묶여 있으면 더 아프다. 현장은 더 아프게 때린다 */
+    if(f.hold>0){ dmg*=1.6*(g.P.holdDmg||1); f.hold=Math.max(0,f.hold-0.5); f.react=.22; }
     /* 번짐 — 젖은 종이에 잉크가 번진다. 젖음은 한 번에 마른다 */
     if(W.paper && (f.wet||0)>0){
       f.wet=0; f.react=.30;
-      reactFx(g,f.x,f.y,"#6f9fd8",REACT_R);
+      reactFx(g,f.x,f.y,"#6f9fd8",REACT_R*(g.P.splash||1));
       /* 여기서 killFoe 를 부르면 안 된다. killFoe 는 g.foes 를 splice 하는데
          지금 그 배열을 for...of 로 돌고 있어서, 지우는 순간 다음 사람을
          건너뛴다. indexOf 도 한 명마다 O(n) 이라 420명이면 O(n²) 이 된다.
          체력이 0 이하로 내려간 사람은 다음 틱 적 루프가 알아서 정리한다
          (`if(f.hp<=0){ killFoe(g,f,i); continue; }`) — 거기 한 곳에 맡긴다. */
-      const spl=dmg*0.6, R2=REACT_R*REACT_R;
+      const R=REACT_R*(g.P.splash||1), spl=dmg*0.6, R2=R*R;
       for(let k=0;k<g.foes.length;k++){
         const o=g.foes[k];
         if(o===f || o.boss || E[o.kind].prop) continue;
@@ -5983,8 +6022,8 @@ function killFoe(g,f,i){
   /* 전달 — 참조된 사람이 처리되면 같이 참조된 사람에게 간다. 한 번만 */
   if((f.cc||0)>0 && !f.boss && !f.ccDone){
     f.ccDone=1;
-    const d=f.maxhp*0.45, R2=REACT_CC*REACT_CC;
-    reactFx(g,f.x,f.y,"#57d98a",REACT_CC);
+    const RC=REACT_CC*(g.P.ccR||1), d=f.maxhp*0.45, R2=RC*RC;
+    reactFx(g,f.x,f.y,"#57d98a",RC);
     for(let k=0;k<g.foes.length;k++){
       const o=g.foes[k];
       if(o===f || o.boss || E[o.kind].prop || !((o.cc||0)>0)) continue;
@@ -7808,6 +7847,8 @@ function offers(g){
   };
   for(const id in PERKS){ const lv=g.perks[id]||0;
     if(lv>=PERKS[id].max) continue;
+    /* 직군 전용 — 그 직군으로 출근한 판에서만 나온다 */
+    if(PERKS[id].char && PERKS[id].char!==g.charId) continue;
     if(!lv && gate[id] && !gate[id]()) continue;
     out.push({kind:"p",id,lv}); }
   void hasBuild;
@@ -8674,6 +8715,8 @@ function renderCodex(){
     <div class="cxtags">${tHTML}</div>
     <div class="sub" style="margin:18px 0 8px;color:var(--ink);font-weight:800">${T("진화")}</div>
     <div class="achgrid" id="cxevo"></div>
+    <div class="sub" style="margin:18px 0 8px;color:var(--ink);font-weight:800">${T("직군 전용")}</div>
+    <div class="achgrid" id="cxc"></div>
     <div class="sub" style="margin:18px 0 8px;color:var(--ink);font-weight:800">${T("무기")}</div>
     <div class="achgrid" id="cxw"></div>
     <div class="dock"><button class="primary" id="back">${T("돌아가기")}</button></div>`);
@@ -8693,6 +8736,19 @@ function renderCodex(){
         +'<span class="r">'+esc(T((WEAPONS[e.to]||{}).desc||""))+'</span>');
       d.appendChild(t); ev.appendChild(d);
     }
+  }
+  /* 직군 전용 — 그 직군으로 출근해야 나온다는 걸 여기서 알린다 */
+  const cb=$("#cxc");
+  for(const k in CHAR_PERKS){
+    const P2=CHAR_PERKS[k], C=charOf(k);
+    const d=document.createElement("div");
+    d.className="achcard on";
+    d.appendChild(icon(C.w,30));
+    const t=document.createElement("div");
+    setHTML(t, '<span class="n">'+esc(T(P2.name))+'</span>'
+      +'<span class="d">'+esc(T(P2.desc))+'</span>'
+      +'<span class="r">'+esc(TF("{0}(으)로 출근한 날에만", T(C.name)))+'</span>');
+    d.appendChild(t); cb.appendChild(d);
   }
   /* 무기 — 진화형은 위에 있으니 뺀다 */
   const wb=$("#cxw");
@@ -9233,7 +9289,7 @@ window.__api={WEAPONS,PERKS,E,ZONES,DAY,hourOf,clockStr,spawnRing,start,todoOf,z
              RANK_MAX, RANK_LOAD, RANK_PWR, RANK_PAY, rankPick, quotaOf,
              EVO, EVOLVED, evoHint, evoReady, LOOP_FROM, LOOP_MAX, loopN, loopMul, loopPay,
              RND, dailyPlan, dayKey, rollEvent, damage, spawnAt, tagFoe, killFoe,
-             reactHint, TAGNAME, evoPairs, EVO_BY_PERK};
+             reactHint, TAGNAME, evoPairs, EVO_BY_PERK, CHAR_PERKS, stats};
 window.__shareCard=g=>shareCard(g);    // 결과 카드 검증용
 window.__askLoop=g=>askLoop(g);        // 엔드리스 검증용
 $("#tutskip").onclick=()=>{ S("select"); tutStop(G); };

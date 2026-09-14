@@ -61,6 +61,18 @@ export default async function(){
   });
   s.eq('젖음 무기가 전부 적혀 있다', tagged.missing.join(','), '', JSON.stringify(tagged));
 
+  /* 직군 전용도 도감에 있어야 한다 — 그 직군으로 출근해야 나오는 걸
+     모르면 「왜 안 나오지」가 된다 */
+  const cp = await p.evaluate(() => {
+    const A = window.__api;
+    return { want: Object.keys(A.CHAR_PERKS).length,
+             cards: document.querySelectorAll('#cxc .achcard').length,
+             txt: [...document.querySelectorAll('#cxc .achcard .r')].map(x => x.textContent) };
+  });
+  s.eq('직군 전용 칸이 직군 수와 같다', cp.cards, cp.want, JSON.stringify(cp));
+  s.eq('어느 직군으로 출근해야 하는지 적혀 있다',
+       cp.txt.filter(t => /출근한 날에만/.test(t)).length, cp.want, JSON.stringify(cp.txt));
+
   s.eq('도감 검사 중 JS 에러 없음', p.errors.length, 0, p.errors.join(' / '));
   await p.close();
 
