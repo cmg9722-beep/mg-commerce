@@ -180,5 +180,84 @@ export default async function run(){
     await p.close();
   }
 
+  /* ── 직군별 진행 ────────────────────────────────────────────
+     직군 다섯이 10일차면 다 열리고 그 뒤로는 고르는 것 말고 할 게 없었다.
+     세 번 나가 보면 그 직군의 두 번째 시작 무기가 열린다 —
+     반응 성향에 맞춘 무기라, 열리는 순간 그 직군이 「빠르다/튼튼하다」가
+     아니라 「이렇게 싸운다」가 된다. */
+  {
+    const BASE = { career:3200, lv:{}, best:0, days:12, cleared:true,
+                   rank:0, last:'win', char:'field' };
+    /* 아직 세 번을 못 채웠으면 두 번째 무기가 없다 */
+    const p = await open({ mute:true,
+      save:{ ...BASE, charStat:{ field:{runs:5,wins:2,best:100,zone:5} } } });
+    await p.waitForSelector('#go');
+    await startRun(p);
+    const before = await p.evaluate(() => {
+      const g = window.__g(), A = window.__api;
+      return { w:Object.keys(g.weapons).sort(), w2:A.charOf('field').w2,
+               wins:A.charWins('field'), need:A.CHAR_W2 };
+    });
+    s.eq('두 번 나간 직군은 아직 두 번째 무기가 없다',
+         before.w.includes(before.w2), false, JSON.stringify(before));
+    await p.close();
+
+    /* 세 번 채우면 다음 판부터 들고 시작한다 */
+    const q = await open({ mute:true,
+      save:{ ...BASE, charStat:{ field:{runs:9,wins:3,best:100,zone:9} } } });
+    await q.waitForSelector('#go');
+    await startRun(q);
+    const after = await q.evaluate(() => {
+      const g = window.__g(), A = window.__api;
+      return { w:Object.keys(g.weapons).sort(), w2:A.charOf('field').w2 };
+    });
+    s.ok('세 번 나간 직군은 두 번째 무기를 들고 시작한다',
+         after.w.includes(after.w2), JSON.stringify(after));
+    await q.close();
+
+    /* 다섯 직군 전부 두 번째 무기가 정의돼 있고, 실제 무기여야 한다 */
+    const r = await open({ mute:true });
+    await r.waitForSelector('#go');
+    const defs = await r.evaluate(() => {
+      const A = window.__api;
+      return A.CHARS.map(c => ({ id:c.id, w:c.w, w2:c.w2,
+        ok: !!c.w2 && !!A.WEAPONS[c.w2] && c.w2 !== c.w }));
+    });
+    s.eq('다섯 직군 전부 두 번째 무기가 있다',
+         defs.filter(d => d.ok).length, 5, JSON.stringify(defs));
+
+    await r.close();
+
+    const t = await open({ mute:true, save:{ ...BASE, char:'sales', charStat:{} } });
+    await t.waitForSelector('#go');
+    await startRun(t);
+    const grew = await t.evaluate(() => {
+      const g = window.__g();
+      g.tut=null; g.kills=700; g.t=260; g.over=null;
+      window.__finish(g, 'win');
+      const sv = JSON.parse(localStorage.getItem('jeongsi.save.v1'));
+      return { cs: sv.charStat, card: document.querySelector('#card').innerText };
+    });
+    s.eq('그 직군 출근 수가 는다', grew.cs?.sales?.runs, 1, JSON.stringify(grew.cs));
+    s.eq('그 직군 정시 퇴근이 세어진다', grew.cs?.sales?.wins, 1, JSON.stringify(grew.cs));
+    s.ok('그 직군 최고 점수가 남는다', (grew.cs?.sales?.best|0) > 0, JSON.stringify(grew.cs));
+    s.eq('직군 진행 검사 중 JS 에러 없음', t.errors.length, 0, t.errors.join(' / '));
+    await t.close();
+
+    /* 세 번째 승리에서 해금을 알린다 */
+    const u = await open({ mute:true,
+      save:{ ...BASE, char:'hr', charStat:{ hr:{runs:4,wins:2,best:10,zone:6} } } });
+    await u.waitForSelector('#go');
+    await startRun(u);
+    const said = await u.evaluate(() => {
+      const g = window.__g();
+      g.tut=null; g.kills=700; g.t=260; g.over=null;
+      window.__finish(g, 'win');
+      return document.querySelector('#card').innerText;
+    });
+    s.ok('세 번째 정시 퇴근에서 해금을 알린다', /세 번 나갔습니다|three clock-outs/.test(said), '');
+    await u.close();
+  }
+
   return s;
 }

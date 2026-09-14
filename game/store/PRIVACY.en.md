@@ -22,7 +22,7 @@ leave the device.
 
 | Key | Contents |
 |---|---|
-| `jeongsi.save.v1` | Career points, best records, days played, unlocked achievements, chosen role, clock-in rank and per-rank records, today's best, settings (sound, screen shake), and the sentence typed into "Your line" |
+| `jeongsi.save.v1` | Career points, best records, days played, unlocked achievements, chosen role, clock-in rank and per-rank records, per-role records, today's best, settings (sound, screen shake), and the sentence typed into "Your line" |
 | `jeongsi.lang` | Chosen language (Korean / English) |
 
 Today's notice is decided by your device's date. The date is used on your device only and is never transmitted.
